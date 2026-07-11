@@ -1,10 +1,11 @@
 # Sub-plan S1 — Scope Room + Real API Bind
 
-> **Sprint goal:** Client can scope an outcome in a **resumable chat room**, finalize to quote, and complete the **full Stage 2 journey on real Postgres** — demo-able without mocks.
+> **Sprint goal:** Client can scope an outcome in a **resumable chat room**, finalize to quote, and complete the **full Stage 2 journey on real Postgres** — product path without mocks.
 >
 > **Parent:** `docs/PIPELINE.md` (N0, N1) · **Architecture:** `docs/CHAT_SURFACES.md`, `docs/SPEC_CO_CREATION.md`
 >
 > **When S1 is done:** tick boxes here + promote remaining items back to PIPELINE NOW/NEXT.
+> **Follow-on:** [`docs/SUBPLAN_S2_STAGES.md`](SUBPLAN_S2_STAGES.md) — worker lifecycle + delivery (Stages A–C).
 
 ---
 
@@ -22,12 +23,12 @@ flowchart TD
     B --> C["S1-C Cursor: wire finalize → proposal<br/>+ fix any bind gaps"]
     C --> D["S1-D Optional: GEMINI_API_KEY<br/>turn on real extraction"]
     D --> E["S1-E Cursor: SSE streaming<br/>live panel updates"]
-    E --> F["✅ S1 checkpoint demo"]
+    E --> F["✅ S1 stage complete"]
 
     G["S1-parallel v0: Stage 3 worker<br/>can start after S1-B"] -.-> F
 ```
 
-**Critical path:** S1-A → S1-B → S1-C → demo. SSE (S1-E) and Stage 3 worker screens can run in parallel once B lands.
+**Critical path:** S1-A → S1-B → S1-C → product path verified. SSE (S1-E) and Stage 3 worker screens can run in parallel once B lands.
 
 ---
 
@@ -238,13 +239,13 @@ See **`docs/V0_HANDOFF.md`** Stage 3 prompt (`/join`, `/worker/onboarding`, `/wo
 
 | Decision | Blocks | Default if no answer |
 |----------|--------|---------------------|
-| Auth provider (Clerk / Auth.js / custom JWT) | Production multi-user, real session ownership | Keep demo client stub through S1 |
-| `GEMINI_API_KEY` | Real AI extraction | Fixture fallback (works for demo) |
+| Auth provider (Clerk / Auth.js / custom JWT) | Production multi-user, real session ownership | Keep demo client stub through S1 / S2 |
+| `GEMINI_API_KEY` | Real AI extraction | Fixture fallback (works for product path) |
 | Merge policy: `core` → `main` PR for lib fixes during S1 | v0 using latest hooks | Single PR after S1-C |
 
 ---
 
-## Demo script (S1 checkpoint — ~5 min)
+## Product-path script (S1 stage complete — ~5 min)
 
 1. Open `/start` → redirects to `/scope/{id}`
 2. Say: *"create my startup"* → AI asks clarifying questions; panel ~low completeness

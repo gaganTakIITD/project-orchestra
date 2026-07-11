@@ -9,6 +9,7 @@ import {
   useCharter,
   useDiscussion,
   useMyTasks,
+  useReadyToStart,
   useSubmit,
   useTaskPacket,
 } from "@/lib/hooks";
@@ -21,6 +22,7 @@ export default function WorkerTaskDetail({ params }: { params: { taskId: string 
   const { data: packet, isLoading: packetLoading } = useTaskPacket(taskId);
   const { data: discussion } = useDiscussion(taskId);
   const acceptInterest = useAcceptInterest(taskId);
+  const readyToStart = useReadyToStart(taskId);
   const submit = useSubmit(taskId);
 
   const [notes, setNotes] = useState("");
@@ -37,6 +39,15 @@ export default function WorkerTaskDetail({ params }: { params: { taskId: string 
       await acceptInterest.mutateAsync();
     } catch {
       setError("Could not accept interest. Try again.");
+    }
+  };
+
+  const handleReady = async () => {
+    setError(null);
+    try {
+      await readyToStart.mutateAsync();
+    } catch {
+      setError("Could not start work. Try again.");
     }
   };
 
@@ -74,6 +85,7 @@ export default function WorkerTaskDetail({ params }: { params: { taskId: string 
 
   const tone = taskStatusTone[task.status] ?? "neutral";
   const canAccept = task.status === "invited" || task.status === "interest_pool" || task.status === "ready";
+  const canReady = task.status === "priority_active";
   const canSubmit =
     task.status === "mutual_start" ||
     task.status === "in_progress" ||
@@ -202,6 +214,16 @@ export default function WorkerTaskDetail({ params }: { params: { taskId: string 
               className="h-10 px-5 bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
             >
               {acceptInterest.isPending ? "Accepting…" : "Accept interest"}
+            </button>
+          ) : null}
+          {canReady ? (
+            <button
+              type="button"
+              onClick={handleReady}
+              disabled={readyToStart.isPending}
+              className="h-10 px-5 bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
+            >
+              {readyToStart.isPending ? "Starting…" : "Ready to start"}
             </button>
           ) : null}
         </div>

@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
+from app.models.identity import User
 from app.schemas.commerce import CreateIntentIn, CreateIntentOut, OutcomeSpecOut
-from app.services.auth import get_demo_client
+from app.services.auth import get_current_client
 from app.services.intent import IntentService
 
 router = APIRouter(prefix="/intents", tags=["intents"])
@@ -15,8 +16,8 @@ router = APIRouter(prefix="/intents", tags=["intents"])
 async def create_intent(
     body: CreateIntentIn,
     db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
 ) -> CreateIntentOut:
-    client = await get_demo_client(db)
     service = IntentService(db)
     intent, _spec, quote = await service.create_intent(
         client=client,

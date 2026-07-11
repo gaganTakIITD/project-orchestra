@@ -34,6 +34,14 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.5-flash"
     gemini_timeout_seconds: float = 20.0
 
+    # --- Auth (Stage D) ---
+    # demo = seeded get_demo_* stubs (tests + local without Clerk)
+    # clerk = require Bearer JWT verified via CLERK_JWKS_URL
+    auth_mode: str = "demo"
+    clerk_jwks_url: str | None = None
+    clerk_issuer: str | None = None
+    clerk_audience: str | None = None
+
     @property
     def gemini_enabled(self) -> bool:
         return bool(self.gemini_api_key)

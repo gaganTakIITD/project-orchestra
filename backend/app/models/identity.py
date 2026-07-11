@@ -23,6 +23,8 @@ class User(Base):
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Clerk (or other IdP) subject — null for seeded demo users until linked
+    external_auth_id: Mapped[str | None] = mapped_column(String(128), unique=True, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

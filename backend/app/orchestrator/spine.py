@@ -105,13 +105,18 @@ def _event_log_name(trigger: str, from_status: str, to_status: str) -> str:
         "interest_accepted": "InterestAccepted",
         "priority_granted": "ActivationGranted",
         "priority_expired": "ActivationExpired",
+        "ready_to_start": "StartRequested",
         "mutual_start_confirmed": "MutualStartConfirmed",
+        "work_started": "WorkStarted",
         "submitted": "SubmissionReceived",
+        "resubmitted": "SubmissionReceived",
         "qa_pass": "QualityPassed",
         "qa_fail": "QualityFailed",
         "plan_and_preferences_set": "PreferencesSet",
         "first_mutual_start": "MutualStartConfirmed",
+        "all_tasks_submitted": "AllTasksSubmitted",
         "bundle_ready": "OutcomeDelivered",
         "client_accept": "OutcomeClosed",
+        "auto_accept": "OutcomeClosed",
     }
     return catalog.get(trigger, f"StateChanged:{from_status}->{to_status}")

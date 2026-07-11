@@ -136,7 +136,12 @@ export const useCandidates = (orderId: string, taskId: string) =>
   });
 
 export const useDelivery = (orderId: string) =>
-  useQuery({ queryKey: ["delivery", orderId], queryFn: () => clientApi.getDelivery(orderId) });
+  useQuery({
+    queryKey: ["delivery", orderId],
+    queryFn: () => clientApi.getDelivery(orderId),
+    enabled: Boolean(orderId),
+    retry: false,
+  });
 
 export const useDiscussion = (taskId: string) =>
   useQuery({ queryKey: ["discussion", taskId], queryFn: () => clientApi.getDiscussion(taskId) });
@@ -176,12 +181,43 @@ export const useAcceptInterest = (taskId: string) => {
   });
 };
 
+export const useReadyToStart = (taskId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => workerApi.readyToStart(taskId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my-tasks"] });
+      qc.invalidateQueries({ queryKey: ["charter", taskId] });
+    },
+  });
+};
+
 export const useSubmit = (taskId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: { notes: string; asset_urls: string[] }) =>
       workerApi.submit(taskId, payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["my-tasks"] }),
+  });
+};
+
+export const useAcceptDelivery = (orderId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => clientApi.acceptDelivery(orderId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["order", orderId] });
+      qc.invalidateQueries({ queryKey: ["delivery", orderId] });
+    },
+  });
+};
+
+export const usePostDiscussion = (taskId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { body: string; message_type?: string; attachments?: string[] }) =>
+      clientApi.postDiscussion(taskId, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["discussion", taskId] }),
   });
 };
 
