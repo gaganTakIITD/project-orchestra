@@ -1,0 +1,37 @@
+---
+description: Frontend contract rules — how screens consume data in Project Orchestra
+globs: app/**/*.tsx,components/**/*.tsx,lib/**/*.ts
+alwaysApply: false
+---
+
+# Frontend Contract Rules
+
+## Data access
+
+```tsx
+// ❌ BAD — direct fetch or invented shapes
+const res = await fetch("http://localhost:8000/api/v1/orders/1");
+type Order = { orderId: string; totalPrice: number };
+
+// ✅ GOOD — contract hooks + shared types
+import { useOrder } from "@/lib/hooks";
+import type { OutcomeOrder } from "@/lib/types";
+const { data: order, isLoading } = useOrder(orderId);
+```
+
+- All shapes come from `@/lib/types` (snake_case fields, mirrors backend JSON).
+- All data flows through `@/lib/hooks` → `@/lib/api`. Never hardcode fixture data inside components — extend `lib/mock-data.ts` instead.
+- New endpoint? Add it to `lib/api.ts` with both mock and real branches, then a hook in `lib/hooks.ts`.
+
+## Status display
+
+Use the dual-language maps from `@/lib/state-labels` — clients and workers see different words for the same state. Never show workers' failure states (`rework`) to clients.
+
+## Styling
+
+- Design tokens only: `bg-background`, `text-primary`, `border-border`, `text-muted-foreground`. No hardcoded hex.
+- Light + dark must both work (`.dark` class on `<html>`).
+
+## Ownership
+
+`app/**` and `components/**` are v0's lane (branch `main`). If you're a Cursor agent on `core`, limit UI edits to wiring existing components to hooks — don't redesign screens.

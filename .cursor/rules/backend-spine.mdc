@@ -1,0 +1,32 @@
+---
+description: Backend architecture rules — Spine, services, AI gateway for Project Orchestra
+globs: backend/**/*.py
+alwaysApply: false
+---
+
+# Backend Rules (FastAPI + Spine)
+
+## Architecture layers (Technical Spec §1)
+
+```text
+api/v1/        thin routers — validate, call service, return schema
+services/      business logic — one owner per domain, no cross-table reaches
+orchestrator/  THE SPINE — state machines, transitions, timers, event handlers
+ai/            Gemini nodes — return structured JSON proposals ONLY
+```
+
+## Iron rules
+
+1. **AI never mutates state.** AI nodes return Pydantic-validated proposals; only the Spine executes transitions.
+2. **Illegal transitions raise.** State machines enforce the exact lifecycles in Technical Spec §5 (order: `confirmed → assembling_team → delivery_active → …`; task: `blocked → ready → invited → …`). Test both legal and illegal paths.
+3. **Every consequential change writes `event_log`** (aggregate_type, aggregate_id, event_type, actor) in the **same DB transaction** (outbox pattern).
+4. **Timers are durable jobs** (Redis-backed), never `asyncio.sleep`.
+5. **Response schemas mirror `lib/types.ts`** — snake_case JSON, same field names. If you change a shape, update `lib/types.ts` + `lib/mock-data.ts` in the same PR.
+
+## Conventions
+
+- SQLAlchemy 2.0 async (`Mapped`/`mapped_column`), UUID PKs, `Numeric` for money — never float columns.
+- Pydantic v2 schemas in `app/schemas/`, one module per domain.
+- Fixture-first AI: every agent in `app/ai/` must work in fixture mode (no `GEMINI_API_KEY`) before real calls are added.
+- Each phase lands with pytest coverage; run `python -m pytest` from `backend/` before declaring done.
+- Follow phase order in `docs/BACKEND_IMPLEMENTATION_PLAN.md` — don't build B4 features during B2.
