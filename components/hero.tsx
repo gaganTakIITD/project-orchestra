@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
+import { springConfig } from "@/lib/animations";
 
 export default function Hero() {
   const ref = useRef(null);
@@ -26,19 +27,36 @@ export default function Hero() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
           {/* Left: Content */}
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: -30 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
+            initial={{ opacity: 0, x: -50 }}
+            animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: -50 }}
+            transition={springConfig.scrollReveal}
           >
-            <h1 className="font-serif text-6xl sm:text-7xl lg:text-8xl font-bold text-foreground leading-tight mb-8">
+            <motion.h1 
+              className="font-serif text-6xl sm:text-7xl lg:text-8xl font-bold text-foreground leading-tight mb-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+              transition={{ ...springConfig.scrollReveal, delay: 0.1 }}
+            >
               Describe your outcome.
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-lg leading-relaxed mb-12">
+            </motion.h1>
+            <motion.p 
+              className="text-lg text-muted-foreground max-w-lg leading-relaxed mb-12"
+              initial={{ opacity: 0, y: 20 }}
+              animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+              transition={{ ...springConfig.scrollReveal, delay: 0.2 }}
+            >
               We orchestrate the entire execution—planning, staffing, verification, and delivery. Backed by AI and verified talent.
-            </p>
+            </motion.p>
 
             {/* CTA Button - rounded dark teal */}
-            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} className="mb-16">
+            <motion.div 
+              whileHover={{ scale: 1.05, boxShadow: "0 10px 30px rgba(0,0,0,0.1)" }}
+              whileTap={{ scale: 0.95 }} 
+              className="mb-16"
+              initial={{ opacity: 0, y: 20 }}
+              animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+              transition={{ ...springConfig.scrollReveal, delay: 0.3 }}
+            >
               <Link
                 href="/start"
                 className="inline-block px-8 py-3 bg-secondary text-secondary-foreground rounded-full font-semibold text-sm hover:opacity-85 transition-opacity duration-300"
@@ -48,21 +66,31 @@ export default function Hero() {
             </motion.div>
 
             {/* Trust indicators */}
-            <div className="space-y-3 text-sm">
+            <motion.div 
+              className="space-y-3 text-sm"
+              initial={{ opacity: 0, y: 20 }}
+              animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+              transition={{ ...springConfig.scrollReveal, delay: 0.4 }}
+            >
               <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-4">Backed by verified talent</p>
-              <div className="flex items-center gap-3">
-                <span className="w-1 h-1 bg-primary rounded-full" aria-hidden="true" />
-                <span className="text-foreground">IIT Delhi campus-verified specialists</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="w-1 h-1 bg-primary rounded-full" aria-hidden="true" />
-                <span className="text-foreground">AI-powered quality gates at every checkpoint</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="w-1 h-1 bg-primary rounded-full" aria-hidden="true" />
-                <span className="text-foreground">Fixed pricing, firm deadlines</span>
-              </div>
-            </div>
+              {[
+                "IIT Delhi campus-verified specialists",
+                "AI-powered quality gates at every checkpoint",
+                "Fixed pricing, firm deadlines"
+              ].map((text, i) => (
+                <motion.div 
+                  key={i}
+                  className="flex items-center gap-3"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: -10 }}
+                  transition={{ ...springConfig.scrollReveal, delay: 0.5 + i * 0.1 }}
+                  whileHover={{ x: 4 }}
+                >
+                  <span className="w-1 h-1 bg-primary rounded-full flex-shrink-0" aria-hidden="true" />
+                  <span className="text-foreground">{text}</span>
+                </motion.div>
+              ))}
+            </motion.div>
           </motion.div>
 
           {/* Right: ASCII decoration */}

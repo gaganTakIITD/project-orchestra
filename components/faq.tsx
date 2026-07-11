@@ -5,7 +5,7 @@ import { ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef } from 'react';
-import { staggerContainer, staggerItem } from '@/lib/animations';
+import { staggerContainer, staggerItem, springConfig } from '@/lib/animations';
 
 const faqs = [
   {
@@ -69,34 +69,38 @@ export default function FAQ() {
         >
           {faqs.map((faq, idx) => (
             <motion.div key={idx} variants={staggerItem}>
-              <button
+              <motion.button
                 onClick={() => setOpenIdx(openIdx === idx ? null : idx)}
-                className="w-full py-6 flex items-start justify-between text-left hover:text-primary transition-colors"
+                className="w-full py-6 flex items-start justify-between text-left hover:text-primary transition-colors group"
                 aria-expanded={openIdx === idx}
+                whileHover={{ x: 4 }}
+                transition={{ type: "spring", stiffness: 200 }}
               >
-                <span className="text-base font-semibold text-foreground pr-4">{faq.question}</span>
+                <span className="text-base font-semibold text-foreground pr-4 group-hover:text-primary transition-colors">
+                  {faq.question}
+                </span>
                 <motion.div
                   animate={{ rotate: openIdx === idx ? 180 : 0 }}
-                  transition={{ duration: 0.3 }}
+                  transition={springConfig.accordion}
                   className="flex-shrink-0 mt-0.5"
                 >
                   <ChevronDown
-                    className="w-4 h-4 text-muted-foreground"
+                    className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors"
                     aria-hidden="true"
                   />
                 </motion.div>
-              </button>
+              </motion.button>
 
-              <AnimatePresence>
+              <AnimatePresence mode="wait">
                 {openIdx === idx && (
                   <motion.div
                     className="pb-6"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
+                    initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
+                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    transition={springConfig.accordion}
                   >
-                    <p className="text-sm text-muted-foreground leading-relaxed">
+                    <p className="text-sm text-muted-foreground leading-relaxed pt-2">
                       {faq.answer}
                     </p>
                   </motion.div>

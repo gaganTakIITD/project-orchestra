@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
-import { staggerContainer, staggerItem } from "@/lib/animations";
+import { staggerContainer, staggerItem, springConfig } from "@/lib/animations";
 
 export default function OutcomeCatalog() {
   const { data: skus, isLoading } = useSkus();
@@ -49,23 +49,51 @@ export default function OutcomeCatalog() {
                   key={sku.id} 
                   className="p-8 flex flex-col gap-5 hover:bg-muted transition-colors border-r border-foreground last:border-r-0"
                   variants={staggerItem}
-                  whileHover={{ y: -4 }}
+                  whileHover={{ 
+                    y: -6,
+                    boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
+                    transition: springConfig.hover
+                  }}
+                  initial={{ boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}
                 >
                   <div>
-                    <h3 className="text-base font-bold mb-2 text-foreground">{sku.name}</h3>
-                    <p className="text-sm text-foreground leading-relaxed line-clamp-3 font-mono opacity-90">
+                    <motion.h3 
+                      className="text-base font-bold mb-2 text-foreground"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={springConfig.scrollReveal}
+                    >
+                      {sku.name}
+                    </motion.h3>
+                    <motion.p 
+                      className="text-sm text-foreground leading-relaxed line-clamp-3 font-mono opacity-90"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ ...springConfig.scrollReveal, delay: 0.1 }}
+                    >
                       {sku.description}
-                    </p>
+                    </motion.p>
                   </div>
-                  <div className="flex items-baseline gap-3 mt-auto">
+                  <motion.div 
+                    className="flex items-baseline gap-3 mt-auto"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ ...springConfig.scrollReveal, delay: 0.2 }}
+                  >
                     <span className="text-3xl font-bold text-primary font-mono">
                       ₹{sku.base_price.toLocaleString("en-IN")}
                     </span>
                     <span className="text-xs font-mono tracking-widest uppercase text-foreground opacity-70">
                       ~{sku.typical_days} days
                     </span>
-                  </div>
-                  <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
+                  </motion.div>
+                  <motion.div 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ ...springConfig.scrollReveal, delay: 0.3 }}
+                  >
                     <Link
                       href="/start"
                       className="inline-flex items-center h-9 px-5 border-2 border-primary text-primary text-xs font-mono tracking-widest uppercase hover:bg-primary hover:text-primary-foreground transition-colors self-start font-bold"

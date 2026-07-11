@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
-import { staggerContainer, staggerItem } from "@/lib/animations";
+import { staggerContainer, staggerItem, springConfig } from "@/lib/animations";
 
 const steps = [
   {
@@ -59,14 +59,25 @@ export default function HowItWorks() {
           {steps.map((step) => (
             <motion.div 
               key={step.number} 
-              className="bg-secondary rounded-lg p-8 hover:shadow-lg transition-shadow"
+              className="bg-secondary rounded-lg p-8 border border-transparent hover:border-primary/20"
               variants={staggerItem}
-              whileHover={{ y: -2 }}
+              whileHover={{ 
+                y: -6,
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
+                transition: springConfig.hover
+              }}
+              initial={{ boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)" }}
             >
               <div className="flex items-start gap-4 mb-4">
-                <span className="font-serif text-4xl font-bold text-primary leading-none flex-shrink-0">
+                <motion.span 
+                  className="font-serif text-4xl font-bold text-primary leading-none flex-shrink-0"
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ ...springConfig.scrollReveal, delay: 0.1 }}
+                  whileHover={{ scale: 1.1 }}
+                >
                   {step.number}
-                </span>
+                </motion.span>
                 <h3 className="text-lg font-bold text-secondary-foreground pt-1">
                   {step.title}
                 </h3>

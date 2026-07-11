@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { springConfig } from "@/lib/animations";
 
 const navLinks = [
   { href: "#how", label: "How it works" },
@@ -38,12 +39,19 @@ export default function Header() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: idx * 0.05 }}
+              whileHover={{ y: -2 }}
             >
               <Link
                 href={l.href}
-                className="text-sm font-light text-muted-foreground hover:text-foreground transition-colors duration-300"
+                className="text-sm font-light text-muted-foreground hover:text-foreground transition-colors duration-300 relative group"
               >
                 {l.label}
+                <motion.span
+                  className="absolute bottom-0 left-0 h-px bg-foreground"
+                  initial={{ scaleX: 0, transformOrigin: "left" }}
+                  whileHover={{ scaleX: 1 }}
+                  transition={springConfig.hover}
+                />
               </Link>
             </motion.div>
           ))}
@@ -53,8 +61,8 @@ export default function Header() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6 }}
-          whileHover={{ opacity: 0.8 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.1)" }}
+          whileTap={{ scale: 0.95 }}
         >
           <Link
             href="/start"
