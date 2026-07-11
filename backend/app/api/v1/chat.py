@@ -1,6 +1,8 @@
+import json
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -61,6 +63,36 @@ async def send_message(
         raise HTTPException(status_code=400, detail=str(e)) from e
     await db.commit()
     return ChatSessionOut.from_session(chat, messages)
+
+
+@router.post("/{session_id}/messages/stream")
+async def send_message_stream(
+    session_id: uuid.UUID,
+    body: SendMessageIn,
+    db: AsyncSession = Depends(get_db),
+) -> StreamingResponse:
+    """SSE stream: draft_patch → token* → turn_complete."""
+    client = await get_demo_client(db)
+    service = ChatService(db)
+    chat = await _load_owned(service, session_id, client)
+
+    async def event_generator():
+        try:
+            async for event in service.send_message_stream(chat=chat, body=body.body):
+                yield f"data: {json.dumps(event, default=str)}\n\n"
+            await db.commit()
+        except ValueError as exc:
+            await db.rollback()
+            yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
+        except Exception:
+            await db.rollback()
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Stream failed'})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post("/{session_id}/finalize", response_model=FinalizeChatOut)

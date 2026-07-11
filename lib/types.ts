@@ -562,3 +562,24 @@ export interface FinalizeChatSessionResult {
   intent_id: string;
   quote_id: string;
 }
+
+/** SSE events from POST /chat/sessions/{id}/messages/stream */
+export type ChatStreamEvent =
+  | { type: "token"; content: string }
+  | {
+      type: "draft_patch";
+      spec_draft: OutcomeSpecDraft;
+      spec_version: number;
+      completeness_pct: number;
+      missing_fields: string[];
+      ready_for_quote: boolean;
+    }
+  | { type: "turn_complete"; session: ChatSession }
+  | { type: "error"; message: string };
+
+export type ChatStreamHandlers = {
+  onToken?: (content: string) => void;
+  onDraftPatch?: (event: Extract<ChatStreamEvent, { type: "draft_patch" }>) => void;
+  onTurnComplete?: (session: ChatSession) => void;
+  onError?: (message: string) => void;
+};

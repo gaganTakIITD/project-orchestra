@@ -1,7 +1,7 @@
 /**
  * Mock scope-chat sessions — simulates schema-driven Q&A until backend is live.
  */
-import type { ChatMessage, ChatSession, OutcomeSpecDraft } from "./types";
+import type { ChatMessage, ChatSession, ChatStreamHandlers, OutcomeSpecDraft } from "./types";
 
 const emptyDraft = (): OutcomeSpecDraft => ({
   outcome_statement: "",
@@ -210,6 +210,89 @@ export function mockSendScopeMessage(
     messages: [...session.messages, userMsg, assistantMsg],
   };
   mockSessions.set(sessionId, updated);
+  return updated;
+}
+
+function chunkText(text: string, maxChars = 24): string[] {
+  const parts = text.split(/(\s+)/);
+  const chunks: string[] = [];
+  let buf = "";
+  for (const part of parts) {
+    if (buf.length + part.length > maxChars && buf) {
+      chunks.push(buf);
+      buf = part;
+    } else {
+      buf += part;
+    }
+  }
+  if (buf) chunks.push(buf);
+  return chunks;
+}
+
+/** Mock SSE — same turn logic as mockSendScopeMessage, streamed for UI polish. */
+export async function mockSendScopeMessageStream(
+  sessionId: string,
+  body: string,
+  handlers: ChatStreamHandlers
+): Promise<ChatSession> {
+  const session = mockSessions.get(sessionId) ?? getOrCreateMockSession(sessionId);
+  const userMsg: ChatMessage = {
+    id: `${sessionId}_u_${Date.now()}`,
+    session_id: sessionId,
+    role: "user",
+    body,
+    created_at: new Date().toISOString(),
+  };
+
+  const draft = extractMockDraft(session.spec_draft, body);
+  const { pct, missing, ready } = computeMockCompleteness(draft, body);
+
+  let assistantBody: string;
+  if ((body.trim().length < 8 || /create my startup/i.test(body)) && !/brand|landing|health/i.test(body)) {
+    assistantBody =
+      "I can help with that — but I need more detail before we can build. Are you looking for brand identity, a landing page, or a full launch package? What does your startup do?";
+  } else if (!ready) {
+    assistantBody = `Thanks — I'm updating your job description (${pct}% complete). ${nextQuestion(missing)}`;
+  } else {
+    assistantBody =
+      "Your job description looks complete enough to quote. Review the panel on the right — when you're happy, click **Get my quote**.";
+  }
+
+  await new Promise((r) => setTimeout(r, 120));
+  handlers.onDraftPatch?.({
+    type: "draft_patch",
+    spec_draft: draft,
+    spec_version: draft.version,
+    completeness_pct: pct,
+    missing_fields: missing,
+    ready_for_quote: ready,
+  });
+
+  for (const chunk of chunkText(assistantBody)) {
+    handlers.onToken?.(chunk);
+    await new Promise((r) => setTimeout(r, 35));
+  }
+
+  const assistantMsg: ChatMessage = {
+    id: `${sessionId}_a_${Date.now()}`,
+    session_id: sessionId,
+    role: "assistant",
+    body: assistantBody,
+    spec_version_after: draft.version,
+    created_at: new Date().toISOString(),
+  };
+
+  const updated: ChatSession = {
+    ...session,
+    spec_draft: draft,
+    spec_version: draft.version,
+    completeness_pct: pct,
+    missing_fields: missing,
+    ready_for_quote: ready,
+    messages: [...session.messages, userMsg, assistantMsg],
+  };
+  mockSessions.set(sessionId, updated);
+  handlers.onTurnComplete?.(updated);
   return updated;
 }
 

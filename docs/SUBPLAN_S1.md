@@ -200,21 +200,21 @@ Match indigo Lumena aesthetic. TypeScript clean. Mock + real API both work via h
 
 ---
 
-## S1-E — SSE streaming (Cursor) — stretch
+## S1-E — SSE streaming (Cursor) ✅
 
 **Why:** North star UX — panel updates as tokens arrive.
 
 ### Tasks
 
-- [ ] Backend: `POST /chat/sessions/{id}/messages/stream` (SSE) or stream on same endpoint with `Accept: text/event-stream`
-- [ ] Event types: `token`, `draft_patch`, `turn_complete` (align with `ChatStreamEvent` in `lib/types.ts` if present; add if missing)
-- [ ] Gateway: optional streaming from Gemini (`generate_content_stream`)
-- [ ] `lib/api.ts` + hook: consume SSE, update session cache incrementally
-- [ ] v0: show streaming indicator + partial panel updates (can be follow-up PR)
+- [x] Backend: `POST /chat/sessions/{id}/messages/stream` (SSE)
+- [x] Event types: `token`, `draft_patch`, `turn_complete`, `error` in `lib/types.ts`
+- [x] Fixture streams reply chunks; Gemini path can extend gateway later
+- [x] `chatApi.sendMessageStream` + `useSendChatMessage` with `streamingText`
+- [x] `/scope/[sessionId]` shows streaming assistant bubble + live draft panel patch
 
 ### Done when
 
-- [ ] User sees assistant text stream; draft panel updates on `turn_complete`
+- [x] User sees assistant text stream; job description panel updates on `draft_patch`
 
 ### Estimate
 
@@ -265,7 +265,7 @@ See **`docs/V0_HANDOFF.md`** Stage 3 prompt (`/join`, `/worker/onboarding`, `/wo
 | S1-B | `/scope/[sessionId]` page | v0 | [x] shipped `main` c3ab130 |
 | S1-C | Finalize → proposal bind fixes | cursor | [x] no fixes needed |
 | S1-D | Gemini key live | founder + cursor | [ ] optional |
-| S1-E | SSE streaming | cursor | [ ] stretch |
+| S1-E | SSE streaming | cursor | [x] stream endpoint + hook + scope page |
 | S1-P | Stage 3 worker screens | v0 | [ ] parallel |
 
 ---
