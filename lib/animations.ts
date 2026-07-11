@@ -4,21 +4,21 @@
 export const springConfig = {
   // Snappy scroll reveals - Bauhaus bold
   scrollReveal: {
-    type: "spring",
+    type: "spring" as const,
     stiffness: 100,
     damping: 20,
     mass: 1,
   },
   // Responsive hover effects
   hover: {
-    type: "spring",
+    type: "spring" as const,
     stiffness: 150,
     damping: 18,
     mass: 0.8,
   },
   // Smooth accordion expand/collapse
   accordion: {
-    type: "spring",
+    type: "spring" as const,
     stiffness: 120,
     damping: 22,
     mass: 1,
@@ -80,7 +80,12 @@ export const staggerItem = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { ...springConfig.scrollReveal },
+    transition: {
+      type: "spring" as const,
+      stiffness: 100,
+      damping: 20,
+      mass: 1,
+    },
   },
 };
 
