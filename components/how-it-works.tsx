@@ -23,23 +23,37 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section id="how" className="border-b border-border">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
+    <section id="how" className="border-b-4 border-foreground bg-background">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16 lg:py-24">
 
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">How it works</h2>
-          <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
+        <div className="mb-16">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4 text-foreground">
+            How it works
+          </h2>
+          <div className="w-16 h-2 bg-accent mb-8" aria-hidden="true" />
+          <p className="text-base text-foreground max-w-lg leading-relaxed font-mono">
             Four steps from brief to delivery. No hand-off chaos, no quality surprises.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border border-border divide-y sm:divide-y-0 sm:divide-x divide-border">
-          {steps.map((step) => (
-            <div key={step.number} className="p-8 flex flex-col gap-5">
-              <span className="text-5xl font-bold text-primary font-mono leading-none">{step.number}</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0 border-2 border-foreground divide-x-2 divide-y-2 divide-foreground">
+          {steps.map((step, idx) => (
+            <div 
+              key={step.number} 
+              className={`p-8 lg:p-10 flex flex-col justify-start gap-6 ${
+                idx % 2 === 0 ? 'bg-background' : 'bg-muted'
+              }`}
+            >
+              <span className="text-6xl lg:text-7xl font-bold text-primary font-mono leading-none">
+                {step.number}
+              </span>
               <div>
-                <h3 className="text-base font-semibold mb-2">{step.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
+                <h3 className="text-lg lg:text-xl font-bold mb-3 text-foreground uppercase tracking-wide">
+                  {step.title}
+                </h3>
+                <p className="text-sm lg:text-base text-foreground leading-relaxed font-mono opacity-90">
+                  {step.description}
+                </p>
               </div>
             </div>
           ))}

@@ -14,12 +14,12 @@ export default function Header() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 bg-background border-b border-border">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 h-14 flex items-center justify-between">
+    <header className="sticky top-0 z-50 bg-background border-b-2 border-foreground">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 h-16 flex items-center justify-between">
 
         <Link href="/" className="flex items-center gap-3">
-          <div className="w-6 h-6 bg-primary" aria-hidden="true" />
-          <span className="text-sm font-mono font-semibold tracking-widest uppercase text-foreground">
+          <div className="w-6 h-6 bg-primary border border-foreground" aria-hidden="true" />
+          <span className="text-xs font-mono font-bold tracking-widest uppercase text-foreground">
             Orchestra
           </span>
         </Link>
@@ -29,7 +29,7 @@ export default function Header() {
             <Link
               key={l.href}
               href={l.href}
-              className="text-xs font-mono tracking-widest uppercase text-muted-foreground hover:text-foreground transition-colors"
+              className="text-xs font-mono tracking-widest uppercase text-foreground font-semibold hover:text-primary transition-colors"
             >
               {l.label}
             </Link>
@@ -38,7 +38,7 @@ export default function Header() {
 
         <Link
           href="/start"
-          className="hidden md:inline-flex items-center h-8 px-5 bg-primary text-primary-foreground text-xs font-mono tracking-widest uppercase hover:opacity-90 transition-opacity"
+          className="hidden md:inline-flex items-center h-9 px-5 bg-primary text-primary-foreground text-xs font-mono tracking-widest uppercase font-bold hover:opacity-80 transition-opacity border border-primary-foreground"
         >
           Describe outcome
         </Link>
