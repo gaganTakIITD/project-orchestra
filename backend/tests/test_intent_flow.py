@@ -13,6 +13,7 @@ async def api_client():
 
     try:
         async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
         async with AsyncSessionLocal() as session:
             await seed_catalog(session)
@@ -60,9 +61,13 @@ async def test_create_intent_returns_spec_and_quote(api_client: AsyncClient):
     assert quote["status"] == "issued"
     assert quote["price"] == 14000.0
 
+    spec_by_id = await api_client.get(f"/api/v1/specs/{quote['spec_id']}")
+    assert spec_by_id.status_code == 200
+    assert spec_by_id.json()["id"] == quote["spec_id"]
+
 
 @pytest.mark.asyncio
-async def test_accept_quote_creates_order(api_client: AsyncClient):
+async def test_accept_quote_creates_order_and_plan(api_client: AsyncClient):
     create = await api_client.post(
         "/api/v1/intents",
         json={
@@ -81,3 +86,56 @@ async def test_accept_quote_creates_order(api_client: AsyncClient):
     order = order_res.json()
     assert order["status"] == "confirmed"
     assert order["quote_id"] == quote_id
+
+    plan_res = await api_client.get(f"/api/v1/orders/{order_id}/milestones")
+    assert plan_res.status_code == 200
+    plan = plan_res.json()
+    assert len(plan["tasks"]) == 5
+    assert len(plan["milestones"]) == 3
+    assert plan["tasks"][0]["status"] == "ready"
+
+    logo_task_id = plan["tasks"][1]["id"]
+    candidates_res = await api_client.get(
+        f"/api/v1/orders/{order_id}/tasks/{logo_task_id}/candidates"
+    )
+    assert candidates_res.status_code == 200
+    assert len(candidates_res.json()) >= 3
+
+
+@pytest.mark.asyncio
+async def test_set_preferences_on_ready_task(api_client: AsyncClient):
+    create = await api_client.post(
+        "/api/v1/intents",
+        json={
+            "raw_text": "Brand and landing page for my fintech startup with trust-first design.",
+            "attachments": [],
+        },
+    )
+    quote_id = create.json()["quote_id"]
+    accept = await api_client.post(f"/api/v1/quotes/{quote_id}/accept")
+    order_id = accept.json()["order_id"]
+
+    plan = (await api_client.get(f"/api/v1/orders/{order_id}/milestones")).json()
+    ready_task = next(t for t in plan["tasks"] if t["status"] == "ready")
+    logo_task = plan["tasks"][1]
+
+    pref_res = await api_client.post(
+        f"/api/v1/orders/{order_id}/tasks/{ready_task['id']}/preferences",
+        json={
+            "ranked_worker_ids": [
+                "usr_worker_rohan",
+                "usr_worker_meera",
+                "usr_worker_kabir",
+            ]
+        },
+    )
+    assert pref_res.status_code == 200
+    assert len(pref_res.json()["entries"]) == 3
+
+    updated_order = (await api_client.get(f"/api/v1/orders/{order_id}")).json()
+    assert updated_order["status"] == "assembling_team"
+
+    updated_plan = (await api_client.get(f"/api/v1/orders/{order_id}/milestones")).json()
+    updated_ready = next(t for t in updated_plan["tasks"] if t["id"] == ready_task["id"])
+    assert updated_ready["status"] == "invited"
+    assert logo_task["status"] == "blocked"

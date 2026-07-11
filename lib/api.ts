@@ -28,11 +28,18 @@ import {
   mockTools,
   mockWorkerMe,
 } from "./mock-data";
+import {
+  getOrCreateMockSession,
+  mockFinalizeScopeSession,
+  mockSendScopeMessage,
+} from "./mock-chat";
 import type {
   Candidate,
   Charter,
+  ChatSession,
   DeliveryBundle,
   DiscussionThread,
+  FinalizeChatSessionResult,
   FulfillmentPlan,
   OutcomeOrder,
   OutcomeSku,
@@ -103,8 +110,9 @@ export const clientApi = {
       ? mock({ intent_id: "int_healthtrack", quote_id: "quote_healthtrack" })
       : apiFetch("/intents", { method: "POST", body: JSON.stringify({ raw_text, attachments: [] }) }),
 
-  getSpec: (intentId: string): Promise<OutcomeSpec> =>
-    USE_MOCKS ? mock(mockSpec) : apiFetch(`/intents/${intentId}`),
+  /** spec_id from Quote — matches v0 proposal page (`useSpec(quote.spec_id)`). */
+  getSpec: (specId: string): Promise<OutcomeSpec> =>
+    USE_MOCKS ? mock(mockSpec) : apiFetch(`/specs/${specId}`),
 
   getQuote: (id: string): Promise<Quote> =>
     USE_MOCKS ? mock(mockQuote) : apiFetch(`/quotes/${id}`),
@@ -191,4 +199,33 @@ export const notificationsApi = {
 
 export const authApi = {
   me: () => (USE_MOCKS ? mock(mockClient) : apiFetch("/auth/me")),
+};
+
+// ----------------------------------------------------------------------------
+// Scope chat — schema-driven job description extraction
+// ----------------------------------------------------------------------------
+
+export const chatApi = {
+  startScopeSession: (): Promise<ChatSession> =>
+    USE_MOCKS
+      ? mock(getOrCreateMockSession())
+      : apiFetch("/chat/sessions", { method: "POST" }),
+
+  getSession: (sessionId: string): Promise<ChatSession> =>
+    USE_MOCKS
+      ? mock(getOrCreateMockSession(sessionId))
+      : apiFetch(`/chat/sessions/${sessionId}`),
+
+  sendMessage: (sessionId: string, body: string): Promise<ChatSession> =>
+    USE_MOCKS
+      ? mock(mockSendScopeMessage(sessionId, body))
+      : apiFetch(`/chat/sessions/${sessionId}/messages`, {
+          method: "POST",
+          body: JSON.stringify({ body }),
+        }),
+
+  finalizeSession: (sessionId: string): Promise<FinalizeChatSessionResult> =>
+    USE_MOCKS
+      ? mock(mockFinalizeScopeSession(sessionId))
+      : apiFetch(`/chat/sessions/${sessionId}/finalize`, { method: "POST" }),
 };

@@ -199,6 +199,22 @@ export interface OutcomeSpec {
   frozen_at?: string | null;
 }
 
+/** In-progress spec during scope chat — same schema, not yet persisted/frozen. */
+export interface OutcomeSpecDraft {
+  outcome_statement: string;
+  deliverables: Deliverable[];
+  acceptance_criteria: AcceptanceCriterion[];
+  in_scope: string[];
+  out_of_scope: string[];
+  assumptions: string[];
+  client_inputs_required: string[];
+  mapped_task_types: string[];
+  risk_tier: RiskTier;
+  workflow_summary?: string;
+  sku_id?: string | null;
+  version: number;
+}
+
 export type QuoteStatus = "issued" | "accepted" | "expired" | "superseded";
 
 export interface Quote {
@@ -511,4 +527,38 @@ export interface AppNotification {
   ref_id?: string;
   read: boolean;
   created_at: string;
+}
+
+// ----------------------------------------------------------------------------
+// Scope chat — schema-driven extraction (docs/CHAT_SURFACES.md)
+// ----------------------------------------------------------------------------
+
+export type ChatAgentType = "spec_compiler" | "pricing" | "matcher";
+export type ChatSessionStatus = "active" | "completed" | "archived";
+
+export interface ChatMessage {
+  id: string;
+  session_id: string;
+  role: "user" | "assistant" | "system";
+  body: string;
+  spec_version_after?: number | null;
+  created_at: string;
+}
+
+export interface ChatSession {
+  id: string;
+  agent_type: ChatAgentType;
+  status: ChatSessionStatus;
+  spec_draft: OutcomeSpecDraft;
+  spec_version: number;
+  completeness_pct: number;
+  missing_fields: string[];
+  ready_for_quote: boolean;
+  messages: ChatMessage[];
+  created_at: string;
+}
+
+export interface FinalizeChatSessionResult {
+  intent_id: string;
+  quote_id: string;
 }

@@ -106,7 +106,34 @@ Trustworthy + modern. **Primary = indigo** (intelligence / trust). Clean neutral
 
 ---
 
-## Ready-to-paste v0 prompt (Stage 2 — client workflow) ⟵ **REQUEST THIS NOW**
+## Ready-to-paste v0 prompt (Stage 2 — client workflow) ⟵ **SHIPPED on main**
+
+## Ready-to-paste v0 prompt (Stage 3 — worker workflow) ⟵ **REQUEST THIS NOW**
+
+```
+Build Stage 3 of the Project Orchestra worker workflow (3 screens + update /join).
+Stage 2 client flow is live on main. Wire on MOCK DATA via @/lib/hooks — do NOT edit lib/**.
+
+Golden rules: import @/lib/types, fetch via @/lib/hooks only, design tokens, components/ + app/, match indigo Lumena aesthetic.
+
+1) UPDATE /join — CTA "Start onboarding" → /worker/onboarding
+
+2) NEW /worker/onboarding — multi-step profile wizard (basics → skills/tools from useTaskTypes() → portfolio → availability).
+   Show live profile_completion_pct meter; gate at ≥70% to continue. Mock WorkerProfile shape.
+
+3) NEW /worker — dashboard: useWorkerProfile(), useMyTasks(), useNotifications().
+   Task inbox with taskStatusWorkerLabel + taskStatusTone. Countdown for priority_active tasks.
+   Stats summary from profile.stats.
+
+4) NEW /worker/tasks/[taskId] — useCharter(taskId), task from useMyTasks(), useDiscussion(taskId).
+   Frozen Charter, acceptance checklist packet, actions: useAcceptInterest(), useSubmit({ notes, asset_urls }).
+   Show QA feedback on rework state.
+
+Reference mock IDs in lib/mock-data.ts (usr_worker_rohan, task_logo, etc.).
+No auth UI yet — worker mocks assume logged-in Rohan Verma.
+```
+
+## Ready-to-paste v0 prompt (Stage 2 — client workflow) ⟵ archived
 
 ```
 Build Stage 2 of the Project Orchestra client workflow (4 screens). We already have

@@ -8,17 +8,16 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Project Orchestra — Agent Playbook
 
-You are working in a **startup building toward a demo**, not a polished enterprise codebase. Ship the smallest thing that proves the loop; defer everything else.
+You are working in a **startup building toward production**, not a one-off demo. Ship vertical slices that match the north star; defer polish that doesn't serve it.
 
 ## What this product is (30 seconds)
 
-**Outcome-as-a-Service.** A client describes a digital result ("brand + landing page"); Gemini scopes it into a task DAG, matches verified IIT Delhi student talent, verifies every handoff with QA, and delivers the outcome. Core bet: **deterministic Spine enforces state/money/timers; AI only proposes.**
+**Outcome-as-a-Service.** The client describes an outcome in natural language; Gemini **extracts** a strict `OutcomeSpec` (that **is** the job description — one object, human + machine views). Once confirmed, the Spine plans tasks, matches talent, and delivers. See `docs/CHAT_SURFACES.md`.
 
 Read before designing anything:
 - `docs/PIPELINE.md` — **what to work on next (single source of truth)**
-- `docs/BACKEND_IMPLEMENTATION_PLAN.md` — backend phases B1–B6 + frontend bind gates
-- `docs/V0_HANDOFF.md` — UI rules for v0-generated screens
-- `Project_Orchestra_Technical_Spec.md` — DB schema, state machines, API, AI agents
+- `docs/CHAT_SURFACES.md` — **interactive chat + strict JSON artifacts at every stage (Cursor-like UX)**
+- `docs/SPEC_CO_CREATION.md` — Stage 1 scope chat detail
 
 ## Who owns what (do not cross lanes)
 
@@ -37,7 +36,7 @@ Read before designing anything:
 3. **AI never mutates state.** Gemini nodes return structured JSON; the Spine validates and executes transitions.
 4. **Every state change writes `event_log`** with actor + reason.
 5. **Frozen things stay frozen.** `OutcomeSpec` after confirm, `Charter` after mutual start — changes only via `Amendment`.
-6. **No real money.** Ledger states only (mock) until post-hackathon.
+6. **No real money.** Ledger states only (mock) until payments integration.
 
 ## Startup working style
 
