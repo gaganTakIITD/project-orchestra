@@ -94,7 +94,24 @@ async def test_accept_quote_creates_order_and_plan(api_client: AsyncClient):
     assert len(plan["milestones"]) == 3
     assert plan["tasks"][0]["status"] == "ready"
 
-    logo_task_id = plan["tasks"][1]["id"]
+    # Task Packet Generator — Charter + job card created with the plan
+    logo_task = next(t for t in plan["tasks"] if t["task_type_slug"] == "logo_design")
+    charter_res = await api_client.get(f"/api/v1/tasks/{logo_task['id']}/charter")
+    assert charter_res.status_code == 200
+    charter = charter_res.json()
+    assert charter["task_id"] == logo_task["id"]
+    assert charter["snapshot"]["scope"]
+    assert charter["snapshot"]["price"] == logo_task["payout_amount"]
+
+    packet_res = await api_client.get(f"/api/v1/tasks/{logo_task['id']}/packet")
+    assert packet_res.status_code == 200
+    packet = packet_res.json()
+    assert packet["task_id"] == logo_task["id"]
+    assert packet["charter_id"] == charter["id"]
+    assert len(packet["checklist"]) >= 1
+    assert "Brand direction" in packet["dependencies"]
+
+    logo_task_id = logo_task["id"]
     candidates_res = await api_client.get(
         f"/api/v1/orders/{order_id}/tasks/{logo_task_id}/candidates"
     )

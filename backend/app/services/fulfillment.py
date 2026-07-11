@@ -5,8 +5,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.fixtures.architect import build_plan_fixture, match_candidates_fixture
+from app.ai.task_packet_generator import generate_charter_and_packet
 from app.models.catalog import TaskType
-from app.models.fulfillment import FulfillmentPlan, FulfillmentTask, OutcomeOrder, TaskPreferenceSet
+from app.models.fulfillment import (
+    CharterRecord,
+    FulfillmentPlan,
+    FulfillmentTask,
+    OutcomeOrder,
+    TaskPacketRecord,
+    TaskPreferenceSet,
+)
 from app.models.commerce import OutcomeSpecRecord
 from app.orchestrator.events import EventWriter
 from app.orchestrator.spine import OrderSpine, TaskSpine
@@ -42,6 +50,7 @@ class FulfillmentService:
         self.session.add(plan)
         await self.session.flush()
 
+        created_tasks: list[FulfillmentTask] = []
         task_spine = TaskSpine(self.session)
         for task_def in blueprint["tasks"]:
             task_type = await self._task_type_by_slug(task_def["task_type_slug"])
@@ -63,6 +72,7 @@ class FulfillmentService:
             )
             self.session.add(task)
             await self.session.flush()
+            created_tasks.append(task)
 
             if not task_def["depends_on"]:
                 await task_spine.transition(
@@ -71,6 +81,24 @@ class FulfillmentService:
                     actor_type=ActorType.SYSTEM,
                     payload={"source": "architect_fixture"},
                 )
+
+        # Task Packet Generator — Charter + job card per task (from OutcomeSpec slice)
+        title_by_id = {str(t.id): t.title for t in created_tasks}
+        spec_dict = {
+            "outcome_statement": spec.outcome_statement,
+            "deliverables": spec.deliverables or [],
+            "acceptance_criteria": spec.acceptance_criteria or [],
+            "out_of_scope": spec.out_of_scope or [],
+            "client_inputs_required": spec.client_inputs_required or [],
+        }
+        for task in created_tasks:
+            dep_titles = [title_by_id[d] for d in (task.depends_on or []) if d in title_by_id]
+            await self._create_charter_and_packet(
+                order=order,
+                task=task,
+                spec_dict=spec_dict,
+                dependency_titles=dep_titles,
+            )
 
         await self.events.emit(
             aggregate_type="order",
@@ -81,6 +109,60 @@ class FulfillmentService:
         )
         await self.session.flush()
         return plan
+
+    async def _create_charter_and_packet(
+        self,
+        *,
+        order: OutcomeOrder,
+        task: FulfillmentTask,
+        spec_dict: dict,
+        dependency_titles: list[str],
+    ) -> tuple[CharterRecord, TaskPacketRecord]:
+        charter_fields, packet_fields = generate_charter_and_packet(
+            order_id=order.id,
+            task=task,
+            spec=spec_dict,
+            order_price_share=float(task.payout_amount),
+            order_deadline=order.deadline,
+            revision_limit=order.revision_limit,
+            dependency_titles=dependency_titles,
+        )
+        charter = CharterRecord(
+            id=charter_fields["id"],
+            order_id=charter_fields["order_id"],
+            task_id=charter_fields["task_id"],
+            version=charter_fields["version"],
+            snapshot=charter_fields["snapshot"],
+            mutual_start_at=charter_fields["mutual_start_at"],
+        )
+        self.session.add(charter)
+        await self.session.flush()
+
+        packet = TaskPacketRecord(
+            id=packet_fields["id"],
+            task_id=packet_fields["task_id"],
+            charter_id=packet_fields["charter_id"],
+            version=packet_fields["version"],
+            brief=packet_fields["brief"],
+            checklist=packet_fields["checklist"],
+            client_inputs=packet_fields["client_inputs"],
+            dependencies=packet_fields["dependencies"],
+            references=packet_fields["references"],
+        )
+        self.session.add(packet)
+        await self.session.flush()
+        return charter, packet
+
+    async def get_charter_for_task(self, task_id: uuid.UUID) -> CharterRecord | None:
+        return await self.session.scalar(select(CharterRecord).where(CharterRecord.task_id == task_id))
+
+    async def get_packet_for_task(self, task_id: uuid.UUID) -> TaskPacketRecord | None:
+        return await self.session.scalar(
+            select(TaskPacketRecord).where(TaskPacketRecord.task_id == task_id)
+        )
+
+    async def get_task_by_id(self, task_id: uuid.UUID) -> FulfillmentTask | None:
+        return await self.session.get(FulfillmentTask, task_id)
 
     async def get_plan_for_order(self, order_id: uuid.UUID) -> FulfillmentPlan:
         plan = await self.session.scalar(

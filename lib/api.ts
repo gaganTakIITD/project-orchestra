@@ -12,6 +12,7 @@
 import {
   mockCandidates,
   mockCharter,
+  mockTaskPacket,
   mockClient,
   mockDeliveryBundle,
   mockDiscussion,
@@ -50,6 +51,7 @@ import type {
   PreferenceSet,
   Quote,
   Skill,
+  TaskPacket,
   TaskType,
   Tool,
   WorkerProfile,
@@ -239,6 +241,9 @@ export const workerApi = {
 
   getCharter: (taskId: string): Promise<Charter> =>
     USE_MOCKS ? mock(mockCharter) : apiFetch(`/tasks/${taskId}/charter`),
+
+  getTaskPacket: (taskId: string): Promise<TaskPacket> =>
+    USE_MOCKS ? mock(mockTaskPacket) : apiFetch(`/tasks/${taskId}/packet`),
 
   acceptInterest: (taskId: string): Promise<{ status: string }> =>
     USE_MOCKS

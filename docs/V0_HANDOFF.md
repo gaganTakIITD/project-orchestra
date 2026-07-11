@@ -110,27 +110,48 @@ Trustworthy + modern. **Primary = indigo** (intelligence / trust). Clean neutral
 
 ## Ready-to-paste v0 prompt (Stage 3 — worker workflow) ⟵ **REQUEST THIS NOW**
 
+> Cursor shipped `TaskPacket` + `useTaskPacket(taskId)` + mock `mockTaskPacket`. Use both Charter and Packet on the task detail page.
+
 ```
-Build Stage 3 of the Project Orchestra worker workflow (3 screens + update /join).
-Stage 2 client flow is live on main. Wire on MOCK DATA via @/lib/hooks — do NOT edit lib/**.
+Build Stage 3 of Project Orchestra worker workflow (update /join + 3 screens).
+Client Stage 2 + /scope/[sessionId] are live on main. Wire on MOCK DATA via @/lib/hooks — do NOT edit lib/**.
 
-Golden rules: import @/lib/types, fetch via @/lib/hooks only, design tokens, components/ + app/, match indigo Lumena aesthetic.
+Golden rules:
+- Import types from @/lib/types only (Charter, TaskPacket, WorkerProfile, FulfillmentTask)
+- Fetch ONLY via @/lib/hooks — never fetch() directly
+- Design tokens: bg-background, text-primary, border-border
+- Presentational in components/; pages in app/
+- Match indigo Lumena aesthetic (mono labels, border-driven, spacious)
 
-1) UPDATE /join — CTA "Start onboarding" → /worker/onboarding
+1) UPDATE /join
+   - Talent landing: why join, how earnings work
+   - Primary CTA "Start onboarding" → /worker/onboarding
 
-2) NEW /worker/onboarding — multi-step profile wizard (basics → skills/tools from useTaskTypes() → portfolio → availability).
-   Show live profile_completion_pct meter; gate at ≥70% to continue. Mock WorkerProfile shape.
+2) NEW /worker/onboarding
+   - Multi-step wizard: basics → skills/tools/task-types (useTaskTypes()) → portfolio → availability
+   - Live profile_completion_pct meter; gate continue at ≥70%
+   - Use WorkerProfile shape from mocks (assume logged-in Rohan Verma — no auth UI)
 
-3) NEW /worker — dashboard: useWorkerProfile(), useMyTasks(), useNotifications().
-   Task inbox with taskStatusWorkerLabel + taskStatusTone. Countdown for priority_active tasks.
-   Stats summary from profile.stats.
+3) NEW /worker
+   - useWorkerProfile(), useMyTasks(), useNotifications()
+   - Task inbox with taskStatusWorkerLabel + taskStatusTone from @/lib/state-labels
+   - Countdown for priority_active tasks (priority_window_ends)
+   - Stats from profile.stats
+   - Click task → /worker/tasks/[taskId]
 
-4) NEW /worker/tasks/[taskId] — useCharter(taskId), task from useMyTasks(), useDiscussion(taskId).
-   Frozen Charter, acceptance checklist packet, actions: useAcceptInterest(), useSubmit({ notes, asset_urls }).
-   Show QA feedback on rework state.
+4) NEW /worker/tasks/[taskId] — WORKER JOB CARD (critical)
+   - useCharter(taskId) — frozen contract: scope, deliverables, acceptance, price, deadline, out_of_scope
+   - useTaskPacket(taskId) — job card: brief, checklist (checkboxes), client_inputs, dependencies
+   - Task from useMyTasks(); useDiscussion(taskId) for scoped chat panel
+   - Actions by status:
+     • invited / interest_pool → useAcceptInterest(taskId)
+     • mutual_start / in_progress → useSubmit({ notes, asset_urls })
+     • rework → show QA feedback + resubmit
+   - Layout: Charter summary on top, TaskPacket checklist as primary work surface, discussion below
+   - States: loading skeleton, loaded, submitting
 
-Reference mock IDs in lib/mock-data.ts (usr_worker_rohan, task_logo, etc.).
-No auth UI yet — worker mocks assume logged-in Rohan Verma.
+Reference mock IDs in lib/mock-data.ts: usr_worker_rohan, task_logo, charter_logo, packet_logo.
+No auth/login pages. Do not edit lib/**, backend/**, or package.json unless adding a shadcn component.
 ```
 
 ## Ready-to-paste v0 prompt (Stage 2 — client workflow) ⟵ archived

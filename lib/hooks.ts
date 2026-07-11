@@ -161,6 +161,13 @@ export const useMyTasks = () =>
 export const useCharter = (taskId: string) =>
   useQuery({ queryKey: ["charter", taskId], queryFn: () => workerApi.getCharter(taskId) });
 
+export const useTaskPacket = (taskId: string) =>
+  useQuery({
+    queryKey: ["task-packet", taskId],
+    queryFn: () => workerApi.getTaskPacket(taskId),
+    enabled: Boolean(taskId),
+  });
+
 export const useAcceptInterest = (taskId: string) => {
   const qc = useQueryClient();
   return useMutation({

@@ -98,13 +98,15 @@
 
 ### N3. Stage 3 worker screens
 
-- Owner: `v0` ← **NEXT v0 REQUEST** (see `docs/V0_HANDOFF.md` Stage 3)
+- Owner: `v0` ← **REQUEST THIS NOW** (paste prompt in `docs/V0_HANDOFF.md`)
 
 - [ ] `/worker/onboarding` — profile wizard + completion meter (≥70% gate)
 
 - [ ] `/worker` — task inbox (worker labels, priority countdown)
 
-- [ ] `/worker/tasks/[taskId]` — charter, packet, submit, QA feedback
+- [ ] `/worker/tasks/[taskId]` — **Charter + TaskPacket (job card)** via `useCharter` + `useTaskPacket`, submit, QA feedback
+
+- Contract ready: `TaskPacket` type, `useTaskPacket()`, `GET /tasks/{id}/charter` + `/packet` (created when plan builds)
 
 - **Done when:** worker journey clickable on mock data.
 
@@ -134,11 +136,11 @@
 
 - Owner: `cursor`
 
-- [ ] AI gateway: schema validation, `ai_decision_log`, confidence gate
+- [x] AI gateway: schema validation, `ai_decision_log`, Spec Compiler (key-ready + fixture fallback)
 
-- [ ] Spec Compiler (fixture → Gemini structured output)
+- [x] **Task Packet Generator** — Charter + TaskPacket on plan build; `GET /tasks/{id}/charter` + `/packet`
 
-- [ ] Architect (DAG builder, acyclic validation)
+- [ ] Architect (DAG builder, acyclic validation) — still fixture
 
 - [ ] Matcher (filter + rank from DB profiles)
 
