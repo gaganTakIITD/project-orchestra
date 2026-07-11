@@ -22,6 +22,8 @@
 
 ## 🎯 NOW (current sprint — do these first)
 
+> **Active sub-plan:** [`docs/SUBPLAN_S1.md`](SUBPLAN_S1.md) — Scope Room + Real API Bind (S1-A → S1-B → S1-C, then demo)
+
 
 
 ### N0. Interactive Chat Surfaces — **primary product UX** ⟵ **NORTH STAR**
@@ -40,7 +42,7 @@
 
 - [x] Gemini AI gateway — `app/ai/gateway.py` structured JSON extraction, **key-ready** (set `GEMINI_API_KEY`), deterministic fixture fallback, `ai_decision_log` audit
 
-- [ ] **v0:** dedicated resumable page `/scope/[sessionId]` (move chat off `/start`; `/start` creates session → redirect)
+- [ ] **v0:** dedicated resumable page `/scope/[sessionId]` (move chat off `/start`; `/start` creates session → redirect) — **shipped on `main` (`c3ab130`), live on Vercel**
 
 - [ ] SSE streaming tokens (backend endpoint + `ChatSurface` consumer)
 
@@ -74,9 +76,9 @@
 
 - [x] Fix spec bind: `GET /specs/{spec_id}` for v0 proposal page (`useSpec(quote.spec_id)`)
 
-- [ ] `docker compose up -d --build` → API healthy
+- [x] `docker compose up -d --build` → API healthy
 
-- [ ] `.env.local` with `NEXT_PUBLIC_USE_MOCKS=false` → browser: `/start` → proposal → tracker → preferences
+- [ ] `.env.local` with `NEXT_PUBLIC_USE_MOCKS=false` → browser smoke (API path verified; local/Vercel frontend bind pending)
 
 - **Done when:** full Stage 2 journey works against Postgres without mock data.
 
