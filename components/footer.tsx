@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { Github, Linkedin, Twitter } from 'lucide-react';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -80,32 +79,23 @@ export default function Footer() {
           {/* Social */}
           <div>
             <h4 className="font-semibold mb-4 text-sm">Follow us</h4>
-            <div className="flex gap-4">
-              <a
-                href="https://twitter.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-primary transition"
-              >
-                <Twitter className="w-5 h-5" />
-              </a>
-              <a
-                href="https://github.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-primary transition"
-              >
-                <Github className="w-5 h-5" />
-              </a>
-              <a
-                href="https://linkedin.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-primary transition"
-              >
-                <Linkedin className="w-5 h-5" />
-              </a>
-            </div>
+            <ul className="space-y-3">
+              <li>
+                <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-primary transition">
+                  X (Twitter)
+                </a>
+              </li>
+              <li>
+                <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-primary transition">
+                  GitHub
+                </a>
+              </li>
+              <li>
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-primary transition">
+                  LinkedIn
+                </a>
+              </li>
+            </ul>
           </div>
         </div>
 
