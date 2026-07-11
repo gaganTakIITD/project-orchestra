@@ -37,21 +37,22 @@ export default function HowItWorks() {
       <div className="max-w-6xl mx-auto px-8 lg:px-12 py-32 lg:py-48">
 
         <motion.div 
-          className="mb-32"
+          className="mb-20"
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 0.9 }}
         >
-          <h2 className="font-serif text-5xl sm:text-6xl lg:text-7xl font-light text-foreground mb-8 leading-tight">
-            The process
+          <h2 className="font-serif text-6xl sm:text-7xl lg:text-8xl font-bold text-foreground mb-8 leading-tight">
+            The Process
           </h2>
-          <p className="text-lg text-muted-foreground font-light max-w-2xl leading-relaxed">
+          <div className="w-20 h-1 bg-accent mb-8" aria-hidden="true" />
+          <p className="text-lg text-muted-foreground max-w-3xl leading-relaxed">
             From brief to delivery. Clear, transparent, outcome-focused at every step.
           </p>
         </motion.div>
 
         <motion.div 
-          className="grid grid-cols-1 md:grid-cols-2 gap-16 lg:gap-24"
+          className="grid grid-cols-1 md:grid-cols-2 gap-12"
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
           variants={staggerContainer}
@@ -59,23 +60,21 @@ export default function HowItWorks() {
           {steps.map((step) => (
             <motion.div 
               key={step.number} 
-              className="flex flex-col gap-6"
+              className="bg-secondary rounded-lg p-8 hover:border-accent border border-transparent transition-colors"
               variants={staggerItem}
-              whileHover={{ x: 4 }}
+              whileHover={{ y: -4 }}
             >
-              <div className="flex items-start gap-4">
-                <span className="font-serif text-5xl font-light text-primary leading-none">
+              <div className="flex items-start gap-6 mb-6">
+                <span className="font-serif text-6xl font-bold text-primary leading-none flex-shrink-0">
                   {step.number}
                 </span>
-                <div>
-                  <h3 className="text-xl font-light text-foreground mb-3">
-                    {step.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed font-light">
-                    {step.description}
-                  </p>
-                </div>
+                <h3 className="text-2xl font-bold text-foreground pt-2">
+                  {step.title}
+                </h3>
               </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {step.description}
+              </p>
             </motion.div>
           ))}
         </motion.div>

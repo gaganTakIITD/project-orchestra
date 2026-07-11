@@ -35,7 +35,7 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto px-8 lg:px-12 py-20 lg:py-32">
 
         <motion.div 
-          className="grid grid-cols-2 md:grid-cols-3 gap-16 mb-16 pb-16 border-b border-border"
+          className="grid grid-cols-2 md:grid-cols-4 gap-12 mb-16 pb-16 border-b border-border"
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
           variants={{
@@ -55,11 +55,14 @@ export default function Footer() {
             variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
           >
             <Link href="/" className="inline-block">
-              <span className="font-serif text-lg font-light text-foreground">
-                Orchestra
-              </span>
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-primary rounded-full" aria-hidden="true" />
+                <span className="font-serif text-lg font-bold text-foreground">
+                  Orchestra
+                </span>
+              </div>
             </Link>
-            <p className="text-sm text-muted-foreground font-light leading-relaxed">
+            <p className="text-sm text-muted-foreground leading-relaxed">
               Describe your outcome. We deliver it.
             </p>
           </motion.div>
@@ -69,11 +72,11 @@ export default function Footer() {
             className="flex flex-col gap-4"
             variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
           >
-            <p className="text-xs text-muted-foreground uppercase tracking-widest font-light">Product</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">Product</p>
             <ul className="flex flex-col gap-3">
               {product.map((l) => (
-                <motion.li key={l.href} whileHover={{ opacity: 0.6 }}>
-                  <Link href={l.href} className="text-sm text-foreground hover:text-primary transition-colors font-light">
+                <motion.li key={l.href} whileHover={{ x: 4 }}>
+                  <Link href={l.href} className="text-sm text-foreground hover:text-primary transition-colors">
                     {l.label}
                   </Link>
                 </motion.li>
@@ -86,13 +89,30 @@ export default function Footer() {
             className="flex flex-col gap-4"
             variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
           >
-            <p className="text-xs text-muted-foreground uppercase tracking-widest font-light">Company</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">Company</p>
             <ul className="flex flex-col gap-3">
               {company.map((l) => (
-                <motion.li key={l.href} whileHover={{ opacity: 0.6 }}>
-                  <Link href={l.href} className="text-sm text-foreground hover:text-primary transition-colors font-light">
+                <motion.li key={l.href} whileHover={{ x: 4 }}>
+                  <Link href={l.href} className="text-sm text-foreground hover:text-primary transition-colors">
                     {l.label}
                   </Link>
+                </motion.li>
+              ))}
+            </ul>
+          </motion.div>
+
+          {/* Social */}
+          <motion.div 
+            className="flex flex-col gap-4"
+            variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+          >
+            <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">Follow</p>
+            <ul className="flex flex-col gap-3">
+              {social.map((l) => (
+                <motion.li key={l.href} whileHover={{ x: 4 }}>
+                  <a href={l.href} target="_blank" rel="noopener noreferrer" className="text-sm text-foreground hover:text-primary transition-colors">
+                    {l.label}
+                  </a>
                 </motion.li>
               ))}
             </ul>
@@ -100,10 +120,10 @@ export default function Footer() {
         </motion.div>
 
         <motion.div 
-          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-muted-foreground font-light"
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-muted-foreground"
           initial={{ opacity: 0 }}
           animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
+          transition={{ duration: 0.9, delay: 0.3 }}
         >
           <p>
             &copy; {currentYear} Project Orchestra. All rights reserved.

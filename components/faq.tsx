@@ -50,19 +50,20 @@ export default function FAQ() {
       <div className="max-w-6xl mx-auto px-8 lg:px-12 py-32 lg:py-48">
 
         <motion.div 
-          className="mb-24"
+          className="mb-20"
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 0.9 }}
         >
-          <h2 className="font-serif text-5xl sm:text-6xl lg:text-7xl font-light text-foreground mb-8">Questions</h2>
-          <p className="text-lg text-muted-foreground font-light max-w-2xl">
+          <h2 className="font-serif text-6xl sm:text-7xl lg:text-8xl font-bold text-foreground mb-8">Questions</h2>
+          <div className="w-20 h-1 bg-accent mb-8" aria-hidden="true" />
+          <p className="text-lg text-muted-foreground max-w-3xl">
             Everything you need to know about how we work.
           </p>
         </motion.div>
 
         <motion.div 
-          className="max-w-2xl space-y-1 divide-y divide-border"
+          className="max-w-3xl space-y-0 divide-y divide-border"
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
           variants={staggerContainer}
@@ -71,10 +72,10 @@ export default function FAQ() {
             <motion.div key={idx} variants={staggerItem}>
               <button
                 onClick={() => setOpenIdx(openIdx === idx ? null : idx)}
-                className="w-full py-6 flex items-start justify-between text-left hover:opacity-60 transition-opacity"
+                className="w-full py-6 flex items-start justify-between text-left hover:text-primary transition-colors"
                 aria-expanded={openIdx === idx}
               >
-                <span className="text-sm font-light text-foreground pr-4">{faq.question}</span>
+                <span className="text-base font-semibold text-foreground pr-4">{faq.question}</span>
                 <motion.div
                   animate={{ rotate: openIdx === idx ? 180 : 0 }}
                   transition={{ duration: 0.3 }}
@@ -96,7 +97,7 @@ export default function FAQ() {
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <p className="text-sm text-muted-foreground leading-relaxed font-light">
+                    <p className="text-sm text-muted-foreground leading-relaxed">
                       {faq.answer}
                     </p>
                   </motion.div>
@@ -107,16 +108,16 @@ export default function FAQ() {
         </motion.div>
 
         <motion.div 
-          className="mt-16 pt-12 border-t border-border"
+          className="mt-20 pt-12 border-t border-border"
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
+          transition={{ duration: 0.9, delay: 0.2 }}
         >
-          <p className="text-sm text-muted-foreground font-light mb-2">Still have questions?</p>
+          <p className="text-sm text-muted-foreground mb-3">Still have questions?</p>
           <motion.a
             href="mailto:hello@orchestrapro.com"
-            className="text-sm font-light text-foreground hover:text-primary transition-colors inline-block"
-            whileHover={{ opacity: 0.7 }}
+            className="text-base font-semibold text-primary hover:text-accent transition-colors inline-block"
+            whileHover={{ x: 4 }}
           >
             hello@orchestrapro.com
           </motion.a>

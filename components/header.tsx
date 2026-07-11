@@ -23,8 +23,9 @@ export default function Header() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <Link href="/" className="flex items-center gap-2">
-            <span className="font-serif text-lg font-light text-foreground">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="w-2 h-2 bg-primary rounded-full" aria-hidden="true" />
+            <span className="font-serif text-lg font-bold text-foreground">
               Orchestra
             </span>
           </Link>
@@ -57,7 +58,7 @@ export default function Header() {
         >
           <Link
             href="/start"
-            className="hidden md:inline-flex items-center h-10 px-6 border border-foreground text-foreground text-sm font-light hover:bg-foreground hover:text-background transition-colors duration-300"
+            className="hidden md:inline-flex items-center h-10 px-6 bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity duration-300"
           >
             Begin
           </Link>
@@ -91,9 +92,9 @@ export default function Header() {
             <Link
               href="/start"
               onClick={() => setOpen(false)}
-              className="inline-flex items-center justify-center h-9 px-5 bg-primary text-primary-foreground text-xs font-mono tracking-widest uppercase"
+              className="inline-flex items-center justify-center h-9 px-5 bg-primary text-primary-foreground text-xs font-semibold tracking-wide"
             >
-              Describe outcome
+              Begin Project
             </Link>
           </nav>
         </div>
