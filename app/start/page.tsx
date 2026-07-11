@@ -1,6 +1,6 @@
-import Link from "next/link";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
+import IntentForm from "@/components/intent-form";
 
 export const metadata = {
   title: "Describe your outcome — Project Orchestra",
@@ -34,70 +34,7 @@ export default function StartPage() {
                 Tell us what you need in plain English. Our AI will turn it into a scoped plan with deliverables, acceptance criteria, and a fixed price—before any work begins.
               </p>
 
-              <form className="flex flex-col gap-6">
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="name" className="text-xs font-mono tracking-widest uppercase text-muted-foreground">
-                    Your name
-                  </label>
-                  <input
-                    id="name"
-                    name="name"
-                    type="text"
-                    placeholder="Arjun Sharma"
-                    className="h-11 border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="email" className="text-xs font-mono tracking-widest uppercase text-muted-foreground">
-                    Email
-                  </label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="you@company.com"
-                    className="h-11 border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="outcome" className="text-xs font-mono tracking-widest uppercase text-muted-foreground">
-                    Describe your outcome
-                  </label>
-                  <textarea
-                    id="outcome"
-                    name="outcome"
-                    rows={6}
-                    placeholder="e.g. I need a brand identity for my fintech startup — logo, color palette, and a mini brand guide. Launching in 3 weeks."
-                    className="border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors resize-none leading-relaxed"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="budget" className="text-xs font-mono tracking-widest uppercase text-muted-foreground">
-                    Rough budget (optional)
-                  </label>
-                  <input
-                    id="budget"
-                    name="budget"
-                    type="text"
-                    placeholder="e.g. ₹15,000–₹25,000"
-                    className="h-11 border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="inline-flex items-center justify-center h-11 px-8 bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity self-start"
-                >
-                  Submit outcome brief
-                </button>
-
-                <p className="text-xs text-muted-foreground">
-                  We&apos;ll send you a scoped plan within 24 hours. No commitment until you approve.
-                </p>
-              </form>
+              <IntentForm />
             </div>
 
             {/* What happens next */}
