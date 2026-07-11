@@ -23,7 +23,10 @@ export default function ScopeChatSurface() {
 
   useEffect(() => {
     startSession.mutate(undefined, {
-      onSuccess: (s) => setSession(s),
+      onSuccess: (s) => {
+        // Redirect to resumable scope page instead of rendering inline
+        router.push(`/scope/${s.id}`);
+      },
       onError: () => setError("Could not start scope chat. Please refresh."),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
