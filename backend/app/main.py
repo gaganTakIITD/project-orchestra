@@ -8,13 +8,16 @@ from app.config import settings
 from app.db.base import Base
 from app.db.seed import seed_catalog, seed_demo_client
 from app.db.session import AsyncSessionLocal, engine
-from app.models import catalog, commerce, fulfillment, identity, platform  # noqa: F401 — register all models
+from app.models import catalog, chat, commerce, fulfillment, identity, platform  # noqa: F401
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Dev/test convenience only. In production set AUTO_CREATE_ALL=false and apply
+    # the versioned schema with `alembic upgrade head` (see docker-compose api cmd).
+    if settings.auto_create_all:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
     if settings.auto_seed:
         async with AsyncSessionLocal() as session:

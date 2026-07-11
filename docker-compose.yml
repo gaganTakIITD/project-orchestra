@@ -44,6 +44,8 @@ services:
       S3_ENDPOINT: http://minio:9000
       CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
       AUTO_SEED: "true"
+      # Prod-grade: schema comes from `alembic upgrade head` (Dockerfile CMD), not create_all.
+      AUTO_CREATE_ALL: "false"
     depends_on:
       postgres:
         condition: service_healthy

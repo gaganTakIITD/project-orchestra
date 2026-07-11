@@ -12,6 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   authApi,
   catalogApi,
+  chatApi,
   clientApi,
   notificationsApi,
   workerApi,
@@ -30,6 +31,36 @@ export const useTaskTypes = () =>
 export const useMe = () =>
   useQuery({ queryKey: ["me"], queryFn: authApi.me });
 
+// --- Scope chat (job description extraction) -------------------------------
+
+export const useStartScopeSession = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => chatApi.startScopeSession(),
+    onSuccess: (session) => qc.setQueryData(["chat-session", session.id], session),
+  });
+};
+
+export const useChatSession = (sessionId: string) =>
+  useQuery({
+    queryKey: ["chat-session", sessionId],
+    queryFn: () => chatApi.getSession(sessionId),
+    enabled: Boolean(sessionId),
+  });
+
+export const useSendChatMessage = (sessionId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: string) => chatApi.sendMessage(sessionId, body),
+    onSuccess: (session) => qc.setQueryData(["chat-session", sessionId], session),
+  });
+};
+
+export const useFinalizeChatSession = () =>
+  useMutation({
+    mutationFn: (sessionId: string) => chatApi.finalizeSession(sessionId),
+  });
+
 // --- Client journey --------------------------------------------------------
 
 export const useOrder = (orderId: string) =>
@@ -38,11 +69,11 @@ export const useOrder = (orderId: string) =>
 export const usePlan = (orderId: string) =>
   useQuery({ queryKey: ["plan", orderId], queryFn: () => clientApi.getPlan(orderId) });
 
-export const useSpec = (intentId: string) =>
+export const useSpec = (specId: string) =>
   useQuery({
-    queryKey: ["spec", intentId],
-    queryFn: () => clientApi.getSpec(intentId),
-    enabled: Boolean(intentId),
+    queryKey: ["spec", specId],
+    queryFn: () => clientApi.getSpec(specId),
+    enabled: Boolean(specId),
   });
 
 export const useCreateIntent = () => {

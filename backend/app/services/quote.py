@@ -8,6 +8,7 @@ from app.models.commerce import OutcomeSpecRecord, Quote
 from app.models.fulfillment import OutcomeOrder
 from app.orchestrator.events import EventWriter
 from app.orchestrator.states import OrderStatus
+from app.services.fulfillment import FulfillmentService
 
 
 class QuoteService:
@@ -53,5 +54,9 @@ class QuoteService:
             actor_type="client",
             payload={"quote_id": str(quote.id), "spec_id": str(spec.id)},
         )
+
+        fulfillment = FulfillmentService(self.session)
+        await fulfillment.build_plan(order=order, spec=spec)
+
         await self.session.flush()
         return order
