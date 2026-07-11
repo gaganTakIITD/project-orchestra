@@ -15,42 +15,34 @@ export default function Header() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 bg-background border-b-2 border-foreground">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-50 bg-background border-b border-border">
+      <div className="max-w-6xl mx-auto px-8 lg:px-12 h-16 flex items-center justify-between">
 
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.6 }}
         >
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-6 h-6 bg-primary border border-foreground" aria-hidden="true" />
-            <span className="text-xs font-mono font-bold tracking-widest uppercase text-foreground">
+          <Link href="/" className="flex items-center gap-2">
+            <span className="font-serif text-lg font-light text-foreground">
               Orchestra
             </span>
           </Link>
         </motion.div>
 
-        <nav className="hidden md:flex items-center gap-8" aria-label="Primary">
+        <nav className="hidden md:flex items-center gap-12" aria-label="Primary">
           {navLinks.map((l, idx) => (
             <motion.div
               key={l.href}
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: idx * 0.05 }}
+              transition={{ duration: 0.6, delay: idx * 0.05 }}
             >
               <Link
                 href={l.href}
-                className="text-xs font-mono tracking-widest uppercase text-foreground font-semibold hover:text-primary transition-colors relative group"
+                className="text-sm font-light text-muted-foreground hover:text-foreground transition-colors duration-300"
               >
                 {l.label}
-                <motion.div 
-                  className="absolute bottom-0 left-0 h-0.5 bg-primary"
-                  initial={{ scaleX: 0 }}
-                  whileHover={{ scaleX: 1 }}
-                  transition={{ duration: 0.3 }}
-                  style={{ transformOrigin: "left" }}
-                />
               </Link>
             </motion.div>
           ))}
@@ -59,15 +51,15 @@ export default function Header() {
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4 }}
-          whileHover={{ scale: 1.04 }}
+          transition={{ duration: 0.6 }}
+          whileHover={{ opacity: 0.8 }}
           whileTap={{ scale: 0.98 }}
         >
           <Link
             href="/start"
-            className="hidden md:inline-flex items-center h-9 px-5 bg-primary text-primary-foreground text-xs font-mono tracking-widest uppercase font-bold hover:opacity-80 transition-opacity border border-primary-foreground"
+            className="hidden md:inline-flex items-center h-10 px-6 border border-foreground text-foreground text-sm font-light hover:bg-foreground hover:text-background transition-colors duration-300"
           >
-            Describe outcome
+            Begin
           </Link>
         </motion.div>
 

@@ -33,52 +33,48 @@ export default function HowItWorks() {
   const isInView = useInView(ref, { once: true, margin: "0px 0px -100px 0px" });
 
   return (
-    <section id="how" className="border-b-4 border-foreground bg-background" ref={ref}>
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16 lg:py-24">
+    <section id="how" className="bg-background" ref={ref}>
+      <div className="max-w-6xl mx-auto px-8 lg:px-12 py-32 lg:py-48">
 
         <motion.div 
-          className="mb-16"
+          className="mb-32"
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.8 }}
         >
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4 text-foreground">
-            How it works
+          <h2 className="font-serif text-5xl sm:text-6xl lg:text-7xl font-light text-foreground mb-8 leading-tight">
+            The process
           </h2>
-          <div className="w-16 h-2 bg-accent mb-8" aria-hidden="true" />
-          <p className="text-base text-foreground max-w-lg leading-relaxed font-mono">
-            Four steps from brief to delivery. No hand-off chaos, no quality surprises.
+          <p className="text-lg text-muted-foreground font-light max-w-2xl leading-relaxed">
+            From brief to delivery. Clear, transparent, outcome-focused at every step.
           </p>
         </motion.div>
 
         <motion.div 
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0 border-2 border-foreground divide-x-2 divide-y-2 divide-foreground"
+          className="grid grid-cols-1 md:grid-cols-2 gap-16 lg:gap-24"
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
           variants={staggerContainer}
         >
-          {steps.map((step, idx) => (
+          {steps.map((step) => (
             <motion.div 
               key={step.number} 
-              className={`p-8 lg:p-10 flex flex-col justify-start gap-6 ${
-                idx % 2 === 0 ? 'bg-background' : 'bg-muted'
-              }`}
+              className="flex flex-col gap-6"
               variants={staggerItem}
-              whileHover={{ y: -4 }}
+              whileHover={{ x: 4 }}
             >
-              <motion.span 
-                className="text-6xl lg:text-7xl font-bold text-primary font-mono leading-none"
-                whileHover={{ scale: 1.05 }}
-              >
-                {step.number}
-              </motion.span>
-              <div>
-                <h3 className="text-lg lg:text-xl font-bold mb-3 text-foreground uppercase tracking-wide">
-                  {step.title}
-                </h3>
-                <p className="text-sm lg:text-base text-foreground leading-relaxed font-mono opacity-90">
-                  {step.description}
-                </p>
+              <div className="flex items-start gap-4">
+                <span className="font-serif text-5xl font-light text-primary leading-none">
+                  {step.number}
+                </span>
+                <div>
+                  <h3 className="text-xl font-light text-foreground mb-3">
+                    {step.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed font-light">
+                    {step.description}
+                  </p>
+                </div>
               </div>
             </motion.div>
           ))}

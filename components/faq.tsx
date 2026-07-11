@@ -46,23 +46,23 @@ export default function FAQ() {
   const isInView = useInView(ref, { once: true, margin: "0px 0px -100px 0px" });
 
   return (
-    <section id="faq" className="border-b-4 border-foreground" ref={ref}>
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
+    <section id="faq" className="bg-background" ref={ref}>
+      <div className="max-w-6xl mx-auto px-8 lg:px-12 py-32 lg:py-48">
 
         <motion.div 
-          className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-16"
+          className="mb-24"
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.8 }}
         >
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Frequently asked</h2>
-          <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-            Everything you need to know about how Orchestra works.
+          <h2 className="font-serif text-5xl sm:text-6xl lg:text-7xl font-light text-foreground mb-8">Questions</h2>
+          <p className="text-lg text-muted-foreground font-light max-w-2xl">
+            Everything you need to know about how we work.
           </p>
         </motion.div>
 
         <motion.div 
-          className="max-w-3xl border-2 border-foreground divide-y-2 divide-foreground"
+          className="max-w-2xl space-y-1 divide-y divide-border"
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
           variants={staggerContainer}
@@ -71,16 +71,17 @@ export default function FAQ() {
             <motion.div key={idx} variants={staggerItem}>
               <button
                 onClick={() => setOpenIdx(openIdx === idx ? null : idx)}
-                className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-muted transition-colors"
+                className="w-full py-6 flex items-start justify-between text-left hover:opacity-60 transition-opacity"
                 aria-expanded={openIdx === idx}
               >
-                <span className="font-bold text-sm pr-4 text-foreground">{faq.question}</span>
+                <span className="text-sm font-light text-foreground pr-4">{faq.question}</span>
                 <motion.div
                   animate={{ rotate: openIdx === idx ? 180 : 0 }}
                   transition={{ duration: 0.3 }}
+                  className="flex-shrink-0 mt-0.5"
                 >
                   <ChevronDown
-                    className="w-4 h-4 text-foreground flex-shrink-0"
+                    className="w-4 h-4 text-muted-foreground"
                     aria-hidden="true"
                   />
                 </motion.div>
@@ -89,13 +90,13 @@ export default function FAQ() {
               <AnimatePresence>
                 {openIdx === idx && (
                   <motion.div
-                    className="px-6 pb-5 border-t-2 border-foreground bg-muted"
+                    className="pb-6"
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <p className="text-sm text-foreground leading-relaxed pt-4 font-mono">
+                    <p className="text-sm text-muted-foreground leading-relaxed font-light">
                       {faq.answer}
                     </p>
                   </motion.div>
@@ -106,17 +107,16 @@ export default function FAQ() {
         </motion.div>
 
         <motion.div 
-          className="mt-10 border-2 border-foreground p-8 max-w-3xl"
+          className="mt-16 pt-12 border-t border-border"
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          whileHover={{ scale: 1.01 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
         >
-          <p className="text-sm text-foreground mb-2 font-bold">Still have questions?</p>
+          <p className="text-sm text-muted-foreground font-light mb-2">Still have questions?</p>
           <motion.a
             href="mailto:hello@orchestrapro.com"
-            className="text-sm font-bold text-primary hover:text-accent transition-colors inline-block"
-            whileHover={{ x: 4 }}
+            className="text-sm font-light text-foreground hover:text-primary transition-colors inline-block"
+            whileHover={{ opacity: 0.7 }}
           >
             hello@orchestrapro.com
           </motion.a>

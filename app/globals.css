@@ -6,60 +6,61 @@
 /*
  * Project Orchestra — design tokens (SHARED DESIGN LANGUAGE)
  * ----------------------------------------------------------
- * Bauhaus: Bold primary red, pure black text, clean white. High contrast,
- * geometric precision. No rounded corners. Mono typography throughout.
+ * Minimalist & Elegant: Cream background, deep black text, subtle accents.
+ * Generous whitespace, serif headlines, understated design language.
+ * Focus on clarity and breathing room.
  */
 :root {
-  --radius: 0rem;
+  --radius: 0.25rem;
 
-  /* Light mode: White background, pure black text */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0 0 0);
+  /* Light mode: Cream background, deep black text */
+  --background: oklch(0.96 0.01 90);
+  --foreground: oklch(0.15 0.01 0);
 
-  --card: oklch(0.98 0.005 0);
-  --card-foreground: oklch(0 0 0);
+  --card: oklch(0.98 0.005 90);
+  --card-foreground: oklch(0.15 0.01 0);
 
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0 0 0);
+  --popover: oklch(0.98 0.005 90);
+  --popover-foreground: oklch(0.15 0.01 0);
 
-  /* Primary: Bold Bauhaus red */
-  --primary: oklch(0.55 0.27 25);
-  --primary-foreground: oklch(1 0 0);
+  /* Primary: Muted gold accent */
+  --primary: oklch(0.68 0.12 85);
+  --primary-foreground: oklch(0.15 0.01 0);
 
-  /* Secondary: Light gray */
-  --secondary: oklch(0.95 0.01 0);
-  --secondary-foreground: oklch(0 0 0);
+  /* Secondary: Light cream */
+  --secondary: oklch(0.94 0.01 90);
+  --secondary-foreground: oklch(0.15 0.01 0);
 
-  /* Muted: Medium gray */
+  /* Muted: Subtle gray */
   --muted: oklch(0.88 0.01 0);
-  --muted-foreground: oklch(0.35 0.01 0);
+  --muted-foreground: oklch(0.45 0.01 0);
 
-  /* Accent: Yellow (Bauhaus classic) */
-  --accent: oklch(0.84 0.2 95);
-  --accent-foreground: oklch(0 0 0);
+  /* Accent: Muted teal */
+  --accent: oklch(0.62 0.1 200);
+  --accent-foreground: oklch(0.98 0.005 90);
 
-  /* Destructive: Darker red */
-  --destructive: oklch(0.48 0.25 25);
-  --destructive-foreground: oklch(1 0 0);
+  /* Destructive: Muted red */
+  --destructive: oklch(0.65 0.15 25);
+  --destructive-foreground: oklch(0.98 0.005 90);
 
   --border: oklch(0.92 0.01 0);
-  --input: oklch(0.95 0.01 0);
-  --ring: oklch(0.55 0.27 25);
+  --input: oklch(0.95 0.01 90);
+  --ring: oklch(0.68 0.12 85);
 
-  --chart-1: oklch(0.55 0.27 25);
-  --chart-2: oklch(0.84 0.2 95);
-  --chart-3: oklch(0.55 0.2 280);
-  --chart-4: oklch(0.65 0.2 200);
-  --chart-5: oklch(0 0 0);
+  --chart-1: oklch(0.68 0.12 85);
+  --chart-2: oklch(0.62 0.1 200);
+  --chart-3: oklch(0.65 0.15 25);
+  --chart-4: oklch(0.75 0.08 55);
+  --chart-5: oklch(0.15 0.01 0);
 
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0 0 0);
-  --sidebar-primary: oklch(0.55 0.27 25);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.84 0.2 95);
-  --sidebar-accent-foreground: oklch(0 0 0);
+  --sidebar: oklch(0.96 0.01 90);
+  --sidebar-foreground: oklch(0.15 0.01 0);
+  --sidebar-primary: oklch(0.68 0.12 85);
+  --sidebar-primary-foreground: oklch(0.15 0.01 0);
+  --sidebar-accent: oklch(0.62 0.1 200);
+  --sidebar-accent-foreground: oklch(0.96 0.01 90);
   --sidebar-border: oklch(0.92 0.01 0);
-  --sidebar-ring: oklch(0.55 0.27 25);
+  --sidebar-ring: oklch(0.68 0.12 85);
 }
 
 .dark {
@@ -147,6 +148,7 @@
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-serif);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

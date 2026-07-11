@@ -31,11 +31,11 @@ export default function Footer() {
   const isInView = useInView(ref, { once: true, margin: "0px 0px -100px 0px" });
 
   return (
-    <footer className="border-t-4 border-foreground bg-foreground text-background" ref={ref}>
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
+    <footer className="border-t border-border bg-background" ref={ref}>
+      <div className="max-w-6xl mx-auto px-8 lg:px-12 py-20 lg:py-32">
 
         <motion.div 
-          className="grid grid-cols-2 md:grid-cols-4 gap-12 lg:gap-16 mb-16 pb-16 border-b-2 border-background"
+          className="grid grid-cols-2 md:grid-cols-3 gap-16 mb-16 pb-16 border-b border-border"
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
           variants={{
@@ -51,28 +51,29 @@ export default function Footer() {
         >
           {/* Brand */}
           <motion.div 
-            className="col-span-2 md:col-span-1 flex flex-col gap-6"
+            className="col-span-2 md:col-span-1 flex flex-col gap-4"
             variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
           >
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-6 h-6 bg-accent border border-background" aria-hidden="true" />
-              <span className="text-xs font-mono font-bold tracking-widest uppercase text-background">Orchestra</span>
+            <Link href="/" className="inline-block">
+              <span className="font-serif text-lg font-light text-foreground">
+                Orchestra
+              </span>
             </Link>
-            <p className="text-sm leading-relaxed max-w-[200px] font-mono">
-              Tell us the result. We deliver it.
+            <p className="text-sm text-muted-foreground font-light leading-relaxed">
+              Describe your outcome. We deliver it.
             </p>
           </motion.div>
 
           {/* Product */}
           <motion.div 
-            className="flex flex-col gap-6"
+            className="flex flex-col gap-4"
             variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
           >
-            <p className="text-xs font-mono tracking-widest uppercase text-background font-bold border-b-2 border-background pb-2">Product</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest font-light">Product</p>
             <ul className="flex flex-col gap-3">
               {product.map((l) => (
-                <motion.li key={l.href} whileHover={{ x: 4 }}>
-                  <Link href={l.href} className="text-sm text-background hover:text-accent transition-colors font-mono underline">
+                <motion.li key={l.href} whileHover={{ opacity: 0.6 }}>
+                  <Link href={l.href} className="text-sm text-foreground hover:text-primary transition-colors font-light">
                     {l.label}
                   </Link>
                 </motion.li>
@@ -82,38 +83,16 @@ export default function Footer() {
 
           {/* Company */}
           <motion.div 
-            className="flex flex-col gap-6"
+            className="flex flex-col gap-4"
             variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
           >
-            <p className="text-xs font-mono tracking-widest uppercase text-background font-bold border-b-2 border-background pb-2">Company</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest font-light">Company</p>
             <ul className="flex flex-col gap-3">
               {company.map((l) => (
-                <motion.li key={l.href} whileHover={{ x: 4 }}>
-                  <Link href={l.href} className="text-sm text-background hover:text-accent transition-colors font-mono underline">
+                <motion.li key={l.href} whileHover={{ opacity: 0.6 }}>
+                  <Link href={l.href} className="text-sm text-foreground hover:text-primary transition-colors font-light">
                     {l.label}
                   </Link>
-                </motion.li>
-              ))}
-            </ul>
-          </motion.div>
-
-          {/* Social */}
-          <motion.div 
-            className="flex flex-col gap-6"
-            variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
-          >
-            <p className="text-xs font-mono tracking-widest uppercase text-background font-bold border-b-2 border-background pb-2">Follow us</p>
-            <ul className="flex flex-col gap-3">
-              {social.map((l) => (
-                <motion.li key={l.href} whileHover={{ x: 4 }}>
-                  <a
-                    href={l.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-background hover:text-accent transition-colors font-mono underline"
-                  >
-                    {l.label}
-                  </a>
                 </motion.li>
               ))}
             </ul>
@@ -121,16 +100,16 @@ export default function Footer() {
         </motion.div>
 
         <motion.div 
-          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-muted-foreground font-light"
           initial={{ opacity: 0 }}
           animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
         >
-          <p className="text-xs font-mono text-background">
+          <p>
             &copy; {currentYear} Project Orchestra. All rights reserved.
           </p>
-          <p className="text-xs font-mono text-background">
-            Built by IIT Delhi — for outcome-driven builders.
+          <p>
+            Building outcomes with verified talent.
           </p>
         </motion.div>
 
