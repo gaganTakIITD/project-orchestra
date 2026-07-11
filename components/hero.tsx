@@ -5,21 +5,11 @@ import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
 import { springConfig } from "@/lib/animations";
+import AsciiPattern from "@/components/ascii-pattern";
 
 export default function Hero() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "0px 0px -100px 0px" });
-
-  // ASCII decoration pattern
-  const AsciiPattern = () => (
-    <div className="text-muted-foreground font-mono text-xs leading-tight select-none" aria-hidden="true">
-      <div>{'> > > > > > > >'.split(' ').map((c, i) => <span key={i}>{c} </span>)}</div>
-      <div className="mt-2">{'> > > > > >'.split(' ').map((c, i) => <span key={i}>{c} </span>)}</div>
-      <div className="mt-2">{'> > > > > > > > >'.split(' ').map((c, i) => <span key={i}>{c} </span>)}</div>
-      <div className="mt-4">{'> > > >'.split(' ').map((c, i) => <span key={i}>{c} </span>)}</div>
-      <div className="mt-2">{'> > > > > > > >'.split(' ').map((c, i) => <span key={i}>{c} </span>)}</div>
-    </div>
-  );
 
   return (
     <section className="bg-background min-h-screen" ref={ref}>

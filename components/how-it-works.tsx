@@ -2,33 +2,11 @@
 
 import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
-import { useRef } from "react";
+import { useRef, memo } from "react";
 import { staggerContainer, staggerItem, springConfig } from "@/lib/animations";
+import { steps } from "@/lib/data";
 
-const steps = [
-  {
-    number: "01",
-    title: "Describe",
-    description: "Tell us what you need—brand identity, landing page, app feature, or any digital outcome. Plain English is fine.",
-  },
-  {
-    number: "02",
-    title: "Confirm",
-    description: "Our AI specs out the work. You review the plan, deliverables, acceptance criteria, and fixed price before a single task starts.",
-  },
-  {
-    number: "03",
-    title: "Watch",
-    description: "Verified IIT Delhi talent executes in parallel. Live milestone tracking and a scoped chat panel—full visibility, zero meetings.",
-  },
-  {
-    number: "04",
-    title: "Receive",
-    description: "AI-verified deliverables arrive on time. You accept, and the outcome is yours—100% rights included.",
-  },
-];
-
-export default function HowItWorks() {
+const HowItWorks = memo(function HowItWorks() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "0px 0px -100px 0px" });
 
@@ -92,4 +70,8 @@ export default function HowItWorks() {
       </div>
     </section>
   );
-}
+});
+
+HowItWorks.displayName = "HowItWorks";
+
+export default HowItWorks;

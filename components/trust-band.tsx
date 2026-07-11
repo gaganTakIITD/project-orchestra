@@ -1,28 +1,11 @@
 "use client";
 
 import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { useRef, memo } from "react";
 import { springConfig, staggerContainer, staggerItem } from "@/lib/animations";
+import { trustPoints } from "@/lib/data";
 
-const trustPoints = [
-  {
-    label: "01",
-    title: "Campus-verified talent",
-    description: "Every worker is verified as a student or recent alumni of IIT Delhi. Real credentials, real skills—not resume inflation.",
-  },
-  {
-    label: "02",
-    title: "AI-verified quality",
-    description: "Gemini vision and reasoning models check every milestone against your acceptance criteria before it ships to you.",
-  },
-  {
-    label: "03",
-    title: "Outcome guarantee",
-    description: "We rework or reimburse if your outcome doesn't meet spec. No fine print. Your result is guaranteed.",
-  },
-];
-
-export default function TrustBand() {
+const TrustBand = memo(function TrustBand() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "0px 0px -100px 0px" });
 
@@ -86,4 +69,8 @@ export default function TrustBand() {
       </div>
     </section>
   );
-}
+});
+
+TrustBand.displayName = "TrustBand";
+
+export default TrustBand;

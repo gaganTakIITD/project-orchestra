@@ -1,44 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef } from 'react';
 import { staggerContainer, staggerItem, springConfig } from '@/lib/animations';
-
-const faqs = [
-  {
-    question: "How long does an outcome take?",
-    answer:
-      "Depends on complexity. Our SKUs range from 7–21 days. Once you confirm the spec, we give you a firm deadline. The orchestrator manages every day.",
-  },
-  {
-    question: "What if I need changes mid-way?",
-    answer:
-      "You can request amendments anytime. We re-spec, re-price, and get approval before executing changes. Everything stays tracked and transparent.",
-  },
-  {
-    question: "Who owns the final deliverables?",
-    answer:
-      "You do. 100% rights transfer to you on delivery. No royalties, no strings. The work is yours.",
-  },
-  {
-    question: "What if the result doesn't meet expectations?",
-    answer:
-      "We rework it or refund you. Our QA gates check every deliverable against your acceptance criteria before it ships. If something doesn't match spec, we fix it.",
-  },
-  {
-    question: "How are workers paid?",
-    answer:
-      "Fairly, and on time. Payouts are triggered when each task passes QA. We handle all tax compliance and transfers.",
-  },
-  {
-    question: "Why IIT Delhi talent?",
-    answer:
-      "Our founders and core team are from IIT Delhi. We trust the community. Every worker is campus-verified—no fakes, no resume inflation.",
-  },
-];
+import { faqItems } from '@/lib/data';
 
 export default function FAQ() {
   const [openIdx, setOpenIdx] = useState<number | null>(0);
@@ -67,7 +35,7 @@ export default function FAQ() {
           animate={isInView ? "visible" : "hidden"}
           variants={staggerContainer}
         >
-          {faqs.map((faq, idx) => (
+          {faqItems.map((faq, idx) => (
             <motion.div key={idx} variants={staggerItem}>
               <motion.button
                 onClick={() => setOpenIdx(openIdx === idx ? null : idx)}

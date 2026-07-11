@@ -23,6 +23,27 @@ export const springConfig = {
     damping: 22,
     mass: 1,
   },
+  // Gentle, slow animations for subtle reveals
+  gentle: {
+    type: "spring" as const,
+    stiffness: 60,
+    damping: 15,
+    mass: 1.2,
+  },
+  // Snappy, tight animations for interactive elements
+  snappy: {
+    type: "spring" as const,
+    stiffness: 180,
+    damping: 25,
+    mass: 0.6,
+  },
+  // Page transition animations
+  pageTransition: {
+    type: "spring" as const,
+    stiffness: 90,
+    damping: 18,
+    mass: 1,
+  },
 };
 
 // Scroll reveal variants - fade + slide in
@@ -117,3 +138,17 @@ export const underlineVariants = {
     transition: { duration: 0.3, ease: "easeOut" },
   },
 };
+
+/**
+ * Get animation config respecting prefers-reduced-motion
+ * Returns instant transitions for users with motion preferences
+ */
+export function getMotionConfig(config: any, respectMotionPreference = true) {
+  if (!respectMotionPreference) return config;
+  
+  if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return { duration: 0 };
+  }
+  
+  return config;
+}

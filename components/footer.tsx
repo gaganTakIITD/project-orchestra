@@ -4,26 +4,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
-
-const product = [
-  { href: "/start", label: "For clients" },
-  { href: "/join", label: "For talent" },
-  { href: "#how", label: "How it works" },
-  { href: "#outcomes", label: "Outcomes" },
-];
-
-const company = [
-  { href: "#faq", label: "FAQ" },
-  { href: "/blog", label: "Blog" },
-  { href: "/privacy", label: "Privacy" },
-  { href: "/terms", label: "Terms" },
-];
-
-const social = [
-  { href: "https://x.com", label: "X (Twitter)" },
-  { href: "https://github.com", label: "GitHub" },
-  { href: "https://linkedin.com", label: "LinkedIn" },
-];
+import { navigation } from "@/lib/data";
+import LinkList from "@/components/link-list";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -58,43 +40,19 @@ export default function Footer() {
             {/* Product */}
             <div>
               <p className="text-xs text-primary uppercase tracking-widest font-semibold mb-5">Navigate</p>
-              <ul className="flex flex-col gap-3">
-                {product.map((l) => (
-                  <li key={l.href}>
-                    <Link href={l.href} className="text-sm text-secondary-foreground/80 hover:text-secondary-foreground transition-colors">
-                      {l.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <LinkList items={navigation.product} itemClassName="text-sm text-secondary-foreground/80 hover:text-secondary-foreground transition-colors" />
             </div>
 
             {/* Company */}
             <div>
               <p className="text-xs text-primary uppercase tracking-widest font-semibold mb-5">Company</p>
-              <ul className="flex flex-col gap-3">
-                {company.map((l) => (
-                  <li key={l.href}>
-                    <Link href={l.href} className="text-sm text-secondary-foreground/80 hover:text-secondary-foreground transition-colors">
-                      {l.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <LinkList items={navigation.company} itemClassName="text-sm text-secondary-foreground/80 hover:text-secondary-foreground transition-colors" />
             </div>
 
             {/* Social */}
             <div>
               <p className="text-xs text-primary uppercase tracking-widest font-semibold mb-5">Socials</p>
-              <ul className="flex flex-col gap-3">
-                {social.map((l) => (
-                  <li key={l.href}>
-                    <a href={l.href} target="_blank" rel="noopener noreferrer" className="text-sm text-secondary-foreground/80 hover:text-secondary-foreground transition-colors">
-                      {l.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              <LinkList items={navigation.social} external itemClassName="text-sm text-secondary-foreground/80 hover:text-secondary-foreground transition-colors" />
             </div>
 
             {/* CTA */}
