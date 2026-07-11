@@ -52,40 +52,39 @@ Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · shadcn/u
 
 ## Getting started
 
-### Frontend only (mocks — no backend needed)
+### Frontend only (mocks — offline / no Docker)
 
 ```bash
 npm install
 npm run dev        # http://localhost:3000
 ```
 
-The app runs on **mock data** by default (`NEXT_PUBLIC_USE_MOCKS` unset or not `false`).
+Mocks apply when `NEXT_PUBLIC_USE_MOCKS` is unset or not `false`. Prefer the full-stack product path below for “does the app work?”
 
-### Full stack (frontend bound to real API)
+### Full stack — product path (real API)
 
 **Requires Docker Desktop running.**
 
 ```bash
 # 1. Env
 cp .env.example .env
-# For Next.js, also create .env.local with:
+# For Next.js, create .env.local with:
 #   NEXT_PUBLIC_USE_MOCKS=false
 #   NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
 
 # 2. Backend + data stores
 docker compose up -d --build
 
-# 3. Verify API
+# 3. Verify API + product smoke
 curl http://localhost:8000/api/v1/health
-curl http://localhost:8000/api/v1/catalog/skus
+cd backend && python -m pytest tests/test_product_smoke.py -v
 
 # 4. Frontend
 npm install
 npm run dev
 ```
 
-See **`docs/BACKEND_IMPLEMENTATION_PLAN.md`** for the full phased backend + binding plan.
-
+See **`docs/SUBPLAN_S2_STAGES.md`** for stage A–C status and Stage D deepen work.
 
 ## The build stages
 

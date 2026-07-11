@@ -3,9 +3,13 @@ from app.models.chat import ChatMessage, ChatSession
 from app.models.commerce import Intent, OutcomeSpecRecord, Quote
 from app.models.fulfillment import (
     CharterRecord,
+    DeliveryBundleRecord,
+    DiscussionMessageRecord,
+    DiscussionThreadRecord,
     FulfillmentPlan,
     FulfillmentTask,
     OutcomeOrder,
+    SubmissionRecord,
     TaskPacketRecord,
     TaskPreferenceSet,
 )
@@ -28,6 +32,10 @@ __all__ = [
     "TaskPreferenceSet",
     "CharterRecord",
     "TaskPacketRecord",
+    "SubmissionRecord",
+    "DiscussionThreadRecord",
+    "DiscussionMessageRecord",
+    "DeliveryBundleRecord",
     "User",
     "WorkerProfileRecord",
     "EventLog",

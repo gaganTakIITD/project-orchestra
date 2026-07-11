@@ -12,6 +12,7 @@ class IllegalTransitionError(Exception):
 # (from_status, event) -> to_status
 ORDER_TRANSITIONS: dict[tuple[str, str], str] = {
     ("confirmed", "plan_and_preferences_set"): "assembling_team",
+    ("confirmed", "first_mutual_start"): "delivery_active",  # stage path without prefs
     ("confirmed", "cancel"): "cancelled",
     ("assembling_team", "first_mutual_start"): "delivery_active",
     ("delivery_active", "all_tasks_submitted"): "under_quality_check",
@@ -28,6 +29,7 @@ ORDER_TRANSITIONS: dict[tuple[str, str], str] = {
 TASK_TRANSITIONS: dict[tuple[str, str], str] = {
     ("blocked", "dependencies_met"): "ready",
     ("ready", "preferences_set"): "invited",
+    ("ready", "interest_accepted"): "interest_pool",  # open pool accept before prefs
     ("invited", "interest_accepted"): "interest_pool",
     ("interest_pool", "priority_granted"): "priority_active",
     ("priority_active", "ready_to_start"): "start_requested",

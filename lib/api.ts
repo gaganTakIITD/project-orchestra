@@ -58,7 +58,7 @@ import type {
 } from "./types";
 
 export const USE_MOCKS =
-  process.env.NEXT_PUBLIC_USE_MOCKS !== "false"; // default true until backend lands
+  process.env.NEXT_PUBLIC_USE_MOCKS !== "false"; // product path: set NEXT_PUBLIC_USE_MOCKS=false
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
@@ -226,6 +226,17 @@ export const clientApi = {
 
   getDiscussion: (taskId: string): Promise<DiscussionThread> =>
     USE_MOCKS ? mock(mockDiscussion) : apiFetch(`/tasks/${taskId}/discussion`),
+
+  postDiscussion: (
+    taskId: string,
+    payload: { body: string; message_type?: string }
+  ): Promise<DiscussionThread> =>
+    USE_MOCKS
+      ? mock(mockDiscussion)
+      : apiFetch(`/tasks/${taskId}/discussion`, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        }),
 };
 
 // ----------------------------------------------------------------------------
@@ -252,7 +263,7 @@ export const workerApi = {
 
   readyToStart: (taskId: string): Promise<{ status: string }> =>
     USE_MOCKS
-      ? mock({ status: "start_requested" })
+      ? mock({ status: "in_progress" })
       : apiFetch(`/tasks/${taskId}/ready-to-start`, { method: "POST" }),
 
   submit: (
@@ -260,7 +271,7 @@ export const workerApi = {
     payload: { notes: string; asset_urls: string[] }
   ): Promise<{ status: string }> =>
     USE_MOCKS
-      ? mock({ status: "submitted" })
+      ? mock({ status: "completed" })
       : apiFetch(`/tasks/${taskId}/submit`, {
           method: "POST",
           body: JSON.stringify(payload),

@@ -8,11 +8,14 @@ from app.models.fulfillment import OutcomeOrder
 from app.schemas.commerce import OutcomeOrderOut
 from app.schemas.fulfillment import (
     CandidateOut,
+    DeliveryBundleOut,
     FulfillmentPlanOut,
     PreferenceSetOut,
     SetPreferencesIn,
+    TaskStatusOut,
 )
 from app.services.auth import get_demo_client
+from app.services.delivery import DeliveryService
 from app.services.fulfillment import FulfillmentService
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -86,3 +89,43 @@ async def set_task_preferences(
 
     await db.commit()
     return PreferenceSetOut.from_orm_row(pref)
+
+
+@router.get("/{order_id}/delivery", response_model=DeliveryBundleOut)
+async def get_delivery(
+    order_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> DeliveryBundleOut:
+    order = await db.get(OutcomeOrder, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    delivery = DeliveryService(db)
+    try:
+        await delivery.ensure_delivered(order)
+        bundle = await delivery.get_or_build_bundle(order)
+    except (LookupError, ValueError) as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+    await db.commit()
+    return DeliveryBundleOut.from_orm_row(bundle)
+
+
+@router.post("/{order_id}/accept-delivery", response_model=TaskStatusOut)
+async def accept_delivery(
+    order_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> TaskStatusOut:
+    client = await get_demo_client(db)
+    order = await db.get(OutcomeOrder, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    delivery = DeliveryService(db)
+    try:
+        order, _bundle = await delivery.accept_delivery(order=order, client_id=client.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    await db.commit()
+    return TaskStatusOut(status=order.status)

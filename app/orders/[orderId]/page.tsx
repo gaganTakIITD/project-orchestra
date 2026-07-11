@@ -1,10 +1,11 @@
 'use client';
 
-import { useOrder, usePlan } from "@/lib/hooks";
+import { useAcceptDelivery, useDelivery, useOrder, usePlan } from "@/lib/hooks";
 import { taskStatusClientLabel, taskStatusTone } from "@/lib/state-labels";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import Link from "next/link";
+import { useState } from "react";
 
 const toneColors: Record<string, string> = {
   neutral: "bg-muted text-muted-foreground",
@@ -17,9 +18,12 @@ const toneColors: Record<string, string> = {
 
 export default function OrderTrackerPage({ params }: { params: { orderId: string } }) {
   const orderId = params.orderId;
-  
+  const [acceptError, setAcceptError] = useState<string | null>(null);
+
   const { data: order, isLoading: orderLoading } = useOrder(orderId);
   const { data: plan, isLoading: planLoading } = usePlan(orderId);
+  const { data: delivery } = useDelivery(orderId);
+  const acceptDelivery = useAcceptDelivery(orderId);
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("en-IN", {
@@ -166,23 +170,83 @@ export default function OrderTrackerPage({ params }: { params: { orderId: string
             })}
           </div>
 
-          {/* Chat & Updates placeholder */}
+          {/* Chat & delivery */}
           <div className="mt-16 pt-8 border-t border-border">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <section>
                 <h2 className="text-base font-semibold mb-4">Chat with team</h2>
                 <div className="border border-border p-6 rounded-sm bg-muted/30 text-center">
-                  <p className="text-sm text-muted-foreground">Scoped chat coming soon</p>
-                  <p className="text-xs text-muted-foreground mt-2">Discuss clarifications and updates with your assigned workers</p>
+                  <p className="text-sm text-muted-foreground">
+                    Open a task discussion from the worker job card, or POST
+                    /tasks/&#123;id&#125;/discussion
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Scoped threads persist per task on the real API
+                  </p>
                 </div>
               </section>
 
               <section>
                 <h2 className="text-base font-semibold mb-4">Deliverables</h2>
-                <div className="border border-border p-6 rounded-sm bg-muted/30 text-center">
-                  <p className="text-sm text-muted-foreground">Assets will appear here</p>
-                  <p className="text-xs text-muted-foreground mt-2">Final files for review and acceptance</p>
-                </div>
+                {delivery ? (
+                  <div className="border border-border p-6 space-y-4">
+                    <p className="text-sm text-muted-foreground">{delivery.qa_summary}</p>
+                    <ul className="space-y-2">
+                      {delivery.assets.map((asset) => (
+                        <li key={asset.url} className="text-sm">
+                          <a
+                            href={asset.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-primary font-medium hover:underline"
+                          >
+                            {asset.name}
+                          </a>
+                          <span className="text-xs text-muted-foreground font-mono ml-2">
+                            {asset.type}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    {order.status === "delivered" || order.status === "closed" ? (
+                      <div className="pt-2">
+                        {order.status === "closed" || delivery.accepted_at ? (
+                          <p className="text-sm text-green-700 font-medium">Outcome accepted</p>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={acceptDelivery.isPending}
+                            onClick={async () => {
+                              setAcceptError(null);
+                              try {
+                                await acceptDelivery.mutateAsync();
+                              } catch {
+                                setAcceptError("Could not accept delivery.");
+                              }
+                            }}
+                            className="h-10 px-5 bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
+                          >
+                            {acceptDelivery.isPending ? "Accepting…" : "Accept delivery"}
+                          </button>
+                        )}
+                        {acceptError ? (
+                          <p className="text-xs text-destructive mt-2">{acceptError}</p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Bundle ready when work is submitted and QA advances the order.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="border border-border p-6 rounded-sm bg-muted/30 text-center">
+                    <p className="text-sm text-muted-foreground">Assets appear after submission</p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Final files for review and acceptance
+                    </p>
+                  </div>
+                )}
               </section>
             </div>
           </div>
