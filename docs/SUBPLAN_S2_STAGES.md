@@ -21,7 +21,7 @@ A founder can run the product path with `NEXT_PUBLIC_USE_MOCKS=false` against Do
 | **A** | Worker lifecycle APIs + Submission + Spine | ✅ Complete |
 | **B** | Discussion thread + delivery get/accept + order close | ✅ Complete |
 | **C** | Product default = real API + smoke (scope→submit) | ✅ Complete |
-| **D** | Auth, Gemini required, Matcher from DB, deploy | ⏸ LATER |
+| **D** | Auth, Gemini required, Matcher from DB, deploy | 🔄 Auth slice done; rest LATER |
 
 ---
 
@@ -74,9 +74,10 @@ Mocks remain only for CI / offline v0 work — not the “app works” story.
 
 ---
 
-## Stage D — Deepen (do not start until A–C signed off)
+## Stage D — Deepen
 
-- [ ] Real auth (Clerk recommended) replacing `get_demo_client` / `get_demo_worker`
+- [x] **Auth first slice:** `AUTH_MODE=demo|clerk`, Clerk JWT verify + `users.external_auth_id`, FastAPI `get_current_client` / `get_current_worker`, frontend `@clerk/nextjs` + `/sign-in` `/sign-up` (keys optional — demo remains default)
+- [ ] Founder: create Clerk app, set keys, flip `AUTH_MODE=clerk`
 - [ ] Gemini required for Spec Compiler + Task Packet in prod env
 - [ ] Matcher from DB `worker_profiles` (not fixture shortlist)
 - [ ] Onboarding persists to `worker_profiles`

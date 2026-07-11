@@ -72,9 +72,22 @@ export class ApiError extends Error {
 
 /** Real network call — used when USE_MOCKS is false. */
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const { getAuthToken } = await import("./auth-token");
+  const token = await getAuthToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(init?.headers as Record<string, string> | undefined),
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (typeof window !== "undefined" && !headers["X-Orchestra-Role"]) {
+    headers["X-Orchestra-Role"] = window.location.pathname.startsWith("/worker")
+      ? "worker"
+      : "client";
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     ...init,
+    headers,
   });
   if (!res.ok) {
     throw new ApiError(res.status, `${init?.method ?? "GET"} ${path} failed`);
@@ -98,9 +111,19 @@ async function streamChatMessage(
   body: string,
   handlers: ChatStreamHandlers
 ): Promise<ChatSession> {
+  const { getAuthToken } = await import("./auth-token");
+  const token = await getAuthToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (typeof window !== "undefined") {
+    headers["X-Orchestra-Role"] = window.location.pathname.startsWith("/worker")
+      ? "worker"
+      : "client";
+  }
+
   const res = await fetch(`${API_BASE}/chat/sessions/${sessionId}/messages/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ body }),
   });
   if (!res.ok) {

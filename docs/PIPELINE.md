@@ -44,8 +44,8 @@
 - [x] **Stage A:** `POST /tasks/{id}/accept-interest`, `ready-to-start`, `submit` + `submissions` + Spine events
 - [x] **Stage B:** `GET/POST /tasks/{id}/discussion`, `GET /orders/{id}/delivery`, `POST .../accept-delivery`
 - [x] **Stage C:** `NEXT_PUBLIC_USE_MOCKS=false` product path + `tests/test_product_smoke.py` (intent→submit)
-- [ ] Browser bind with `USE_MOCKS=false` (founder: `npm run dev` + `.env.local` locally)
-- **Done when:** worker accept → submit and client delivery accept work against Postgres without mocks — **met (API + pytest)**
+- [x] Browser bind with `USE_MOCKS=false` — `.env.local` + Docker API rebuilt; live path intent→accept→submit verified 2026-07-12
+- **Done when:** worker accept → submit and client delivery accept work against Postgres without mocks — **met (API + pytest + live curl)**
 
 ### N2. Backend B2 — Spine integration tests
 
@@ -71,7 +71,8 @@
 ### X1. Stage D — deepen pass
 
 - Owner: `cursor` + `founder`
-- [ ] Real JWT / Clerk auth (replace demo client/worker stubs)
+- [x] Auth first slice: Clerk-ready JWT + demo fallback (`AUTH_MODE`, `get_current_*`) — set Clerk keys to go live
+- [ ] Founder: Clerk app + secrets; flip `AUTH_MODE=clerk`
 - [ ] Gemini required for Spec Compiler + Task Packet in prod
 - [ ] Matcher from DB profiles (not fixture list)
 - [ ] Onboarding persists to `worker_profiles`

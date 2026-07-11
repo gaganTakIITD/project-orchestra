@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.models.fulfillment import OutcomeOrder
+from app.models.identity import User
 from app.schemas.commerce import OutcomeOrderOut
 from app.schemas.fulfillment import (
     CandidateOut,
@@ -14,7 +15,7 @@ from app.schemas.fulfillment import (
     SetPreferencesIn,
     TaskStatusOut,
 )
-from app.services.auth import get_demo_client
+from app.services.auth import get_current_client
 from app.services.delivery import DeliveryService
 from app.services.fulfillment import FulfillmentService
 
@@ -66,8 +67,8 @@ async def set_task_preferences(
     task_id: uuid.UUID,
     body: SetPreferencesIn,
     db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
 ) -> PreferenceSetOut:
-    client = await get_demo_client(db)
     order = await db.get(OutcomeOrder, order_id)
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -115,8 +116,8 @@ async def get_delivery(
 async def accept_delivery(
     order_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
 ) -> TaskStatusOut:
-    client = await get_demo_client(db)
     order = await db.get(OutcomeOrder, order_id)
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")

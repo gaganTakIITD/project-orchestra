@@ -6,8 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.models.commerce import OutcomeSpecRecord, Quote
+from app.models.identity import User
 from app.schemas.commerce import AcceptQuoteOut, QuoteOut
-from app.services.auth import get_demo_client
+from app.services.auth import get_current_client
 from app.services.quote import QuoteService
 
 router = APIRouter(prefix="/quotes", tags=["quotes"])
@@ -28,8 +29,8 @@ async def get_quote(
 async def accept_quote(
     quote_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
 ) -> AcceptQuoteOut:
-    client = await get_demo_client(db)
     quote = await db.get(Quote, quote_id)
     if quote is None:
         raise HTTPException(status_code=404, detail="Quote not found")

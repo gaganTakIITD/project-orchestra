@@ -11,7 +11,8 @@ from app.schemas.fulfillment import (
     TaskStatusOut,
 )
 from app.schemas.worker import CharterOut, TaskPacketOut
-from app.services.auth import get_demo_client, get_demo_worker
+from app.models.identity import User
+from app.services.auth import get_current_client, get_current_worker
 from app.services.discussion import DiscussionService
 from app.services.fulfillment import FulfillmentService
 from app.services.task_lifecycle import TaskLifecycleService
@@ -53,8 +54,8 @@ async def get_task_packet(
 async def accept_interest(
     task_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    worker: User = Depends(get_current_worker),
 ) -> TaskStatusOut:
-    worker = await get_demo_worker(db)
     fulfillment = FulfillmentService(db)
     task = await fulfillment.get_task_by_id(task_id)
     if task is None:
@@ -75,8 +76,8 @@ async def accept_interest(
 async def ready_to_start(
     task_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    worker: User = Depends(get_current_worker),
 ) -> TaskStatusOut:
-    worker = await get_demo_worker(db)
     fulfillment = FulfillmentService(db)
     task = await fulfillment.get_task_by_id(task_id)
     if task is None:
@@ -97,8 +98,8 @@ async def submit_work(
     task_id: uuid.UUID,
     body: SubmitWorkIn,
     db: AsyncSession = Depends(get_db),
+    worker: User = Depends(get_current_worker),
 ) -> TaskStatusOut:
-    worker = await get_demo_worker(db)
     fulfillment = FulfillmentService(db)
     task = await fulfillment.get_task_by_id(task_id)
     if task is None:
@@ -141,9 +142,8 @@ async def post_discussion_message(
     task_id: uuid.UUID,
     body: DiscussionMessageIn,
     db: AsyncSession = Depends(get_db),
+    sender: User = Depends(get_current_client),
 ) -> DiscussionThreadOut:
-    # Demo stub: client posts by default (client close loop). Workers can use same endpoint later.
-    sender = await get_demo_client(db)
     fulfillment = FulfillmentService(db)
     task = await fulfillment.get_task_by_id(task_id)
     if task is None:

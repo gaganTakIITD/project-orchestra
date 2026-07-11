@@ -9,7 +9,7 @@ from app.db.session import get_db
 from app.models.chat import ChatSession
 from app.models.identity import User
 from app.schemas.chat import ChatSessionOut, FinalizeChatOut, SendMessageIn
-from app.services.auth import get_demo_client
+from app.services.auth import get_current_client
 from app.services.chat import ChatService
 
 router = APIRouter(prefix="/chat/sessions", tags=["chat"])
@@ -28,8 +28,8 @@ async def _load_owned(service: ChatService, session_id: uuid.UUID, client: User)
 @router.post("", response_model=ChatSessionOut, status_code=201)
 async def start_scope_session(
     db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
 ) -> ChatSessionOut:
-    client = await get_demo_client(db)
     service = ChatService(db)
     chat, messages = await service.start_scope_session(client=client)
     await db.commit()
@@ -40,8 +40,8 @@ async def start_scope_session(
 async def get_session(
     session_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
 ) -> ChatSessionOut:
-    client = await get_demo_client(db)
     service = ChatService(db)
     chat = await _load_owned(service, session_id, client)
     messages = await service.list_messages(session_id)
@@ -53,8 +53,8 @@ async def send_message(
     session_id: uuid.UUID,
     body: SendMessageIn,
     db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
 ) -> ChatSessionOut:
-    client = await get_demo_client(db)
     service = ChatService(db)
     chat = await _load_owned(service, session_id, client)
     try:
@@ -70,9 +70,9 @@ async def send_message_stream(
     session_id: uuid.UUID,
     body: SendMessageIn,
     db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
 ) -> StreamingResponse:
     """SSE stream: draft_patch → token* → turn_complete."""
-    client = await get_demo_client(db)
     service = ChatService(db)
     chat = await _load_owned(service, session_id, client)
 
@@ -99,8 +99,8 @@ async def send_message_stream(
 async def finalize_session(
     session_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
 ) -> FinalizeChatOut:
-    client = await get_demo_client(db)
     service = ChatService(db)
     chat = await _load_owned(service, session_id, client)
     try:

@@ -1,10 +1,24 @@
+"""Auth — demo stubs (default) or Clerk JWT (AUTH_MODE=clerk)."""
+
+from __future__ import annotations
+
+import uuid
+from typing import Any
+
+import jwt
+from fastapi import Depends, Header, HTTPException, Request
+from jwt import PyJWKClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
+from app.db.session import get_db
 from app.models.identity import DEMO_CLIENT_ID, DEMO_WORKER_ID, User, WorkerProfileRecord
+
+_jwks_clients: dict[str, PyJWKClient] = {}
 
 
 async def get_demo_client(session: AsyncSession) -> User:
-    """Return the seeded demo client until JWT auth is wired."""
     user = await session.get(User, DEMO_CLIENT_ID)
     if user is None:
         raise RuntimeError("Demo client not seeded — run with AUTO_SEED=true")
@@ -12,7 +26,6 @@ async def get_demo_client(session: AsyncSession) -> User:
 
 
 async def get_demo_worker(session: AsyncSession) -> User:
-    """Return the seeded demo worker until JWT auth is wired."""
     user = await session.get(User, DEMO_WORKER_ID)
     if user is None:
         raise RuntimeError("Demo worker not seeded — run with AUTO_SEED=true")
@@ -24,3 +37,131 @@ async def get_demo_worker_profile(session: AsyncSession) -> WorkerProfileRecord:
     if profile is None:
         raise RuntimeError("Demo worker profile not seeded — run with AUTO_SEED=true")
     return profile
+
+
+def _bearer_token(request: Request) -> str | None:
+    auth = request.headers.get("Authorization") or ""
+    if auth.lower().startswith("bearer "):
+        return auth[7:].strip() or None
+    return None
+
+
+def _jwks_client() -> PyJWKClient:
+    url = settings.clerk_jwks_url
+    if not url:
+        raise HTTPException(status_code=503, detail="CLERK_JWKS_URL not configured")
+    if url not in _jwks_clients:
+        _jwks_clients[url] = PyJWKClient(url, cache_keys=True)
+    return _jwks_clients[url]
+
+
+def _verify_clerk_token(token: str) -> dict[str, Any]:
+    try:
+        signing_key = _jwks_client().get_signing_key_from_jwt(token)
+        decode_kwargs: dict[str, Any] = {
+            "algorithms": ["RS256"],
+            "options": {"verify_aud": bool(settings.clerk_audience)},
+        }
+        if settings.clerk_issuer:
+            decode_kwargs["issuer"] = settings.clerk_issuer
+        if settings.clerk_audience:
+            decode_kwargs["audience"] = settings.clerk_audience
+        return jwt.decode(token, signing_key.key, **decode_kwargs)
+    except jwt.PyJWTError as e:
+        raise HTTPException(status_code=401, detail=f"Token verification failed: {e}") from e
+
+
+def _claim_email(claims: dict[str, Any]) -> str | None:
+    if isinstance(claims.get("email"), str):
+        return claims["email"]
+    emails = claims.get("email_addresses")
+    if isinstance(emails, list) and emails:
+        first = emails[0]
+        if isinstance(first, dict) and first.get("email_address"):
+            return str(first["email_address"])
+    return None
+
+
+async def _upsert_clerk_user(
+    session: AsyncSession,
+    *,
+    claims: dict[str, Any],
+    prefer_role: str,
+) -> User:
+    external_id = str(claims.get("sub") or "")
+    if not external_id:
+        raise HTTPException(status_code=401, detail="Token missing sub")
+
+    meta = claims.get("public_metadata") or claims.get("metadata") or {}
+    if isinstance(meta, dict) and meta.get("role") in ("client", "worker"):
+        role = str(meta["role"])
+    else:
+        role = prefer_role if prefer_role in ("client", "worker") else "client"
+
+    email = _claim_email(claims) or f"{external_id}@users.clerk.orchestra.local"
+    name = claims.get("name") or claims.get("full_name") or email.split("@")[0]
+
+    user = await session.scalar(select(User).where(User.external_auth_id == external_id))
+    if user is None:
+        user = await session.scalar(select(User).where(User.email == email))
+    if user is None:
+        user = User(
+            id=uuid.uuid4(),
+            email=email,
+            full_name=str(name)[:255],
+            role=role,
+            external_auth_id=external_id,
+            email_verified=True,
+            is_active=True,
+        )
+        session.add(user)
+    else:
+        user.external_auth_id = external_id
+        if name:
+            user.full_name = str(name)[:255]
+    await session.flush()
+    return user
+
+
+async def resolve_user(
+    session: AsyncSession,
+    request: Request,
+    *,
+    prefer_role: str,
+) -> User:
+    """Resolve actor: Clerk JWT when AUTH_MODE=clerk, else demo stubs."""
+    if settings.auth_mode != "clerk":
+        if prefer_role == "worker":
+            return await get_demo_worker(session)
+        return await get_demo_client(session)
+
+    token = _bearer_token(request)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authorization Bearer required")
+    claims = _verify_clerk_token(token)
+    role_header = request.headers.get("X-Orchestra-Role", prefer_role)
+    role = role_header if role_header in ("client", "worker") else prefer_role
+    return await _upsert_clerk_user(session, claims=claims, prefer_role=role)
+
+
+async def get_current_client(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    return await resolve_user(db, request, prefer_role="client")
+
+
+async def get_current_worker(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    return await resolve_user(db, request, prefer_role="worker")
+
+
+async def get_current_user_for_me(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    x_orchestra_role: str | None = Header(default=None, alias="X-Orchestra-Role"),
+) -> User:
+    prefer = "worker" if (x_orchestra_role or "").lower() == "worker" else "client"
+    return await resolve_user(db, request, prefer_role=prefer)

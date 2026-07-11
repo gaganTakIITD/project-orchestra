@@ -1,12 +1,16 @@
 "use client";
 
+import { ClerkProvider } from "@clerk/nextjs";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
+import { ClerkAuthBridge } from "./clerk-auth-bridge";
+
+const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
 /**
- * App-wide client providers. Wraps the tree in TanStack Query so any screen
- * (client, worker, admin) can use the hooks in `lib/hooks.ts`.
- * Mounted once in `app/layout.tsx`. OWNERSHIP: thin-frontend (Cursor) side.
+ * App-wide client providers. Clerk wraps the tree only when publishable key is set
+ * (AUTH_MODE=clerk on the API). Otherwise demo stubs remain.
  */
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -22,7 +26,17 @@ export function Providers({ children }: { children: ReactNode }) {
       })
   );
 
-  return (
+  const inner = (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+
+  if (!clerkEnabled) {
+    return inner;
+  }
+
+  return (
+    <ClerkProvider>
+      <ClerkAuthBridge>{inner}</ClerkAuthBridge>
+    </ClerkProvider>
   );
 }
