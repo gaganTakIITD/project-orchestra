@@ -40,36 +40,36 @@ export default function FAQ() {
   const [openIdx, setOpenIdx] = useState<number | null>(0);
 
   return (
-    <section id="faq" className="py-20 sm:py-32">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4">Frequently asked</h2>
-          <p className="text-lg text-muted-foreground">
+    <section id="faq" className="border-b border-border">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
+
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-16">
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Frequently asked</h2>
+          <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
             Everything you need to know about how Orchestra works.
           </p>
         </div>
 
-        <div className="space-y-3">
+        <div className="max-w-3xl border border-border divide-y divide-border">
           {faqs.map((faq, idx) => (
-            <div
-              key={idx}
-              className="border border-border rounded-lg overflow-hidden"
-            >
+            <div key={idx}>
               <button
                 onClick={() => setOpenIdx(openIdx === idx ? null : idx)}
-                className="w-full px-6 py-4 flex items-center justify-between bg-card hover:bg-muted transition text-left"
+                className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-card transition-colors"
+                aria-expanded={openIdx === idx}
               >
-                <span className="font-semibold">{faq.question}</span>
+                <span className="font-semibold text-sm pr-4">{faq.question}</span>
                 <ChevronDown
-                  className={`w-5 h-5 text-muted-foreground transition-transform ${
-                    openIdx === idx ? 'rotate-180' : ''
+                  className={`w-4 h-4 text-muted-foreground flex-shrink-0 transition-transform duration-200 ${
+                    openIdx === idx ? "rotate-180" : ""
                   }`}
+                  aria-hidden="true"
                 />
               </button>
 
               {openIdx === idx && (
-                <div className="px-6 py-4 bg-background border-t border-border">
-                  <p className="text-muted-foreground leading-relaxed">
+                <div className="px-6 pb-5 border-t border-border bg-card">
+                  <p className="text-sm text-muted-foreground leading-relaxed pt-4">
                     {faq.answer}
                   </p>
                 </div>
@@ -78,15 +78,16 @@ export default function FAQ() {
           ))}
         </div>
 
-        <div className="mt-12 p-6 bg-primary/5 border border-primary/20 rounded-lg text-center">
-          <p className="text-muted-foreground mb-3">Still have questions?</p>
+        <div className="mt-10 border border-border p-8 max-w-3xl">
+          <p className="text-sm text-muted-foreground mb-2">Still have questions?</p>
           <a
             href="mailto:hello@orchestrapro.com"
-            className="text-primary font-medium hover:underline"
+            className="text-sm font-semibold text-primary hover:underline"
           >
-            Contact us at hello@orchestrapro.com
+            hello@orchestrapro.com
           </a>
         </div>
+
       </div>
     </section>
   );

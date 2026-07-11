@@ -1,94 +1,75 @@
-'use client';
+import Link from "next/link";
 
-import Link from 'next/link';
-import { ArrowRight, Lightbulb, TrendingUp } from 'lucide-react';
+const clientPoints = [
+  "No project management—we handle every detail",
+  "Live progress tracking from brief to delivery",
+  "Fixed price with no surprises",
+  "Quality gates verified by AI before delivery",
+];
+
+const talentPoints = [
+  "Pre-verified outcomes—no bad-faith clients",
+  "Fair skill-based matching on every project",
+  "Clear specs and acceptance criteria upfront",
+  "Competitive payouts triggered on approval",
+];
 
 export default function AudienceSplit() {
   return (
-    <section className="py-20 sm:py-32">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8">
+    <section className="border-b border-border">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
+        <div className="grid grid-cols-1 lg:grid-cols-2 border border-border divide-y lg:divide-y-0 lg:divide-x divide-border">
+
           {/* For Clients */}
-          <div className="group">
-            <div className="bg-card border border-border rounded-lg p-8 h-full flex flex-col hover:border-primary transition">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-6">
-                <Lightbulb className="w-6 h-6 text-primary" />
-              </div>
-
-              <h3 className="text-2xl font-bold mb-3">For clients</h3>
-              <p className="text-muted-foreground mb-6 flex-grow">
-                Stop hiring freelancers for every project. Describe what you need and let our AI general contractor orchestrate a verified team to deliver it end-to-end—on time, on budget, quality guaranteed.
-              </p>
-
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-start gap-3">
-                  <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
-                  <span className="text-sm">No project management—we handle every detail</span>
+          <div className="p-8 lg:p-12 flex flex-col gap-6">
+            <p className="text-xs font-mono tracking-widest uppercase text-primary">For clients</p>
+            <h3 className="text-2xl font-bold tracking-tight">
+              Stop managing freelancers.<br />Get the outcome.
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Describe what you need and let our AI general contractor orchestrate a verified team to deliver it end-to-end—on time, on budget, quality guaranteed.
+            </p>
+            <ul className="flex flex-col gap-3">
+              {clientPoints.map((p) => (
+                <li key={p} className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-primary flex-shrink-0 mt-1.5" aria-hidden="true" />
+                  <span className="text-sm">{p}</span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
-                  <span className="text-sm">Live progress tracking from brief to delivery</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
-                  <span className="text-sm">Fixed price with no surprises</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
-                  <span className="text-sm">Quality gates verified by AI</span>
-                </li>
-              </ul>
-
-              <Link
-                href="/start"
-                className="inline-flex items-center gap-2 text-primary font-semibold hover:gap-3 transition"
-              >
-                Start your outcome
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
+              ))}
+            </ul>
+            <Link
+              href="/start"
+              className="inline-flex items-center h-11 px-8 bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity self-start mt-2"
+            >
+              Start your outcome
+            </Link>
           </div>
 
           {/* For Talent */}
-          <div className="group">
-            <div className="bg-card border border-border rounded-lg p-8 h-full flex flex-col hover:border-primary transition">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-6">
-                <TrendingUp className="w-6 h-6 text-primary" />
-              </div>
-
-              <h3 className="text-2xl font-bold mb-3">For talent</h3>
-              <p className="text-muted-foreground mb-6 flex-grow">
-                Are you a designer or developer at IIT Delhi? Join our verified community. Get matched to real outcomes, work with quality clients, and build your portfolio while earning competitive payouts—all without the hustle of a freelance marketplace.
-              </p>
-
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-start gap-3">
-                  <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
-                  <span className="text-sm">Pre-verified outcomes—no bad clients</span>
+          <div className="p-8 lg:p-12 flex flex-col gap-6">
+            <p className="text-xs font-mono tracking-widest uppercase text-primary">For talent</p>
+            <h3 className="text-2xl font-bold tracking-tight">
+              IIT Delhi builders:<br />get matched to real work.
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Join our verified community. Get matched to real outcomes, work with quality clients, build your portfolio, and earn competitive payouts—without the hustle of a freelance marketplace.
+            </p>
+            <ul className="flex flex-col gap-3">
+              {talentPoints.map((p) => (
+                <li key={p} className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-primary flex-shrink-0 mt-1.5" aria-hidden="true" />
+                  <span className="text-sm">{p}</span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
-                  <span className="text-sm">Fair matching based on your skills</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
-                  <span className="text-sm">Clear specs and criteria upfront</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
-                  <span className="text-sm">Competitive payouts on every delivery</span>
-                </li>
-              </ul>
-
-              <Link
-                href="/join"
-                className="inline-flex items-center gap-2 text-primary font-semibold hover:gap-3 transition"
-              >
-                Apply to join
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
+              ))}
+            </ul>
+            <Link
+              href="/join"
+              className="inline-flex items-center h-11 px-8 border border-border text-foreground text-sm font-semibold hover:bg-card transition-colors self-start mt-2"
+            >
+              Apply to join
+            </Link>
           </div>
+
         </div>
       </div>
     </section>

@@ -1,64 +1,53 @@
-'use client';
+import Link from "next/link";
 
-import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+const trustMarkers = [
+  "Campus-verified IIT Delhi talent",
+  "AI-verified quality gates",
+  "Fixed price, clear deadline",
+];
 
 export default function Hero() {
   return (
-    <section className="relative py-20 sm:py-32 overflow-hidden">
-      {/* Subtle background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background pointer-events-none" />
-      
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
-          {/* Badge */}
-          <div className="inline-block mb-6 px-4 py-2 bg-primary/10 border border-primary/20 rounded-full">
-            <span className="text-sm font-medium text-primary">AI-native Outcome-as-a-Service</span>
-          </div>
+    <section className="border-b border-border">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-20 pb-16 lg:pt-28 lg:pb-24">
 
-          {/* Headline */}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-            Tell us the result.{' '}
-            <span className="text-primary">We deliver it.</span>
-          </h1>
+        <p className="text-xs font-mono tracking-widest uppercase text-primary mb-8">
+          AI-native Outcome-as-a-Service
+        </p>
 
-          {/* Subheading */}
-          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            Describe the digital outcome you need—a brand, landing page, or app feature. Our AI general contractor plans it, our campus-verified talent executes it, and we verify every handoff. You get the finished result.
+        <h1 className="text-5xl sm:text-6xl lg:text-8xl font-bold tracking-tight leading-none text-balance mb-10">
+          Tell us the result.<br />
+          <span className="text-primary">We deliver it.</span>
+        </h1>
+
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
+          <p className="text-lg text-muted-foreground max-w-xl leading-relaxed">
+            Describe the digital outcome you need—brand, landing page, or app feature. Our AI general contractor plans, staffs with verified IIT Delhi talent, verifies every handoff, and ships the finished result.
           </p>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
             <Link
               href="/start"
-              className="inline-flex items-center justify-center px-8 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 transition"
+              className="inline-flex items-center justify-center h-11 px-8 bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
             >
               Describe your outcome
-              <ArrowRight className="ml-2 w-4 h-4" />
             </Link>
             <Link
               href="/join"
-              className="inline-flex items-center justify-center px-8 py-3 border border-border bg-card text-foreground rounded-lg font-semibold hover:bg-muted transition"
+              className="inline-flex items-center justify-center h-11 px-8 border border-border text-foreground text-sm font-semibold hover:bg-card transition-colors"
             >
               Join as talent
             </Link>
           </div>
+        </div>
 
-          {/* Trust indicators */}
-          <div className="mt-16 flex flex-col sm:flex-row items-center justify-center gap-8 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-primary rounded-full" />
-              <span>Campus-verified IIT Delhi talent</span>
+        <div className="mt-12 pt-8 border-t border-border flex flex-wrap gap-x-10 gap-y-4">
+          {trustMarkers.map((m) => (
+            <div key={m} className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-primary flex-shrink-0" aria-hidden="true" />
+              <span className="text-xs font-mono tracking-widest uppercase text-muted-foreground">{m}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-primary rounded-full" />
-              <span>AI-verified quality gates</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-primary rounded-full" />
-              <span>Fixed price, clear deadline</span>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </section>
