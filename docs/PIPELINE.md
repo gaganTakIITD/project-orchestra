@@ -98,17 +98,19 @@
 
 ### N3. Stage 3 worker screens
 
-- Owner: `v0` ← **REQUEST THIS NOW** (paste prompt in `docs/V0_HANDOFF.md`)
+- Owner: `v0` + `cursor` (hook wiring)
 
-- [ ] `/worker/onboarding` — profile wizard + completion meter (≥70% gate)
+- [x] `/join` — talent landing + CTA → `/worker/onboarding`
 
-- [ ] `/worker` — task inbox (worker labels, priority countdown)
+- [x] `/worker/onboarding` — profile wizard + ≥70% gate (v0)
 
-- [ ] `/worker/tasks/[taskId]` — **Charter + TaskPacket (job card)** via `useCharter` + `useTaskPacket`, submit, QA feedback
+- [x] `/worker` — task inbox via `useWorkerProfile` + `useMyTasks` (wired to contract)
 
-- Contract ready: `TaskPacket` type, `useTaskPacket()`, `GET /tasks/{id}/charter` + `/packet` (created when plan builds)
+- [x] `/worker/tasks/[taskId]` — Charter + TaskPacket job card via hooks + accept/submit
 
-- **Done when:** worker journey clickable on mock data.
+- [x] Backend: `GET /workers/profile`, `GET /workers/me/tasks`, charter/packet APIs
+
+- **Done when:** worker journey clickable on mock data — **met** (`85bb178` UI + contract bind)
 
 
 
