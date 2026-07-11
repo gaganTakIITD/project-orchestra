@@ -140,11 +140,14 @@ def build_plan_fixture(
 
 
 def match_candidates_fixture(*, task_id: uuid.UUID) -> list[dict[str, Any]]:
-    """Fixture Matcher shortlist — same shape as lib/mock-data mockCandidates."""
+    """Fixture Matcher shortlist — demo worker UUID matches DEMO_WORKER_ID seed."""
+    from app.models.identity import DEMO_WORKER_ID
+
     _ = task_id
+    wid = str(DEMO_WORKER_ID)
     return [
         {
-            "worker_id": "usr_worker_rohan",
+            "worker_id": wid,
             "full_name": "Rohan Verma",
             "profile_photo_url": None,
             "headline": "Brand & logo designer — clean, systematic identities",

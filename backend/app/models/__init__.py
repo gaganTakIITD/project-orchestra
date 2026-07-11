@@ -9,7 +9,7 @@ from app.models.fulfillment import (
     TaskPacketRecord,
     TaskPreferenceSet,
 )
-from app.models.identity import User
+from app.models.identity import User, WorkerProfileRecord
 from app.models.platform import AiDecisionLog, EventLog
 
 __all__ = [
@@ -29,6 +29,7 @@ __all__ = [
     "CharterRecord",
     "TaskPacketRecord",
     "User",
+    "WorkerProfileRecord",
     "EventLog",
     "AiDecisionLog",
 ]

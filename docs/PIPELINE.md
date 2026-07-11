@@ -124,9 +124,9 @@
 
 - Owner: `cursor`
 
-- [ ] WorkerProfileService + `GET /workers/profile`, `GET /workers/me/tasks`
+- [x] WorkerProfileService + `GET /workers/profile`, `GET /workers/me/tasks` (demo Rohan seed)
 
-- [ ] Real JWT auth (replace demo client stub)
+- [ ] Real JWT auth (replace demo client/worker stubs)
 
 - [ ] `GET /orders/{id}/delivery`, discussion threads
 

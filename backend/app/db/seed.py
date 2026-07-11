@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.catalog import OutcomeSku, Skill, TaskType, Tool
-from app.models.identity import DEMO_CLIENT_ID, User
+from app.models.identity import DEMO_CLIENT_ID, DEMO_WORKER_ID, User, WorkerProfileRecord
 
 # Stable UUIDs so re-seeding is idempotent across environments.
 SKU_IDS = {
@@ -121,6 +121,106 @@ async def seed_demo_client(session: AsyncSession) -> None:
                 role="client",
                 is_active=True,
                 email_verified=True,
+            )
+        )
+        await session.commit()
+
+
+async def seed_demo_worker(session: AsyncSession) -> None:
+    """Rohan Verma — demo worker for Stage 3 inbox (matches lib/mock-data mockWorkerMe)."""
+    user = await session.get(User, DEMO_WORKER_ID)
+    if user is None:
+        session.add(
+            User(
+                id=DEMO_WORKER_ID,
+                email="rohan@iitd.ac.in",
+                full_name="Rohan Verma",
+                role="worker",
+                is_active=True,
+                email_verified=True,
+            )
+        )
+        await session.flush()
+
+    profile = await session.get(WorkerProfileRecord, DEMO_WORKER_ID)
+    if profile is None:
+        session.add(
+            WorkerProfileRecord(
+                user_id=DEMO_WORKER_ID,
+                community_type="design",
+                headline="Brand & logo designer — clean, systematic identities",
+                bio=(
+                    "IIT Delhi design community. I build brand systems and logos "
+                    "with a focus on clarity and reuse. 30+ campus projects delivered."
+                ),
+                availability_status="available",
+                weekly_hours_available=18,
+                max_concurrent_tasks=2,
+                payout_min=1500,
+                payout_max=6000,
+                campus_verified=True,
+                is_active=True,
+                profile_completion_pct=85,
+                figma_url="https://figma.com/@rohanverma",
+                behance_url="https://behance.net/rohanverma",
+                linkedin_url="https://linkedin.com/in/rohanverma",
+                skills=[
+                    {
+                        "skill_id": "skill_logo",
+                        "name": "Logo Design",
+                        "proficiency": "expert",
+                        "years_experience": 3,
+                    },
+                    {
+                        "skill_id": "skill_brand",
+                        "name": "Brand Identity",
+                        "proficiency": "advanced",
+                        "years_experience": 2,
+                    },
+                    {"skill_id": "skill_figma", "name": "Figma", "proficiency": "advanced"},
+                ],
+                tools=[
+                    {"tool_id": "tool_figma", "name": "Figma", "proficiency": "expert"},
+                    {"tool_id": "tool_illustrator", "name": "Illustrator", "proficiency": "advanced"},
+                ],
+                task_types=[
+                    {
+                        "task_type_id": "tt_brand",
+                        "name": "Brand Identity",
+                        "slug": "brand_identity",
+                        "proficiency": "advanced",
+                    },
+                    {
+                        "task_type_id": "tt_logo",
+                        "name": "Logo Design",
+                        "slug": "logo_design",
+                        "proficiency": "expert",
+                    },
+                ],
+                portfolio=[
+                    {
+                        "id": "pf_1",
+                        "worker_id": str(DEMO_WORKER_ID),
+                        "title": "Medlink — clinic brand identity",
+                        "description": "Full brand system for a telehealth clinic.",
+                        "category": "Brand Identity",
+                        "cover_image_url": None,
+                        "project_url": "https://behance.net/rohanverma/medlink",
+                        "tags": ["healthcare", "branding", "logo"],
+                        "tools_used": ["Figma", "Illustrator"],
+                        "is_featured": True,
+                    }
+                ],
+                stats={
+                    "worker_id": str(DEMO_WORKER_ID),
+                    "tasks_completed": 27,
+                    "on_time_pct": 96,
+                    "avg_qa_score": 91,
+                    "avg_rating": 4.8,
+                    "response_time_hours": 3.2,
+                    "seller_level": "trusted",
+                    "last_active_at": None,
+                },
             )
         )
         await session.commit()
