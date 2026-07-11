@@ -74,6 +74,7 @@ async def test_spine_task_transitions_persist_events(db_session):
         payout_amount=2000,
     )
     db_session.add(order)
+    await db_session.flush()
     db_session.add(task)
     await db_session.flush()
 
@@ -102,15 +103,23 @@ async def test_spine_task_transitions_persist_events(db_session):
 
 @pytest.mark.asyncio
 async def test_spine_illegal_transition_in_db(db_session):
+    order = OutcomeOrder(
+        id=uuid.uuid4(),
+        client_id=uuid.uuid4(),
+        status=OrderStatus.CONFIRMED,
+        price=1000,
+    )
     task = FulfillmentTask(
         id=uuid.uuid4(),
-        order_id=uuid.uuid4(),
+        order_id=order.id,
         title="Test",
         status=TaskStatus.BLOCKED,
         sequence_order=1,
         acceptance_criteria=[],
         payout_amount=1000,
     )
+    db_session.add(order)
+    await db_session.flush()
     db_session.add(task)
     await db_session.flush()
 

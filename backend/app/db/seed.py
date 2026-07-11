@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.catalog import OutcomeSku, Skill, TaskType, Tool
+from app.models.identity import DEMO_CLIENT_ID, User
 
 # Stable UUIDs so re-seeding is idempotent across environments.
 SKU_IDS = {
@@ -107,3 +108,19 @@ async def seed_catalog(session: AsyncSession) -> None:
             )
 
     await session.commit()
+
+
+async def seed_demo_client(session: AsyncSession) -> None:
+    exists = await session.get(User, DEMO_CLIENT_ID)
+    if exists is None:
+        session.add(
+            User(
+                id=DEMO_CLIENT_ID,
+                email="ananya@healthtrack.in",
+                full_name="Ananya Sharma",
+                role="client",
+                is_active=True,
+                email_verified=True,
+            )
+        )
+        await session.commit()

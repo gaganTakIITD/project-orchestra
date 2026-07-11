@@ -38,8 +38,28 @@ export const useOrder = (orderId: string) =>
 export const usePlan = (orderId: string) =>
   useQuery({ queryKey: ["plan", orderId], queryFn: () => clientApi.getPlan(orderId) });
 
-export const useSpec = () =>
-  useQuery({ queryKey: ["spec"], queryFn: clientApi.getSpec });
+export const useSpec = (intentId: string) =>
+  useQuery({
+    queryKey: ["spec", intentId],
+    queryFn: () => clientApi.getSpec(intentId),
+    enabled: Boolean(intentId),
+  });
+
+export const useCreateIntent = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (rawText: string) => clientApi.createIntent(rawText),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["spec"] }),
+  });
+};
+
+export const useAcceptQuote = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (quoteId: string) => clientApi.acceptQuote(quoteId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["order"] }),
+  });
+};
 
 export const useQuote = (quoteId: string) =>
   useQuery({ queryKey: ["quote", quoteId], queryFn: () => clientApi.getQuote(quoteId) });

@@ -13,11 +13,9 @@
 
 ### N1. Verify backend B1 runtime + bind gate #1 (catalog)
 - Owner: `cursor` + `founder`
-- [!] Start Docker Desktop (founder — **still blocked**)
 - [ ] `docker compose up -d --build` → all 4 services healthy
 - [ ] `curl localhost:8000/api/v1/catalog/skus` returns 3 seeded SKUs
 - [ ] `.env.local` with `NEXT_PUBLIC_USE_MOCKS=false` → homepage catalog renders from Postgres
-- [ ] Commit + push B1 to `core`
 - **Done when:** homepage SKU cards load from the real API in the browser.
 
 ### N2. Backend B2 — The Spine (state machines)
@@ -25,31 +23,40 @@
 - [x] `event_log` model + EventWriter (same-transaction)
 - [x] Order + Task transition maps per Tech Spec §5
 - [x] TaskSpine + OrderSpine services
-- [x] pytest: legal/illegal transitions (pure graph tests ✅)
+- [x] pytest: legal/illegal transitions
 - [x] In-memory timer stub (Redis worker in B5)
-- [ ] Integration pytest with Postgres (needs Docker)
+- [ ] Integration pytest with Postgres (needs Docker running)
 - **Done when:** pytest drives `blocked → ready → invited` with events in DB.
 
 ### N3. Stage 2 client screens (UI shells on mocks)
-- Owner: `v0`
-- [ ] `/proposal/[quoteId]` — spec + quote card (per `docs/V0_HANDOFF.md` spec)
+- Owner: `v0` ← **REQUEST SENT — see `docs/V0_HANDOFF.md` Stage 2 prompt**
+- [ ] `/proposal/[quoteId]` — spec + quote card
 - [ ] `/orders/[orderId]` — milestone tracker (client labels only)
 - [ ] `/orders/[orderId]/preferences/[taskId]` — pick ≥3 workers
-- [ ] Wire `/start` form to `clientApi.createIntent` → route to proposal
+- [ ] Wire `/start` form to `useCreateIntent()` → route to proposal
 - **Done when:** full client journey clickable on mock data.
+
+### N4. Backend B3 — bind gate #2 (intent → quote → order)
+- Owner: `cursor` ← **IN PROGRESS**
+- [x] Demo client seed + `GET /auth/me` stub
+- [x] `POST /intents` + fixture Spec Compiler → spec + quote
+- [x] `GET /intents/{id}` (OutcomeSpec), `GET /quotes/{id}`, `POST /quotes/{id}/accept`
+- [x] `GET /orders/{id}`
+- [x] Contract hooks: `useCreateIntent`, `useAcceptQuote`, `useSpec(intentId)`
+- [ ] pytest intent flow with Postgres
+- [ ] Browser verify: `/start` with `USE_MOCKS=false` → real proposal
+- **Done when:** client can submit intent and confirm quote against real API.
 
 ---
 
 ## 📋 NEXT (queued — start when NOW empties)
 
-### X1. Backend B3 — core services + bind gate #2
+### X1. Backend B3 — core services + bind gate #2 (continued)
 - Owner: `cursor`
-- [ ] Auth (register/login/JWT) + `/auth/me`
-- [ ] IntentService → `POST /intents` (emits `IntentCaptured`)
-- [ ] QuoteService (deterministic price formula from SKU band)
-- [ ] OrderService (accept quote → freeze spec → `OrderConfirmed`)
+- [ ] FulfillmentService — build_plan on order confirm (Architect fixture)
+- [ ] `GET /orders/{id}/milestones` for tracker
 - [ ] WorkerProfileService + completion %
-- [ ] **Bind gate #2:** `/start` → real intent → real proposal page
+- [ ] Real JWT auth (replace demo client stub)
 
 ### X2. Backend B4 — AI gateway + 4 agents (fixtures → Gemini)
 - Owner: `cursor`
@@ -92,7 +99,8 @@
 - [x] Shared contract: `lib/types.ts`, `mock-data.ts`, `api.ts`, `hooks.ts`, `state-labels.ts`
 - [x] Design tokens + `docs/V0_HANDOFF.md`
 - [x] Stage 1 homepage refresh (v0 — Lumena/Bauhaus redesign, Framer Motion, a11y pass)
-- [x] B2 Spine code: state machines, event_log, TaskSpine/OrderSpine, timer stub, pytest (5 pass)
+- [x] B2 Spine code: state machines, event_log, TaskSpine/OrderSpine, timer stub, pytest
+- [x] B3 slice: auth stub, intent/quote/order API, fixture spec compiler, client hooks
 - [x] Agent framework: `AGENTS.md` playbook + `.cursor/rules/` (frontend contract, backend spine)
 
 ---
