@@ -17,7 +17,13 @@ The frontend is built in parallel by two collaborators, coordinated through GitH
 
 The two never collide because both build against the **frozen contract** in `lib/`. When the real backend lands, the UI keeps working unchanged — we just flip one flag.
 
-**👉 If you are v0 (or prompting v0), read [`docs/V0_HANDOFF.md`](docs/V0_HANDOFF.md) first.**
+**👉 Start here, whoever you are:**
+
+| You are | Read first |
+|---------|-----------|
+| Any agent or contributor | [`docs/PIPELINE.md`](docs/PIPELINE.md) — what to work on now · [`AGENTS.md`](AGENTS.md) — the rules |
+| v0 (or prompting v0) | [`docs/V0_HANDOFF.md`](docs/V0_HANDOFF.md) — UI contract + per-screen specs |
+| Backend work | [`docs/BACKEND_IMPLEMENTATION_PLAN.md`](docs/BACKEND_IMPLEMENTATION_PLAN.md) — phases B1–B6 |
 
 ---
 
@@ -46,12 +52,40 @@ Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · shadcn/u
 
 ## Getting started
 
+### Frontend only (mocks — no backend needed)
+
 ```bash
 npm install
 npm run dev        # http://localhost:3000
 ```
 
-The app runs entirely on **mock data** today (`NEXT_PUBLIC_USE_MOCKS` defaults to `true`). No backend required to build and preview every screen.
+The app runs on **mock data** by default (`NEXT_PUBLIC_USE_MOCKS` unset or not `false`).
+
+### Full stack (frontend bound to real API)
+
+**Requires Docker Desktop running.**
+
+```bash
+# 1. Env
+cp .env.example .env
+# For Next.js, also create .env.local with:
+#   NEXT_PUBLIC_USE_MOCKS=false
+#   NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
+
+# 2. Backend + data stores
+docker compose up -d --build
+
+# 3. Verify API
+curl http://localhost:8000/api/v1/health
+curl http://localhost:8000/api/v1/catalog/skus
+
+# 4. Frontend
+npm install
+npm run dev
+```
+
+See **`docs/BACKEND_IMPLEMENTATION_PLAN.md`** for the full phased backend + binding plan.
+
 
 ## The build stages
 

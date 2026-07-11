@@ -98,13 +98,13 @@ export const catalogApi = {
 // ----------------------------------------------------------------------------
 
 export const clientApi = {
-  createIntent: (raw_text: string): Promise<{ intent_id: string }> =>
+  createIntent: (raw_text: string): Promise<{ intent_id: string; quote_id: string }> =>
     USE_MOCKS
-      ? mock({ intent_id: "int_healthtrack" })
+      ? mock({ intent_id: "int_healthtrack", quote_id: "quote_healthtrack" })
       : apiFetch("/intents", { method: "POST", body: JSON.stringify({ raw_text, attachments: [] }) }),
 
-  getSpec: (): Promise<OutcomeSpec> =>
-    USE_MOCKS ? mock(mockSpec) : apiFetch(`/intents/${mockSpec.intent_id}`),
+  getSpec: (intentId: string): Promise<OutcomeSpec> =>
+    USE_MOCKS ? mock(mockSpec) : apiFetch(`/intents/${intentId}`),
 
   getQuote: (id: string): Promise<Quote> =>
     USE_MOCKS ? mock(mockQuote) : apiFetch(`/quotes/${id}`),

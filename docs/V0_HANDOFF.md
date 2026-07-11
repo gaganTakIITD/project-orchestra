@@ -106,7 +106,60 @@ Trustworthy + modern. **Primary = indigo** (intelligence / trust). Clean neutral
 
 ---
 
-## Ready-to-paste v0 prompt (Stage 1 homepage)
+## Ready-to-paste v0 prompt (Stage 2 — client workflow) ⟵ **REQUEST THIS NOW**
+
+```
+Build Stage 2 of the Project Orchestra client workflow (4 screens). We already have
+the marketing homepage at "/" and static shells at "/start" and "/join". Wire the
+full client journey on MOCK DATA via our shared contract — do NOT edit lib/**.
+
+Golden rules (must follow):
+- Import types from @/lib/types only
+- Fetch data ONLY through hooks in @/lib/hooks — never fetch() directly
+- Style with design tokens: bg-background, text-primary, border-border, etc.
+- Put presentational components in components/; pages in app/
+- Match existing Lumena/Bauhaus homepage aesthetic (indigo primary, spacious, mono labels)
+
+Screens to build (in order):
+
+1) UPDATE /start — intent capture
+   - Chat-style layout: large textarea + 2–3 example prompt chips
+   - On submit: useCreateIntent() from @/lib/hooks with the textarea text
+   - On success: router.push(`/proposal/${data.quote_id}`)
+   - States: empty, submitting (disable button + spinner), error toast
+
+2) NEW /proposal/[quoteId] — outcome proposal + price
+   - On /start success, save intent_id from createIntent response to sessionStorage key "last_intent_id"
+   - Data: useQuote(quoteId), useSpec(sessionStorage intent_id)
+   - Render OutcomeSpec: outcome_statement, deliverables, acceptance_criteria (badge each check_type),
+     in_scope, out_of_scope, assumptions, client_inputs_required
+   - Show Quote card: price (INR), deadline, revision_limit, ai_rationale
+   - CTA "Confirm & fund": useAcceptQuote(quoteId) → router.push(`/orders/${order_id}`)
+   - States: loading skeleton, loaded
+
+3) NEW /orders/[orderId] — live milestone tracker
+   - Data: useOrder(orderId), usePlan(orderId)
+   - Show progress_pct bar, order status via orderStatusClientLabel from @/lib/state-labels
+   - Milestone list from plan.tasks with taskStatusClientLabel + taskStatusTone badges
+   - NEVER show worker failure states (rework = "In progress" for client view)
+   - Placeholder panels for chat and delivery (can be empty cards labeled "Discussion" / "Delivery" for now)
+   - Link to preferences when a task status is "ready" or "invited": `/orders/${orderId}/preferences/${taskId}`
+
+4) NEW /orders/[orderId]/preferences/[taskId] — pick workers
+   - Data: useCandidates(orderId, taskId), useSetPreferences(orderId, taskId)
+   - Candidate cards: name, headline, score, rationale, seller_level, on_time_pct
+   - Client must select/rank at least 3 workers before submit
+   - Submit → invalidate + navigate back to /orders/[orderId]
+   - States: loading, selecting (show count "2/3 selected"), submitting
+
+Reference mock scenario IDs in lib/mock-data.ts: quote_healthtrack, ord_healthtrack, int_healthtrack.
+Import FulfillmentTask, Candidate, Quote types from @/lib/types.
+
+Do not build auth/login pages yet — demo runs as anonymous client on mocks.
+Do not edit lib/**, backend/**, or package.json unless adding a shadcn component.
+```
+
+---
 
 ```
 Build the marketing homepage (route "/") for "Project Orchestra", an AI-native
