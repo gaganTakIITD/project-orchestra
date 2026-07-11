@@ -2,22 +2,38 @@
 
 import { useSkus } from "@/lib/hooks";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { useInView } from "framer-motion";
+import { useRef } from "react";
+import { staggerContainer, staggerItem } from "@/lib/animations";
 
 export default function OutcomeCatalog() {
   const { data: skus, isLoading } = useSkus();
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "0px 0px -100px 0px" });
 
   return (
-    <section id="outcomes" className="border-b border-border">
+    <section id="outcomes" className="border-b-4 border-foreground" ref={ref}>
       <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
 
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-16">
+        <motion.div 
+          className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-16"
+          initial={{ opacity: 0, y: 20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+          transition={{ duration: 0.6 }}
+        >
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Our outcomes</h2>
           <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
             Choose from proven outcome packages, or describe your own and we&apos;ll price it.
           </p>
-        </div>
+        </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border border-border divide-y md:divide-y-0 md:divide-x divide-border">
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border-2 border-foreground divide-y-2 md:divide-y-0 md:divide-x-2 divide-foreground"
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
+          variants={staggerContainer}
+        >
           {isLoading
             ? Array.from({ length: 3 }).map((_, idx) => (
                 <div key={idx} className="p-8 animate-pulse flex flex-col gap-4">
@@ -29,10 +45,15 @@ export default function OutcomeCatalog() {
               ))
             : skus && skus.length > 0
             ? skus.map((sku) => (
-                <div key={sku.id} className="p-8 flex flex-col gap-5 hover:bg-card transition-colors">
+                <motion.div 
+                  key={sku.id} 
+                  className="p-8 flex flex-col gap-5 hover:bg-muted transition-colors border-r border-foreground last:border-r-0"
+                  variants={staggerItem}
+                  whileHover={{ y: -4 }}
+                >
                   <div>
-                    <h3 className="text-base font-semibold mb-2">{sku.name}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+                    <h3 className="text-base font-bold mb-2 text-foreground">{sku.name}</h3>
+                    <p className="text-sm text-foreground leading-relaxed line-clamp-3 font-mono opacity-90">
                       {sku.description}
                     </p>
                   </div>
@@ -40,23 +61,25 @@ export default function OutcomeCatalog() {
                     <span className="text-3xl font-bold text-primary font-mono">
                       ₹{sku.base_price.toLocaleString("en-IN")}
                     </span>
-                    <span className="text-xs font-mono tracking-widest uppercase text-muted-foreground">
+                    <span className="text-xs font-mono tracking-widest uppercase text-foreground opacity-70">
                       ~{sku.typical_days} days
                     </span>
                   </div>
-                  <Link
-                    href="/start"
-                    className="inline-flex items-center h-9 px-5 border border-primary text-primary text-xs font-mono tracking-widest uppercase hover:bg-primary hover:text-primary-foreground transition-colors self-start"
-                  >
-                    Start outcome
-                  </Link>
-                </div>
+                  <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
+                    <Link
+                      href="/start"
+                      className="inline-flex items-center h-9 px-5 border-2 border-primary text-primary text-xs font-mono tracking-widest uppercase hover:bg-primary hover:text-primary-foreground transition-colors self-start font-bold"
+                    >
+                      Start outcome
+                    </Link>
+                  </motion.div>
+                </motion.div>
               ))
             : (
                 <div className="col-span-full p-12 text-center">
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-foreground font-mono">
                     No outcomes yet. Describe your own at{" "}
-                    <Link href="/start" className="text-primary hover:underline">
+                    <Link href="/start" className="text-primary hover:text-accent underline font-bold">
                       /start
                     </Link>.
                   </p>
