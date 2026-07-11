@@ -409,7 +409,7 @@ Chat surfaces are **client-first**. Worker surfaces read **downstream artifacts*
 
 ### Contract gaps to add (`lib/types.ts`)
 
-- [ ] `TaskPacket` — checklist, inputs, rubric summary (Spec §8 Task Packet Generator)
+- [x] `TaskPacket` — checklist, inputs, rubric summary (Spec §8 Task Packet Generator) — fixture generator + API + `useTaskPacket`
 - [ ] Optional: client-facing alias `OutcomeJobDescription` = `OutcomeSpec` in UI copy only
 
 ### UI components (v0)

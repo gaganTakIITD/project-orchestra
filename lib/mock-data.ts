@@ -12,6 +12,7 @@ import type {
   AppNotification,
   Candidate,
   Charter,
+  TaskPacket,
   DeliveryBundle,
   DiscussionThread,
   FulfillmentPlan,
@@ -490,6 +491,41 @@ export const mockCharter: Charter = {
     out_of_scope: ["Brand guide", "Social templates"],
   },
   mutual_start_at: null,
+  created_at: hoursFromNow(-4),
+};
+
+export const mockTaskPacket: TaskPacket = {
+  id: "packet_logo",
+  task_id: "task_logo",
+  charter_id: mockCharter.id,
+  version: 1,
+  brief:
+    "Deliver a clean HealthTrack logo (SVG + PNG) that matches the approved brand direction and works as a favicon.",
+  checklist: [
+    {
+      id: "chk_1",
+      label: "Export logo as SVG and PNG",
+      source_criterion: "Logo delivered in SVG and PNG",
+      required: true,
+      done: false,
+    },
+    {
+      id: "chk_2",
+      label: "Confirm mark works at favicon size",
+      required: true,
+      done: false,
+    },
+    {
+      id: "chk_3",
+      label: "Align with approved brand direction",
+      source_criterion: "Matches approved brand direction",
+      required: true,
+      done: false,
+    },
+  ],
+  client_inputs: ["company_name", "tagline", "reference_sites"],
+  dependencies: ["Brand direction"],
+  references: [],
   created_at: hoursFromNow(-4),
 };
 

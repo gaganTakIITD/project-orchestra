@@ -280,6 +280,30 @@ export interface Charter {
   created_at: string;
 }
 
+/** Worker job card — operational checklist derived from Charter / OutcomeSpec. */
+export interface TaskPacketChecklistItem {
+  id: string;
+  label: string;
+  source_criterion?: string;
+  required: boolean;
+  done?: boolean;
+}
+
+export interface TaskPacket {
+  id: string;
+  task_id: string;
+  charter_id: string;
+  version: number;
+  /** Short worker brief — "what good looks like". */
+  brief: string;
+  checklist: TaskPacketChecklistItem[];
+  client_inputs: string[];
+  /** Human-readable dependency labels (prior tasks). */
+  dependencies: string[];
+  references: string[];
+  created_at: string;
+}
+
 export type AmendmentStatus = "requested" | "priced" | "approved" | "rejected";
 
 export interface Amendment {

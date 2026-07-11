@@ -85,3 +85,42 @@ class TaskPreferenceSet(Base):
     )
     entries: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CharterRecord(Base):
+    """Frozen per-task job contract (snapshot from OutcomeSpec + Architect task)."""
+
+    __tablename__ = "charters"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("outcome_orders.id"), nullable=False, index=True
+    )
+    task_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("fulfillment_tasks.id"), unique=True, nullable=False, index=True
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    mutual_start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class TaskPacketRecord(Base):
+    """Worker job card — checklist + brief derived from Charter."""
+
+    __tablename__ = "task_packets"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    task_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("fulfillment_tasks.id"), unique=True, nullable=False, index=True
+    )
+    charter_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("charters.id"), nullable=False, index=True
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    brief: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    checklist: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    client_inputs: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    dependencies: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    references: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
