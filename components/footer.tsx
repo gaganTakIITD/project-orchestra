@@ -32,35 +32,36 @@ export default function Footer() {
 
   return (
     <footer className="bg-background" ref={ref}>
-      {/* Dark teal section with light text */}
-      <div className="bg-secondary py-20 lg:py-28">
-        <div className="max-w-6xl mx-auto px-8 lg:px-12">
+      {/* Forest green footer — large headline + nav grid below */}
+      <div className="bg-secondary">
+        {/* Large headline block */}
+        <div className="max-w-6xl mx-auto px-8 lg:px-12 pt-20 lg:pt-28 pb-12 border-b border-secondary-foreground/10">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+            transition={{ duration: 0.9, ease: "easeOut" }}
+          >
+            <h2 className="font-serif text-5xl sm:text-6xl lg:text-7xl font-bold text-secondary-foreground leading-tight max-w-3xl">
+              Outcome delivery, engineered.
+            </h2>
+          </motion.div>
+        </div>
+
+        {/* Navigation grid */}
+        <div className="max-w-6xl mx-auto px-8 lg:px-12 py-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-            transition={{ duration: 0.9 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-12"
+            transition={{ duration: 0.9, delay: 0.15 }}
+            className="grid grid-cols-2 md:grid-cols-4 gap-10"
           >
-            {/* Brand */}
-            <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-2 h-2 bg-primary rounded-full" aria-hidden="true" />
-                <span className="font-serif text-lg font-bold text-secondary-foreground">
-                  Orchestra
-                </span>
-              </div>
-              <p className="text-sm text-secondary-foreground/80">
-                Describe your outcome. We deliver it.
-              </p>
-            </div>
-
             {/* Product */}
             <div>
-              <p className="text-xs text-primary uppercase tracking-widest font-semibold mb-4">Product</p>
+              <p className="text-xs text-primary uppercase tracking-widest font-semibold mb-5">Navigate</p>
               <ul className="flex flex-col gap-3">
                 {product.map((l) => (
                   <li key={l.href}>
-                    <Link href={l.href} className="text-sm text-secondary-foreground hover:text-primary transition-colors">
+                    <Link href={l.href} className="text-sm text-secondary-foreground/80 hover:text-secondary-foreground transition-colors">
                       {l.label}
                     </Link>
                   </li>
@@ -70,11 +71,11 @@ export default function Footer() {
 
             {/* Company */}
             <div>
-              <p className="text-xs text-primary uppercase tracking-widest font-semibold mb-4">Company</p>
+              <p className="text-xs text-primary uppercase tracking-widest font-semibold mb-5">Company</p>
               <ul className="flex flex-col gap-3">
                 {company.map((l) => (
                   <li key={l.href}>
-                    <Link href={l.href} className="text-sm text-secondary-foreground hover:text-primary transition-colors">
+                    <Link href={l.href} className="text-sm text-secondary-foreground/80 hover:text-secondary-foreground transition-colors">
                       {l.label}
                     </Link>
                   </li>
@@ -82,42 +83,50 @@ export default function Footer() {
               </ul>
             </div>
 
-            {/* Social & CTA */}
+            {/* Social */}
             <div>
-              <p className="text-xs text-primary uppercase tracking-widest font-semibold mb-4">Follow</p>
-              <ul className="flex flex-col gap-3 mb-6">
+              <p className="text-xs text-primary uppercase tracking-widest font-semibold mb-5">Socials</p>
+              <ul className="flex flex-col gap-3">
                 {social.map((l) => (
                   <li key={l.href}>
-                    <a href={l.href} target="_blank" rel="noopener noreferrer" className="text-sm text-secondary-foreground hover:text-primary transition-colors">
+                    <a href={l.href} target="_blank" rel="noopener noreferrer" className="text-sm text-secondary-foreground/80 hover:text-secondary-foreground transition-colors">
                       {l.label}
                     </a>
                   </li>
                 ))}
               </ul>
+            </div>
+
+            {/* CTA */}
+            <div className="flex flex-col justify-between">
+              <div>
+                <p className="text-xs text-primary uppercase tracking-widest font-semibold mb-5">Get started</p>
+                <p className="text-sm text-secondary-foreground/70 leading-relaxed mb-6">
+                  IIT Delhi verified talent, AI-enforced quality.
+                </p>
+              </div>
               <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.95 }}>
                 <Link
-                  href="/join"
-                  className="inline-block px-6 py-2 bg-primary text-primary-foreground rounded-full text-xs font-semibold hover:opacity-85 transition-opacity"
+                  href="/start"
+                  className="inline-block px-6 py-2.5 border border-primary text-primary rounded-full text-xs font-semibold uppercase tracking-wide hover:bg-primary hover:text-primary-foreground transition-colors"
                 >
-                  Join talent
+                  Begin a project
                 </Link>
               </motion.div>
             </div>
           </motion.div>
         </div>
-      </div>
 
-      {/* Light bottom section */}
-      <div className="bg-background border-t border-border">
-        <div className="max-w-6xl mx-auto px-8 lg:px-12 py-8">
+        {/* Bottom bar */}
+        <div className="max-w-6xl mx-auto px-8 lg:px-12 py-6 border-t border-secondary-foreground/10">
           <motion.div
             initial={{ opacity: 0 }}
             animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-            transition={{ duration: 0.9, delay: 0.2 }}
-            className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-muted-foreground"
+            transition={{ duration: 0.9, delay: 0.3 }}
+            className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-secondary-foreground/50"
           >
             <p>&copy; {currentYear} Project Orchestra. All rights reserved.</p>
-            <p>Built for outcome-driven builders.</p>
+            <p>Global talent, verified outcomes.</p>
           </motion.div>
         </div>
       </div>

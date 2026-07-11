@@ -29,7 +29,7 @@ export default function OutcomeCatalog() {
         </motion.div>
 
         <motion.div 
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border-2 border-foreground divide-y-2 md:divide-y-0 md:divide-x-2 divide-foreground"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border border-border divide-y md:divide-y-0 md:divide-x divide-border overflow-hidden rounded-lg"
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
           variants={staggerContainer}
@@ -47,7 +47,7 @@ export default function OutcomeCatalog() {
             ? skus.map((sku) => (
                 <motion.div 
                   key={sku.id} 
-                  className="p-8 flex flex-col gap-5 hover:bg-muted transition-colors border-r border-foreground last:border-r-0"
+                  className="p-8 flex flex-col gap-5 bg-card hover:bg-secondary hover:text-secondary-foreground transition-colors"
                   variants={staggerItem}
                   whileHover={{ 
                     y: -6,
