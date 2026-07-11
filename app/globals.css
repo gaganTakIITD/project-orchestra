@@ -4,12 +4,10 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Project Orchestra — design tokens (SHARED DESIGN LANGUAGE)
+ * UMANO Design Studio — design tokens (SHARED DESIGN LANGUAGE)
  * ----------------------------------------------------------
- * These CSS variables are the brand foundation. v0's shadcn/ui components read
- * them automatically, so anything v0 generates inherits our look. Tune palette
- * here; do not hardcode hex values in components.
- * Brand: trustworthy + modern. Primary = indigo (intelligence/trust).
+ * Premium design studio branding with vibrant orange primary, clean minimalist aesthetic.
+ * Brand: professional + bold + inspiring. Primary = vibrant orange (energy/creativity).
  */
 :root {
   --radius: 0.65rem;
@@ -23,39 +21,39 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.16 0.02 265);
 
-  --primary: oklch(0.51 0.23 277);
-  --primary-foreground: oklch(0.98 0.01 280);
+  --primary: oklch(0.6 0.21 29);
+  --primary-foreground: oklch(1 0 0);
 
   --secondary: oklch(0.97 0.01 275);
   --secondary-foreground: oklch(0.24 0.03 270);
 
-  --muted: oklch(0.97 0.005 275);
+  --muted: oklch(0.94 0.01 0);
   --muted-foreground: oklch(0.52 0.02 270);
 
-  --accent: oklch(0.95 0.03 277);
-  --accent-foreground: oklch(0.31 0.1 277);
+  --accent: oklch(0.6 0.21 29);
+  --accent-foreground: oklch(1 0 0);
 
   --destructive: oklch(0.58 0.24 27);
   --destructive-foreground: oklch(0.98 0.01 280);
 
   --border: oklch(0.92 0.01 275);
   --input: oklch(0.92 0.01 275);
-  --ring: oklch(0.51 0.23 277);
+  --ring: oklch(0.6 0.21 29);
 
-  --chart-1: oklch(0.51 0.23 277);
-  --chart-2: oklch(0.6 0.15 200);
-  --chart-3: oklch(0.65 0.15 150);
-  --chart-4: oklch(0.7 0.16 70);
+  --chart-1: oklch(0.6 0.21 29);
+  --chart-2: oklch(0.65 0.15 200);
+  --chart-3: oklch(0.7 0.15 150);
+  --chart-4: oklch(0.75 0.16 70);
   --chart-5: oklch(0.62 0.22 20);
 
   --sidebar: oklch(0.98 0.005 275);
   --sidebar-foreground: oklch(0.16 0.02 265);
-  --sidebar-primary: oklch(0.51 0.23 277);
-  --sidebar-primary-foreground: oklch(0.98 0.01 280);
-  --sidebar-accent: oklch(0.95 0.03 277);
-  --sidebar-accent-foreground: oklch(0.31 0.1 277);
+  --sidebar-primary: oklch(0.6 0.21 29);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.6 0.21 29);
+  --sidebar-accent-foreground: oklch(1 0 0);
   --sidebar-border: oklch(0.92 0.01 275);
-  --sidebar-ring: oklch(0.51 0.23 277);
+  --sidebar-ring: oklch(0.6 0.21 29);
 }
 
 .dark {
@@ -68,7 +66,7 @@
   --popover: oklch(0.2 0.02 265);
   --popover-foreground: oklch(0.97 0.01 280);
 
-  --primary: oklch(0.62 0.19 277);
+  --primary: oklch(0.65 0.18 29);
   --primary-foreground: oklch(0.16 0.02 265);
 
   --secondary: oklch(0.27 0.02 268);
@@ -77,17 +75,17 @@
   --muted: oklch(0.27 0.02 268);
   --muted-foreground: oklch(0.7 0.02 275);
 
-  --accent: oklch(0.3 0.05 277);
-  --accent-foreground: oklch(0.95 0.03 277);
+  --accent: oklch(0.65 0.18 29);
+  --accent-foreground: oklch(0.16 0.02 265);
 
   --destructive: oklch(0.65 0.2 25);
   --destructive-foreground: oklch(0.98 0.01 280);
 
   --border: oklch(0.3 0.02 268);
   --input: oklch(0.32 0.02 268);
-  --ring: oklch(0.62 0.19 277);
+  --ring: oklch(0.65 0.18 29);
 
-  --chart-1: oklch(0.62 0.19 277);
+  --chart-1: oklch(0.65 0.18 29);
   --chart-2: oklch(0.65 0.15 200);
   --chart-3: oklch(0.7 0.15 150);
   --chart-4: oklch(0.75 0.16 70);
@@ -95,12 +93,12 @@
 
   --sidebar: oklch(0.2 0.02 265);
   --sidebar-foreground: oklch(0.97 0.01 280);
-  --sidebar-primary: oklch(0.62 0.19 277);
+  --sidebar-primary: oklch(0.65 0.18 29);
   --sidebar-primary-foreground: oklch(0.16 0.02 265);
-  --sidebar-accent: oklch(0.3 0.05 277);
-  --sidebar-accent-foreground: oklch(0.95 0.03 277);
+  --sidebar-accent: oklch(0.65 0.18 29);
+  --sidebar-accent-foreground: oklch(0.16 0.02 265);
   --sidebar-border: oklch(0.3 0.02 268);
-  --sidebar-ring: oklch(0.62 0.19 277);
+  --sidebar-ring: oklch(0.65 0.18 29);
 }
 
 /* Expose tokens to Tailwind v4 utilities: bg-background, text-foreground, etc. */
