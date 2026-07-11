@@ -58,7 +58,7 @@ export default function Header() {
         >
           <Link
             href="/start"
-            className="hidden md:inline-flex items-center h-10 px-6 bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity duration-300"
+            className="hidden md:inline-flex items-center h-9 px-5 bg-secondary text-secondary-foreground rounded-full text-sm font-semibold hover:opacity-85 transition-opacity duration-300"
           >
             Begin
           </Link>
@@ -92,9 +92,9 @@ export default function Header() {
             <Link
               href="/start"
               onClick={() => setOpen(false)}
-              className="inline-flex items-center justify-center h-9 px-5 bg-primary text-primary-foreground text-xs font-semibold tracking-wide"
+              className="inline-flex items-center justify-center h-9 px-5 bg-secondary text-secondary-foreground rounded-full text-xs font-semibold"
             >
-              Begin Project
+              Begin
             </Link>
           </nav>
         </div>

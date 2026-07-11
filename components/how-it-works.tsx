@@ -43,11 +43,10 @@ export default function HowItWorks() {
           transition={{ duration: 0.9 }}
         >
           <h2 className="font-serif text-6xl sm:text-7xl lg:text-8xl font-bold text-foreground mb-8 leading-tight">
-            The Process
+            How it works
           </h2>
-          <div className="w-20 h-1 bg-accent mb-8" aria-hidden="true" />
           <p className="text-lg text-muted-foreground max-w-3xl leading-relaxed">
-            From brief to delivery. Clear, transparent, outcome-focused at every step.
+            Four transparent steps from brief to delivery.
           </p>
         </motion.div>
 
@@ -60,19 +59,19 @@ export default function HowItWorks() {
           {steps.map((step) => (
             <motion.div 
               key={step.number} 
-              className="bg-secondary rounded-lg p-8 hover:border-accent border border-transparent transition-colors"
+              className="bg-secondary rounded-lg p-8 hover:shadow-lg transition-shadow"
               variants={staggerItem}
-              whileHover={{ y: -4 }}
+              whileHover={{ y: -2 }}
             >
-              <div className="flex items-start gap-6 mb-6">
-                <span className="font-serif text-6xl font-bold text-primary leading-none flex-shrink-0">
+              <div className="flex items-start gap-4 mb-4">
+                <span className="font-serif text-4xl font-bold text-primary leading-none flex-shrink-0">
                   {step.number}
                 </span>
-                <h3 className="text-2xl font-bold text-foreground pt-2">
+                <h3 className="text-lg font-bold text-secondary-foreground pt-1">
                   {step.title}
                 </h3>
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <p className="text-sm text-secondary-foreground/80 leading-relaxed">
                 {step.description}
               </p>
             </motion.div>

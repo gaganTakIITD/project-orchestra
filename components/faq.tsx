@@ -56,7 +56,6 @@ export default function FAQ() {
           transition={{ duration: 0.9 }}
         >
           <h2 className="font-serif text-6xl sm:text-7xl lg:text-8xl font-bold text-foreground mb-8">Questions</h2>
-          <div className="w-20 h-1 bg-accent mb-8" aria-hidden="true" />
           <p className="text-lg text-muted-foreground max-w-3xl">
             Everything you need to know about how we work.
           </p>

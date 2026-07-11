@@ -6,46 +6,46 @@
 /*
  * Project Orchestra — design tokens (SHARED DESIGN LANGUAGE)
  * ----------------------------------------------------------
- * Professional Premium Dark: Deep navy background, cream/white text.
- * Bold color blocking with gold & teal accents. High contrast for impact.
- * Strong typography hierarchy, generous spacing.
+ * Premium Minimalist: Cream background, deep black text.
+ * Dark teal color blocking with gold accents. Lumena-inspired design language.
+ * Sophisticated typography, generous spacing, ASCII decorative elements.
  */
 :root {
   --radius: 0.375rem;
 
-  /* Light mode defaults - will be overridden */
-  --background: oklch(0.1 0.02 260);
-  --foreground: oklch(0.95 0.01 0);
+  /* Light mode: Cream background, deep black text */
+  --background: oklch(0.96 0.01 90);
+  --foreground: oklch(0.15 0.01 0);
 
-  --card: oklch(0.15 0.02 260);
-  --card-foreground: oklch(0.95 0.01 0);
+  --card: oklch(0.98 0.005 90);
+  --card-foreground: oklch(0.15 0.01 0);
 
-  --popover: oklch(0.15 0.02 260);
-  --popover-foreground: oklch(0.95 0.01 0);
+  --popover: oklch(0.98 0.005 90);
+  --popover-foreground: oklch(0.15 0.01 0);
 
-  /* Primary: Bold gold for color blocking */
-  --primary: oklch(0.76 0.19 85);
-  --primary-foreground: oklch(0.1 0.02 260);
+  /* Primary: Gold accent */
+  --primary: oklch(0.72 0.16 85);
+  --primary-foreground: oklch(0.95 0.01 0);
 
-  /* Secondary: Slightly lighter navy */
-  --secondary: oklch(0.2 0.02 260);
+  /* Secondary: Dark teal for color blocking */
+  --secondary: oklch(0.3 0.08 240);
   --secondary-foreground: oklch(0.95 0.01 0);
 
   /* Muted: Gray for secondary content */
-  --muted: oklch(0.45 0.02 0);
-  --muted-foreground: oklch(0.72 0.01 0);
+  --muted: oklch(0.65 0.01 0);
+  --muted-foreground: oklch(0.45 0.01 0);
 
-  /* Accent: Bright teal for emphasis */
-  --accent: oklch(0.7 0.16 200);
-  --accent-foreground: oklch(0.1 0.02 260);
+  /* Accent: Teal */
+  --accent: oklch(0.55 0.12 200);
+  --accent-foreground: oklch(0.95 0.01 0);
 
-  /* Destructive: Warm red */
-  --destructive: oklch(0.68 0.19 25);
+  /* Destructive: Red */
+  --destructive: oklch(0.65 0.15 25);
   --destructive-foreground: oklch(0.95 0.01 0);
 
-  --border: oklch(0.22 0.02 260);
-  --input: oklch(0.15 0.02 260);
-  --ring: oklch(0.76 0.19 85);
+  --border: oklch(0.92 0.01 0);
+  --input: oklch(0.95 0.01 90);
+  --ring: oklch(0.72 0.16 85);
 
   --chart-1: oklch(0.76 0.19 85);
   --chart-2: oklch(0.7 0.16 200);
