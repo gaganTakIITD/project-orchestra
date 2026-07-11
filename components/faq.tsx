@@ -5,82 +5,87 @@ import { ChevronDown } from 'lucide-react';
 
 const faqs = [
   {
-    question: 'How does the unlimited design requests work?',
-    answer: 'You can submit as many design tasks as you need each month. There\'s no per-task billing or waiting list. Our designers prioritize your requests based on complexity and timeline.',
+    question: "How long does an outcome take?",
+    answer:
+      "Depends on complexity. Our SKUs range from 7–21 days. Once you confirm the spec, we give you a firm deadline. The orchestrator manages every day.",
   },
   {
-    question: 'What if I don\'t like the design?',
-    answer: 'We offer unlimited revisions until you\'re completely satisfied. Your designer will work with you iteratively to ensure the final product exceeds your expectations.',
+    question: "What if I need changes mid-way?",
+    answer:
+      "You can request amendments anytime. We re-spec, re-price, and get approval before executing changes. Everything stays tracked and transparent.",
   },
   {
-    question: 'Can I pause or cancel my subscription?',
-    answer: 'Yes, absolutely. You can pause your subscription at any time, and there are no long-term contracts. You can resume or cancel whenever you need to.',
+    question: "Who owns the final deliverables?",
+    answer:
+      "You do. 100% rights transfer to you on delivery. No royalties, no strings. The work is yours.",
   },
   {
-    question: 'How does UMANO integrate with my tools?',
-    answer: 'We integrate with Slack, Jira, Notion, Figma, Linear, and more. Your designer can receive tasks directly through your preferred platforms and collaborate seamlessly.',
+    question: "What if the result doesn't meet expectations?",
+    answer:
+      "We rework it or refund you. Our QA gates check every deliverable against your acceptance criteria before it ships. If something doesn't match spec, we fix it.",
   },
   {
-    question: 'What if I need more design capacity?',
-    answer: 'We offer flexible scaling. You can upgrade to have multiple dedicated designers or increase your monthly task capacity based on your growing needs.',
+    question: "How are workers paid?",
+    answer:
+      "Fairly, and on time. Payouts are triggered when each task passes QA. We handle all tax compliance and transfers.",
   },
   {
-    question: 'How long does onboarding take?',
-    answer: 'Onboarding typically takes 3-5 days. We\'ll assign a dedicated designer, understand your brand, and get them fully integrated into your workflow.',
+    question: "Why IIT Delhi talent?",
+    answer:
+      "Our founders and core team are from IIT Delhi. We trust the community. Every worker is campus-verified—no fakes, no resume inflation.",
   },
 ];
 
 export default function FAQ() {
-  const [openIndex, setOpenIndex] = useState(0);
+  const [openIdx, setOpenIdx] = useState<number | null>(0);
 
   return (
-    <section className="w-full py-20 md:py-32 bg-background">
+    <section id="faq" className="py-20 sm:py-32">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-16 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">
-            Frequently asked questions
-          </h2>
+        <div className="text-center mb-16">
+          <h2 className="text-3xl sm:text-4xl font-bold mb-4">Frequently asked</h2>
           <p className="text-lg text-muted-foreground">
-            Have other questions? Reach out to our team and we&apos;ll be happy to help.
+            Everything you need to know about how Orchestra works.
           </p>
         </div>
 
-        <div className="space-y-4">
-          {faqs.map((faq, index) => (
+        <div className="space-y-3">
+          {faqs.map((faq, idx) => (
             <div
-              key={index}
-              className="border border-border rounded-lg overflow-hidden hover:border-primary transition-colors"
+              key={idx}
+              className="border border-border rounded-lg overflow-hidden"
             >
               <button
-                onClick={() => setOpenIndex(openIndex === index ? -1 : index)}
-                className="w-full px-6 py-4 flex items-center justify-between bg-card hover:bg-muted transition-colors text-left"
+                onClick={() => setOpenIdx(openIdx === idx ? null : idx)}
+                className="w-full px-6 py-4 flex items-center justify-between bg-card hover:bg-muted transition text-left"
               >
-                <span className="font-semibold text-foreground">{faq.question}</span>
+                <span className="font-semibold">{faq.question}</span>
                 <ChevronDown
-                  className={`w-5 h-5 text-muted-foreground transition-transform flex-shrink-0 ${
-                    openIndex === index ? 'transform rotate-180' : ''
+                  className={`w-5 h-5 text-muted-foreground transition-transform ${
+                    openIdx === idx ? 'rotate-180' : ''
                   }`}
                 />
               </button>
 
-              {openIndex === index && (
-                <div className="px-6 py-4 bg-muted/50 border-t border-border">
-                  <p className="text-muted-foreground leading-relaxed">{faq.answer}</p>
+              {openIdx === idx && (
+                <div className="px-6 py-4 bg-background border-t border-border">
+                  <p className="text-muted-foreground leading-relaxed">
+                    {faq.answer}
+                  </p>
                 </div>
               )}
             </div>
           ))}
         </div>
 
-        {/* Support CTA */}
-        <div className="mt-12 p-8 rounded-2xl bg-muted text-center">
-          <h3 className="text-xl font-bold mb-2">Still have questions?</h3>
-          <p className="text-muted-foreground mb-4">
-            Our team is here to help. Get in touch and we&apos;ll answer any questions you have.
-          </p>
-          <button className="px-6 py-2 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity">
-            Contact us
-          </button>
+        <div className="mt-12 p-6 bg-primary/5 border border-primary/20 rounded-lg text-center">
+          <p className="text-muted-foreground mb-3">Still have questions?</p>
+          <a
+            href="mailto:hello@orchestrapro.com"
+            className="text-primary font-medium hover:underline"
+          >
+            Contact us at hello@orchestrapro.com
+          </a>
         </div>
       </div>
     </section>

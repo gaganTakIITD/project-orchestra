@@ -1,106 +1,121 @@
+'use client';
+
 import Link from 'next/link';
+import { Github, Linkedin, Twitter } from 'lucide-react';
 
 export default function Footer() {
+  const currentYear = new Date().getFullYear();
+
   return (
-    <footer className="w-full bg-slate-950 text-slate-400 py-12 md:py-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-4 gap-8 mb-12 pb-12 border-b border-slate-800">
+    <footer className="bg-card border-t border-border">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Brand */}
           <div>
-            <div className="flex items-center gap-2 mb-4">
+            <Link href="/" className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">U</span>
+                <span className="text-primary-foreground font-bold text-sm">O</span>
               </div>
-              <span className="font-bold text-slate-100">UMANO</span>
-            </div>
-            <p className="text-sm text-slate-500">
-              Your dedicated senior product designer, always available.
+              <span className="font-bold">Orchestra</span>
+            </Link>
+            <p className="text-sm text-muted-foreground">
+              Tell us the result. We deliver it.
             </p>
           </div>
 
           {/* Product */}
           <div>
-            <h4 className="font-semibold text-slate-100 mb-4">Product</h4>
-            <ul className="space-y-2 text-sm">
+            <h4 className="font-semibold mb-4 text-sm">Product</h4>
+            <ul className="space-y-3">
               <li>
-                <Link href="#" className="hover:text-slate-200 transition-colors">
-                  Design Studio
+                <Link href="/start" className="text-sm text-muted-foreground hover:text-primary transition">
+                  For clients
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-slate-200 transition-colors">
-                  Pricing
+                <Link href="/join" className="text-sm text-muted-foreground hover:text-primary transition">
+                  For talent
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-slate-200 transition-colors">
-                  Features
-                </Link>
+                <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-primary transition">
+                  How it works
+                </a>
+              </li>
+              <li>
+                <a href="#outcomes" className="text-sm text-muted-foreground hover:text-primary transition">
+                  Outcomes
+                </a>
               </li>
             </ul>
           </div>
 
           {/* Company */}
           <div>
-            <h4 className="font-semibold text-slate-100 mb-4">Company</h4>
-            <ul className="space-y-2 text-sm">
+            <h4 className="font-semibold mb-4 text-sm">Company</h4>
+            <ul className="space-y-3">
               <li>
-                <Link href="#" className="hover:text-slate-200 transition-colors">
-                  About
-                </Link>
+                <a href="#faq" className="text-sm text-muted-foreground hover:text-primary transition">
+                  FAQ
+                </a>
               </li>
               <li>
-                <Link href="#" className="hover:text-slate-200 transition-colors">
+                <Link href="/blog" className="text-sm text-muted-foreground hover:text-primary transition">
                   Blog
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-slate-200 transition-colors">
-                  Careers
+                <Link href="/privacy" className="text-sm text-muted-foreground hover:text-primary transition">
+                  Privacy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className="text-sm text-muted-foreground hover:text-primary transition">
+                  Terms
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Legal */}
+          {/* Social */}
           <div>
-            <h4 className="font-semibold text-slate-100 mb-4">Legal</h4>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="#" className="hover:text-slate-200 transition-colors">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-slate-200 transition-colors">
-                  Terms of Service
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-slate-200 transition-colors">
-                  Contact
-                </Link>
-              </li>
-            </ul>
+            <h4 className="font-semibold mb-4 text-sm">Follow us</h4>
+            <div className="flex gap-4">
+              <a
+                href="https://twitter.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-primary transition"
+              >
+                <Twitter className="w-5 h-5" />
+              </a>
+              <a
+                href="https://github.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-primary transition"
+              >
+                <Github className="w-5 h-5" />
+              </a>
+              <a
+                href="https://linkedin.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-primary transition"
+              >
+                <Linkedin className="w-5 h-5" />
+              </a>
+            </div>
           </div>
         </div>
 
-        {/* Bottom */}
-        <div className="flex flex-col md:flex-row items-center justify-between">
-          <p className="text-sm text-slate-500">
-            © 2024 UMANO Design Studio. All rights reserved.
+        <div className="border-t border-border pt-8 flex flex-col sm:flex-row items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            © {currentYear} Project Orchestra. All rights reserved.
           </p>
-          <div className="flex gap-6 mt-4 md:mt-0">
-            <a href="#" className="text-slate-500 hover:text-slate-200 transition-colors">
-              Twitter
-            </a>
-            <a href="#" className="text-slate-500 hover:text-slate-200 transition-colors">
-              LinkedIn
-            </a>
-            <a href="#" className="text-slate-500 hover:text-slate-200 transition-colors">
-              Instagram
-            </a>
-          </div>
+          <p className="text-sm text-muted-foreground mt-4 sm:mt-0">
+            Built by IIT Delhi students, for outcome-driven builders.
+          </p>
         </div>
       </div>
     </footer>
