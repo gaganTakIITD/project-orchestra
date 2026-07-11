@@ -32,11 +32,14 @@ import {
   getOrCreateMockSession,
   mockFinalizeScopeSession,
   mockSendScopeMessage,
+  mockSendScopeMessageStream,
 } from "./mock-chat";
 import type {
   Candidate,
   Charter,
   ChatSession,
+  ChatStreamEvent,
+  ChatStreamHandlers,
   DeliveryBundle,
   DiscussionThread,
   FinalizeChatSessionResult,
@@ -75,6 +78,72 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError(res.status, `${init?.method ?? "GET"} ${path} failed`);
   }
   return (await res.json()) as T;
+}
+
+function parseSseBlock(block: string): ChatStreamEvent | null {
+  const line = block
+    .split("\n")
+    .map((l) => l.trim())
+    .find((l) => l.startsWith("data:"));
+  if (!line) return null;
+  const payload = line.slice(5).trim();
+  if (!payload) return null;
+  return JSON.parse(payload) as ChatStreamEvent;
+}
+
+async function streamChatMessage(
+  sessionId: string,
+  body: string,
+  handlers: ChatStreamHandlers
+): Promise<ChatSession> {
+  const res = await fetch(`${API_BASE}/chat/sessions/${sessionId}/messages/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body }),
+  });
+  if (!res.ok) {
+    throw new ApiError(res.status, `POST /chat/sessions/${sessionId}/messages/stream failed`);
+  }
+  if (!res.body) {
+    throw new ApiError(500, "Stream body missing");
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalSession: ChatSession | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() ?? "";
+    for (const part of parts) {
+      const event = parseSseBlock(part);
+      if (!event) continue;
+      switch (event.type) {
+        case "token":
+          handlers.onToken?.(event.content);
+          break;
+        case "draft_patch":
+          handlers.onDraftPatch?.(event);
+          break;
+        case "turn_complete":
+          finalSession = event.session;
+          handlers.onTurnComplete?.(event.session);
+          break;
+        case "error":
+          handlers.onError?.(event.message);
+          throw new ApiError(500, event.message);
+      }
+    }
+  }
+
+  if (!finalSession) {
+    throw new ApiError(500, "Stream ended without turn_complete");
+  }
+  return finalSession;
 }
 
 /** Simulate a little latency so loading states are exercised in mock mode. */
@@ -223,6 +292,18 @@ export const chatApi = {
           method: "POST",
           body: JSON.stringify({ body }),
         }),
+
+  /** SSE stream — draft_patch → tokens → turn_complete. Preferred over sendMessage when live. */
+  sendMessageStream: (
+    sessionId: string,
+    body: string,
+    handlers: ChatStreamHandlers
+  ): Promise<ChatSession> => {
+    if (USE_MOCKS) {
+      return mockSendScopeMessageStream(sessionId, body, handlers);
+    }
+    return streamChatMessage(sessionId, body, handlers);
+  },
 
   finalizeSession: (sessionId: string): Promise<FinalizeChatSessionResult> =>
     USE_MOCKS

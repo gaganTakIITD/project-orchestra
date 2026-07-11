@@ -25,7 +25,7 @@ export default function ScopePage({ params }: { params: { sessionId: string } })
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [session?.messages.length]);
+  }, [session?.messages.length, sendMessage.streamingText]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,9 +138,16 @@ export default function ScopePage({ params }: { params: { sessionId: string } })
                     </div>
                   </div>
                 ))}
-                {(sendMessage.isPending) && (
+                {sendMessage.isPending && sendMessage.streamingText ? (
+                  <div className="flex justify-start">
+                    <div className="max-w-[90%] border border-border bg-muted/30 px-4 py-3 text-sm leading-relaxed">
+                      {sendMessage.streamingText}
+                      <span className="inline-block w-2 h-4 ml-0.5 bg-primary/60 animate-pulse align-middle" />
+                    </div>
+                  </div>
+                ) : sendMessage.isPending ? (
                   <p className="text-xs text-muted-foreground font-mono">AI is extracting…</p>
-                )}
+                ) : null}
                 <div ref={bottomRef} />
               </div>
 

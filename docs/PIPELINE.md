@@ -44,7 +44,7 @@
 
 - [ ] **v0:** dedicated resumable page `/scope/[sessionId]` (move chat off `/start`; `/start` creates session → redirect) — **shipped on `main` (`c3ab130`), live on Vercel**
 
-- [ ] SSE streaming tokens (backend endpoint + `ChatSurface` consumer)
+- [x] SSE streaming tokens — `POST /chat/sessions/{id}/messages/stream`, `ChatStreamEvent`, `sendMessageStream` hook + scope page consumer
 
 - [ ] Stage 3: Preference Chat Surface — Matcher agent
 

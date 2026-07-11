@@ -9,6 +9,7 @@
  * pattern, but data access must always go through `lib/api.ts`.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import {
   authApi,
   catalogApi,
@@ -17,6 +18,7 @@ import {
   notificationsApi,
   workerApi,
 } from "./api";
+import type { ChatSession } from "./types";
 
 // --- Catalog ---------------------------------------------------------------
 
@@ -50,10 +52,42 @@ export const useChatSession = (sessionId: string) =>
 
 export const useSendChatMessage = (sessionId: string) => {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (body: string) => chatApi.sendMessage(sessionId, body),
-    onSuccess: (session) => qc.setQueryData(["chat-session", sessionId], session),
+  const [streamingText, setStreamingText] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: (body: string) =>
+      chatApi.sendMessageStream(sessionId, body, {
+        onToken: (content) => setStreamingText((prev) => prev + content),
+        onDraftPatch: (event) => {
+          qc.setQueryData<ChatSession>(
+            ["chat-session", sessionId],
+            (old) =>
+              old
+                ? {
+                    ...old,
+                    spec_draft: event.spec_draft,
+                    spec_version: event.spec_version,
+                    completeness_pct: event.completeness_pct,
+                    missing_fields: event.missing_fields,
+                    ready_for_quote: event.ready_for_quote,
+                  }
+                : old
+          );
+        },
+      }),
+    onMutate: () => {
+      setStreamingText("");
+    },
+    onSuccess: (session) => {
+      setStreamingText("");
+      qc.setQueryData(["chat-session", sessionId], session);
+    },
+    onError: () => {
+      setStreamingText("");
+    },
   });
+
+  return { ...mutation, streamingText };
 };
 
 export const useFinalizeChatSession = () =>
