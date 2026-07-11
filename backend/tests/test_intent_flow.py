@@ -8,7 +8,7 @@ from app.main import app
 async def api_client():
     """HTTP client; skips if Postgres unavailable."""
     from app.db.base import Base
-    from app.db.seed import seed_catalog, seed_demo_client
+    from app.db.seed import seed_catalog, seed_demo_client, seed_demo_worker
     from app.db.session import AsyncSessionLocal, engine
 
     try:
@@ -18,6 +18,7 @@ async def api_client():
         async with AsyncSessionLocal() as session:
             await seed_catalog(session)
             await seed_demo_client(session)
+            await seed_demo_worker(session)
     except Exception as e:
         pytest.skip(f"Database unavailable: {e}")
 
