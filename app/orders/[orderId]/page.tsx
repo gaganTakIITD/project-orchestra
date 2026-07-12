@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { useOrder, usePlan } from "@/lib/hooks";
 import { taskStatusClientLabel, taskStatusTone } from "@/lib/state-labels";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
+import DiscussionPanel from "@/components/discussion-panel";
 import Link from "next/link";
 
 const toneColors: Record<string, string> = {
@@ -17,6 +19,7 @@ const toneColors: Record<string, string> = {
 
 export default function OrderTrackerPage({ params }: { params: { orderId: string } }) {
   const orderId = params.orderId;
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   
   const { data: order, isLoading: orderLoading } = useOrder(orderId);
   const { data: plan, isLoading: planLoading } = usePlan(orderId);
@@ -71,7 +74,7 @@ export default function OrderTrackerPage({ params }: { params: { orderId: string
           {/* Header */}
           <div className="mb-12">
             <p className="text-xs font-mono tracking-widest uppercase text-primary mb-4">Order tracker</p>
-            <h1 className="text-4xl font-bold mb-6">HealthTrack — Launch Studio</h1>
+            <h1 className="text-4xl font-bold mb-6">Project {order.id.split('_')[1]?.toUpperCase()}</h1>
             
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
@@ -144,7 +147,15 @@ export default function OrderTrackerPage({ params }: { params: { orderId: string
                       const statusLabel = taskStatusClientLabel[task.status];
 
                       return (
-                        <div key={task.id} className="flex gap-4 items-start p-4 border border-border rounded-sm hover:bg-muted/50 transition-colors">
+                        <div
+                          key={task.id}
+                          onClick={() => setSelectedTaskId(task.id)}
+                          className={`flex gap-4 items-start p-4 border rounded-sm cursor-pointer transition-colors ${
+                            selectedTaskId === task.id
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:bg-muted/50'
+                          }`}
+                        >
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium">{task.title}</p>
                             {task.description && (
@@ -153,7 +164,8 @@ export default function OrderTrackerPage({ params }: { params: { orderId: string
                           </div>
                           <Link
                             href={`/orders/${orderId}/preferences/${task.id}`}
-                            className={`flex-shrink-0 text-xs px-3 py-1 rounded-full whitespace-nowrap font-medium cursor-pointer hover:opacity-80 transition-opacity ${colorClass}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`flex-shrink-0 text-xs px-3 py-1 rounded-full whitespace-nowrap font-medium hover:opacity-80 transition-opacity ${colorClass}`}
                           >
                             {statusLabel}
                           </Link>
@@ -166,15 +178,19 @@ export default function OrderTrackerPage({ params }: { params: { orderId: string
             })}
           </div>
 
-          {/* Chat & Updates placeholder */}
+          {/* Chat & Updates section */}
           <div className="mt-16 pt-8 border-t border-border">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <section>
                 <h2 className="text-base font-semibold mb-4">Chat with team</h2>
-                <div className="border border-border p-6 rounded-sm bg-muted/30 text-center">
-                  <p className="text-sm text-muted-foreground">Scoped chat coming soon</p>
-                  <p className="text-xs text-muted-foreground mt-2">Discuss clarifications and updates with your assigned workers</p>
-                </div>
+                {selectedTaskId ? (
+                  <DiscussionPanel taskId={selectedTaskId} />
+                ) : (
+                  <div className="border border-border p-6 rounded-sm bg-muted/30 text-center">
+                    <p className="text-sm text-muted-foreground">Select a task above to view discussion</p>
+                    <p className="text-xs text-muted-foreground mt-2">Click any task to open its thread with your team</p>
+                  </div>
+                )}
               </section>
 
               <section>
