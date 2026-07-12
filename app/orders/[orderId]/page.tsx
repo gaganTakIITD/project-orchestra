@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useOrder, usePlan } from "@/lib/hooks";
-import { taskStatusClientLabel, taskStatusTone } from "@/lib/state-labels";
+import { taskStatusClientLabel, taskStatusTone, orderStatusClientLabel } from "@/lib/state-labels";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import DiscussionPanel from "@/components/discussion-panel";
@@ -15,6 +15,15 @@ const toneColors: Record<string, string> = {
   review: "bg-amber-100 text-amber-900",
   success: "bg-green-100 text-green-900",
   danger: "bg-red-100 text-red-900",
+};
+
+const getTitleForOrder = (plan: any): string => {
+  // Try to get title from first milestone name
+  if (plan.milestones && plan.milestones.length > 0 && plan.milestones[0].name) {
+    return plan.milestones[0].name;
+  }
+  // Fallback to generic title
+  return "Your outcome";
 };
 
 export default function OrderTrackerPage({ params }: { params: { orderId: string } }) {
@@ -74,7 +83,23 @@ export default function OrderTrackerPage({ params }: { params: { orderId: string
           {/* Header */}
           <div className="mb-12">
             <p className="text-xs font-mono tracking-widest uppercase text-primary mb-4">Order tracker</p>
-            <h1 className="text-4xl font-bold mb-6">Project {order.id.split('_')[1]?.toUpperCase()}</h1>
+            <div className="flex items-start justify-between gap-6 mb-6">
+              <h1 className="text-4xl font-bold">{getTitleForOrder(plan)}</h1>
+              <div className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${toneColors[
+                order.status === 'confirmed' ? 'info' :
+                order.status === 'assembling_team' ? 'active' :
+                order.status === 'delivery_active' ? 'active' :
+                order.status === 'under_quality_check' ? 'review' :
+                order.status === 'delivered' ? 'review' :
+                order.status === 'closed' ? 'success' :
+                order.status === 'amendment_pending' ? 'review' :
+                order.status === 'escalated' ? 'danger' :
+                order.status === 'cancelled' ? 'danger' :
+                'neutral'
+              ]}`}>
+                {orderStatusClientLabel[order.status]}
+              </div>
+            </div>
             
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
