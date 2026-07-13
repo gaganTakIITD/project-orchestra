@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Header from "@/components/header";
 import Footer from "@/components/footer";
 import PortalHub from "@/components/portal-hub";
 import { useMe, useWorkerProfile } from "@/lib/hooks";
@@ -19,12 +18,11 @@ export default function AccountPage() {
   if (clerkEnabled && isReady && !isSignedIn) {
     return (
       <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-        <Header />
         <main className="flex-1 flex items-center justify-center px-6">
           <div className="max-w-md text-center space-y-4">
             <h1 className="text-2xl font-semibold">Sign in to choose your portal</h1>
             <p className="text-sm text-muted-foreground">
-              One Orchestra account — enter as client, worker, or admin (if assigned).
+              One Orchestra account ? enter as client, worker, or admin (if assigned).
             </p>
             <Link
               href="/sign-in"
@@ -43,8 +41,6 @@ export default function AccountPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-      <Header />
-
       <main className="flex-1 border-b border-border">
         <div className="max-w-6xl mx-auto px-6 lg:px-8 py-16 lg:py-20">
           <p className="text-xs font-mono tracking-widest uppercase text-primary mb-6">
@@ -56,7 +52,7 @@ export default function AccountPage() {
 
           {loading ? (
             <div className="rounded-xl border border-border p-8 text-sm text-muted-foreground">
-              Loading account…
+              Loading account?
             </div>
           ) : isError || !user ? (
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-sm text-destructive">

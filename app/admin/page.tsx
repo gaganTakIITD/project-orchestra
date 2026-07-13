@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
-import Header from "@/components/header";
+
 import Footer from "@/components/footer";
 import {
   useAdminAiDecisions,
@@ -25,18 +25,18 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-      <Header />
+
       <main className="flex-1 border-b border-border">
         <div className="max-w-6xl mx-auto px-6 lg:px-8 py-16 lg:py-20 space-y-14">
           <div>
             <p className="text-xs font-mono tracking-widest uppercase text-primary mb-2">
-              Admin · read-only
+              Admin ┬╖ read-only
             </p>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
               Ops console
             </h1>
             <p className="text-sm text-muted-foreground max-w-xl">
-              Inspect order state, event_log timeline, and AI decision audit —
+              Inspect order state, event_log timeline, and AI decision audit ΓÇö
               no writes.
             </p>
           </div>
@@ -61,7 +61,7 @@ export default function AdminPage() {
                 Failed to load orders ({String(ordersError)})
               </p>
             ) : ordersLoading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
+              <p className="text-sm text-muted-foreground">LoadingΓÇª</p>
             ) : orders.length === 0 ? (
               <p className="text-sm text-muted-foreground">No orders.</p>
             ) : (
@@ -119,7 +119,7 @@ export default function AdminPage() {
                 Select an order to load event_log (order + child tasks).
               </p>
             ) : eventsLoading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
+              <p className="text-sm text-muted-foreground">LoadingΓÇª</p>
             ) : events.length === 0 ? (
               <p className="text-sm text-muted-foreground">No events.</p>
             ) : (
@@ -135,7 +135,7 @@ export default function AdminPage() {
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(e.created_at).toLocaleString()}
-                      {e.actor_type ? ` · ${e.actor_type}` : ""}
+                      {e.actor_type ? ` ┬╖ ${e.actor_type}` : ""}
                     </p>
                   </li>
                 ))}
@@ -149,7 +149,7 @@ export default function AdminPage() {
               AI decisions
             </h2>
             {aiLoading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
+              <p className="text-sm text-muted-foreground">LoadingΓÇª</p>
             ) : decisions.length === 0 ? (
               <p className="text-sm text-muted-foreground">No AI decisions logged.</p>
             ) : (
@@ -172,12 +172,12 @@ export default function AdminPage() {
                         </td>
                         <td className="px-3 py-2 font-mono text-xs">{d.agent_type}</td>
                         <td className="px-3 py-2">{d.source}</td>
-                        <td className="px-3 py-2 text-xs">{d.model ?? "—"}</td>
+                        <td className="px-3 py-2 text-xs">{d.model ?? "ΓÇö"}</td>
                         <td className="px-3 py-2 text-xs max-w-md truncate">
                           {d.error ? (
                             <span className="text-destructive">{d.error}</span>
                           ) : (
-                            d.reply ?? "—"
+                            d.reply ?? "ΓÇö"
                           )}
                         </td>
                       </tr>

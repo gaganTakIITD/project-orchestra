@@ -13,6 +13,8 @@ import type { OrderStatus, TaskStatus } from "./types";
 export interface JourneyStage {
   id: string;
   label: string;
+  /** Optional helper shown under the label on wide layouts. */
+  hint?: string;
 }
 
 // ---------------------------------------------------------------------------

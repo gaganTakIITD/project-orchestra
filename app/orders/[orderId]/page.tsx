@@ -11,9 +11,10 @@ import {
 } from "@/lib/hooks";
 import { useOrderLiveInvalidation } from "@/lib/live";
 import { taskStatusClientLabel, taskStatusTone } from "@/lib/state-labels";
-import Header from "@/components/header";
 import Footer from "@/components/footer";
+import JourneyStepper from "@/components/journey-stepper";
 import { LedgerStrip } from "@/components/ledger-strip";
+import { CLIENT_JOURNEY_STAGES, clientStageForOrder } from "@/lib/journey";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -110,7 +111,6 @@ export default function OrderTrackerPage() {
   if (!orderId || orderLoading || planLoading) {
     return (
       <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-        <Header />
         <main className="flex-1 flex items-center justify-center">
           <p className="text-muted-foreground">Loading order...</p>
         </main>
@@ -122,7 +122,6 @@ export default function OrderTrackerPage() {
   if (!order || !plan) {
     return (
       <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-        <Header />
         <main className="flex-1 flex items-center justify-center">
           <p className="text-muted-foreground">Order not found</p>
         </main>
@@ -131,15 +130,17 @@ export default function OrderTrackerPage() {
     );
   }
 
+  const assembleTask =
+    plan.tasks.find((t) => t.status === "ready" || t.status === "invited") ??
+    null;
+
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-      <Header />
-
-      <main className="flex-1 border-b border-border">
-        <div className="max-w-5xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
-          <div className="mb-12">
+      <main id="main-content" className="flex-1 border-b border-border">
+        <div className="max-w-5xl mx-auto px-6 lg:px-8 py-16 lg:py-24">
+          <div className="mb-10">
             <p className="text-xs font-mono tracking-widest uppercase text-primary mb-4">Order tracker</p>
-            <h1 className="text-4xl font-bold mb-6">Your outcome in progress</h1>
+            <h1 className="text-4xl font-bold mb-6 text-balance">Your outcome in progress</h1>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
@@ -167,6 +168,47 @@ export default function OrderTrackerPage() {
               />
             </div>
           </div>
+
+          <div className="mb-10 rounded-sm border border-border bg-card p-6 lg:p-8">
+            <JourneyStepper
+              stages={CLIENT_JOURNEY_STAGES}
+              currentStageId={clientStageForOrder(order.status)}
+            />
+          </div>
+
+          {assembleTask ? (
+            <div className="mb-10 flex flex-col gap-4 rounded-sm bg-highlight p-6 text-highlight-foreground sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold">Assemble your team</p>
+                <p className="mt-1 text-sm text-highlight-foreground/75">
+                  Rank the specialists we shortlisted so we can invite your top choices first.
+                </p>
+              </div>
+              <Link
+                href={`/orders/${orderId}/preferences/${assembleTask.id}`}
+                className="inline-flex h-10 flex-shrink-0 items-center justify-center rounded-sm bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+              >
+                Assemble team
+              </Link>
+            </div>
+          ) : null}
+
+          {order.status === "delivered" ? (
+            <div className="mb-10 flex flex-col gap-4 rounded-sm bg-highlight p-6 text-highlight-foreground sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold">Your delivery is ready</p>
+                <p className="mt-1 text-sm text-highlight-foreground/75">
+                  Review the final deliverables and accept your outcome to close the order.
+                </p>
+              </div>
+              <a
+                href="#deliverables"
+                className="inline-flex h-10 flex-shrink-0 items-center justify-center rounded-sm bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+              >
+                Review delivery
+              </a>
+            </div>
+          ) : null}
 
           <div className="mb-16">
             <div className="flex justify-between items-center mb-2">
@@ -374,7 +416,7 @@ export default function OrderTrackerPage() {
               </section>
 
               <section>
-                <h2 className="text-base font-semibold mb-4">Deliverables</h2>
+                <h2 id="deliverables" className="text-base font-semibold mb-4">Deliverables</h2>
                 {delivery ? (
                   <div className="border border-border p-6 space-y-4">
                     <p className="text-sm text-muted-foreground">{delivery.qa_summary}</p>

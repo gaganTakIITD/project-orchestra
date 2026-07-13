@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
+import WorkspaceHeader from "@/components/workspace-header";
 import { useMe, useSetRole } from "@/lib/hooks";
 import { useOrchestraAuth } from "@/lib/use-orchestra-auth";
 
 /**
- * Ensures the signed-in account's active role is `worker` when entering the
- * worker lane. Under real RBAC (Clerk) a `client` account would otherwise 403
- * on worker APIs — this makes deep links (e.g. /join → onboarding) self-heal
- * the same way the portal hub does. In demo/mocks mode worker endpoints resolve
- * the seeded worker regardless, so we skip the switch.
+ * Worker lane shell + RBAC self-heal.
+ * Deep links (e.g. /join → onboarding) set active role to worker so Clerk
+ * mode doesn't 403 worker APIs. Layout also hosts WorkspaceHeader.
  */
-export default function WorkerLayout({ children }: { children: React.ReactNode }) {
+export default function WorkerLayout({ children }: { children: ReactNode }) {
   const { clerkEnabled, isReady, isSignedIn } = useOrchestraAuth();
   const authReady = !clerkEnabled || (isReady && isSignedIn);
   const { data: user } = useMe({ enabled: authReady });
@@ -24,5 +23,10 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
     }
   }, [clerkEnabled, authReady, user?.role, setRole.isPending]);
 
-  return <>{children}</>;
+  return (
+    <>
+      <WorkspaceHeader />
+      {children}
+    </>
+  );
 }

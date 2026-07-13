@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import Header from "@/components/header";
 import Footer from "@/components/footer";
 import JobDescriptionPanel from "@/components/job-description-panel";
+import { rememberScopeSession } from "@/components/portal-data";
 import {
   useFinalizeChatSession,
   useSendChatMessage,
@@ -31,6 +31,12 @@ export default function ScopePage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [session?.messages.length, sendMessage.streamingText]);
+
+  useEffect(() => {
+    if (session && session.status === "active" && !session.ready_for_quote) {
+      rememberScopeSession(session.id);
+    }
+  }, [session]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,8 +77,7 @@ export default function ScopePage() {
   if (!sessionId || isPending) {
     return (
       <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-        <Header />
-        <main className="flex-1 border-b border-border flex items-center justify-center">
+        <main id="main-content" className="flex-1 border-b border-border flex items-center justify-center">
           <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16 lg:py-20 w-full">
             <div className="flex items-center justify-center min-h-[32rem] text-sm text-muted-foreground">
               Resuming your scope chat…
@@ -88,8 +93,7 @@ export default function ScopePage() {
   if (isError || !session) {
     return (
       <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-        <Header />
-        <main className="flex-1 border-b border-border">
+        <main id="main-content" className="flex-1 border-b border-border">
           <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16 lg:py-20">
             <p className="text-xs font-mono tracking-widest uppercase text-primary mb-6">Error</p>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight leading-none text-balance mb-4">
@@ -113,9 +117,7 @@ export default function ScopePage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-      <Header />
-
-      <main className="flex-1 border-b border-border">
+      <main id="main-content" className="flex-1 border-b border-border">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16 lg:py-20">
           <p className="text-xs font-mono tracking-widest uppercase text-primary mb-6">Spec Compiler</p>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-none text-balance mb-4">

@@ -31,8 +31,10 @@ const PORTALS: PortalDef[] = [
       "Confirm quote → live tracker",
       "Pick talent & accept delivery",
     ],
-    homeHref: "/start",
-    homeLabel: "Begin an outcome",
+    homeHref: "/orders",
+    homeLabel: "My outcomes",
+    secondaryHref: "/start",
+    secondaryLabel: "Start new outcome",
   },
   {
     id: "worker",

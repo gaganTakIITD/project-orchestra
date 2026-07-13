@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import Header from '@/components/header';
 import Footer from '@/components/footer';
 import { useRouter } from 'next/navigation';
 import { useSaveWorkerProfile } from '@/lib/hooks';
@@ -139,9 +138,7 @@ export default function OnboardingContent() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-      <Header />
-
-      <main className="flex-1 border-b border-border">
+      <main id="main-content" className="flex-1 border-b border-border">
         <div className="max-w-4xl mx-auto px-6 lg:px-8 py-20">
           {/* Progress header */}
           <div className="mb-12">
