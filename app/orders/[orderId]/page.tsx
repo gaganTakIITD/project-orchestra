@@ -12,7 +12,7 @@ const toneColors: Record<string, string> = {
   neutral: "bg-muted text-muted-foreground",
   info: "bg-secondary/15 text-secondary-foreground",
   active: "bg-primary/10 text-primary",
-  review: "bg-amber-100 text-amber-900",
+  review: "bg-highlight text-highlight-foreground",
   success: "bg-primary/15 text-primary",
   danger: "bg-destructive/10 text-destructive",
 };
@@ -104,10 +104,10 @@ export default function OrderTrackerPage({ params }: { params: { orderId: string
 
           {/* Assemble-team CTA — client staffs the work while team is forming */}
           {order.status === "assembling_team" || order.status === "confirmed" ? (
-            <div className="mb-10 flex flex-col gap-4 rounded-sm border border-primary/40 bg-primary/5 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-10 flex flex-col gap-4 rounded-sm bg-highlight p-6 text-highlight-foreground sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-semibold text-foreground">Assemble your team</p>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="text-sm font-semibold">Assemble your team</p>
+                <p className="mt-1 text-sm text-highlight-foreground/75">
                   Rank the specialists we shortlisted so we can invite your top choices first.
                 </p>
               </div>
@@ -124,10 +124,10 @@ export default function OrderTrackerPage({ params }: { params: { orderId: string
 
           {/* Review-delivery CTA — outcome is ready for the client to accept */}
           {order.status === "delivered" ? (
-            <div className="mb-10 flex flex-col gap-4 rounded-sm border border-primary/40 bg-primary/5 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-10 flex flex-col gap-4 rounded-sm bg-highlight p-6 text-highlight-foreground sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-semibold text-foreground">Your delivery is ready</p>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="text-sm font-semibold">Your delivery is ready</p>
+                <p className="mt-1 text-sm text-highlight-foreground/75">
                   Review the final deliverables and accept your outcome to close the order.
                 </p>
               </div>
@@ -177,7 +177,7 @@ export default function OrderTrackerPage({ params }: { params: { orderId: string
                       <p className="text-sm text-muted-foreground">{milestone.client_label}</p>
                     </div>
                     {allTasksCompleted && (
-                      <div className="text-xs font-mono tracking-widest uppercase text-green-600 font-semibold self-center">
+                      <div className="text-xs font-mono tracking-widest uppercase text-primary font-semibold self-center">
                         ✓ Done
                       </div>
                     )}
@@ -254,7 +254,7 @@ export default function OrderTrackerPage({ params }: { params: { orderId: string
                     {order.status === "delivered" || order.status === "closed" ? (
                       <div className="pt-2">
                         {order.status === "closed" || delivery.accepted_at ? (
-                          <p className="text-sm text-green-700 font-medium">Outcome accepted</p>
+                          <p className="text-sm text-primary font-medium">Outcome accepted</p>
                         ) : (
                           <button
                             type="button"
