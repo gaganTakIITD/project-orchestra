@@ -59,6 +59,13 @@ class Settings(BaseSettings):
     razorpay_key_id: str | None = None
     razorpay_key_secret: str | None = None
 
+    # Vertex AI Agent Builder / Discovery Engine (grounded RAG — not Gemini SDK billing)
+    # Env aliases: PROJECT_ID, LOCATION, DATA_STORE_ID (optional ENGINE_ID for answer apps)
+    project_id: str | None = None
+    location: str = "global"
+    data_store_id: str | None = None
+    engine_id: str | None = None
+
     @property
     def db_connect_args(self) -> dict:
         # Unix sockets via /cloudsql/... break asyncpg on Cloud Run gen2

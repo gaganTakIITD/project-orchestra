@@ -1,17 +1,21 @@
 'use client';
 
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuote, useSpec, useAcceptQuote } from "@/lib/hooks";
 import Footer from "@/components/footer";
 import JourneyStepper from "@/components/journey-stepper";
 import { CLIENT_JOURNEY_STAGES } from "@/lib/journey";
 
-export default function ProposalPage({ params }: { params: { quoteId: string } }) {
+export default function ProposalPage() {
   const router = useRouter();
-  const quoteId = params.quoteId;
-  
-  const { data: quote, isLoading: quoteLoading } = useQuote(quoteId);
-  const { data: spec, isLoading: specLoading } = useSpec(quote?.spec_id || "");
+  const routeParams = useParams<{ quoteId: string }>();
+  const quoteId =
+    typeof routeParams.quoteId === "string" ? routeParams.quoteId : "";
+
+  const { data: quote, isLoading: quoteLoading, isError: quoteError } = useQuote(quoteId);
+  const { data: spec, isLoading: specLoading, isError: specError } = useSpec(
+    quote?.spec_id || ""
+  );
   const acceptQuote = useAcceptQuote();
 
   const formatPrice = (price: number) => {
@@ -55,12 +59,21 @@ export default function ProposalPage({ params }: { params: { quoteId: string } }
     );
   }
 
-  if (!quote || !spec) {
+  if (!quoteId || quoteError || specError || !quote || !spec) {
     return (
       <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
         <main id="main-content" className="flex-1 flex items-center justify-center">
-          <div className="text-center">
+          <div className="text-center space-y-2">
             <p className="text-muted-foreground">Proposal not found</p>
+            {!quoteId ? (
+              <p className="text-xs text-muted-foreground">
+                Missing quote id in the URL — return to scope and try Get my quote again.
+              </p>
+            ) : quoteError || specError ? (
+              <p className="text-xs text-muted-foreground">
+                Could not load quote or spec from the API.
+              </p>
+            ) : null}
           </div>
         </main>
         <Footer />

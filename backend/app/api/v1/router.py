@@ -8,6 +8,7 @@ from app.api.v1 import (
     chat,
     health,
     intents,
+    knowledge,
     media,
     notifications,
     orders,
@@ -41,6 +42,8 @@ api_router.include_router(ws.router)
 api_router.include_router(notifications.router)
 # Durable priority timers (Cloud Scheduler → POST /internal/timers/tick)
 api_router.include_router(timers.router)
+# Vertex AI Agent Builder (Discovery Engine) grounded knowledge Q&A
+api_router.include_router(knowledge.router)
 # PM control loop (timers + allowlisted auto promote_backup)
 api_router.include_router(orchestrator.router)
 # Track D — admin console (verify, taxonomy, AI quality, disputes)

@@ -1,0 +1,7 @@
+# Optional pin file for Discovery Engine RAG (also listed in pyproject.toml).
+# Install with the rest of the backend:
+#   pip install -e ".[dev]"
+# or:
+#   pip install google-cloud-discoveryengine>=0.13.0
+
+google-cloud-discoveryengine>=0.13.0

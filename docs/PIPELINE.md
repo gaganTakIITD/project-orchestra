@@ -5,6 +5,8 @@
 > **North star:** Production Outcome-as-a-Service — client **co-creates the OutcomeSpec in real time with Gemini** (chat + live spec panel), confirms quote, Spine executes plan/match/QA/delivery with live tracker updates. See `docs/SPEC_CO_CREATION.md`.
 >
 > **Current goal (set 2026-07-13): "Campus-ready Orchestra."** P0 role-true + P1 honest loop shipped. Harden the live demo, then Spec Release-3 market features (amendments → admin → reputation/media → email → payments last).
+>
+> **Progress guide (human-readable architecture):** [`docs/CURRENT_ARCHITECTURE.md`](CURRENT_ARCHITECTURE.md) — master architecture, three portals, UI wiring/buttons, frameworks, shipped vs founder-open.
 
 **Legend:** `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 
@@ -70,6 +72,12 @@ The full `intent → delivered` loop works on the live API with honest invites, 
 ### DEFERRED further
 
 Mobile apps, Redis multi-instance WS fan-out, full TDS productization, Meilisearch, multi-vertical SKUs.
+
+### Discovery Engine RAG (Agent Builder credits)
+
+- [x] `google-cloud-discoveryengine` service + `POST /api/v1/knowledge/query` (2026-07-13)
+- [ ] Wire Spec Compiler / support chat to prefer Discovery Engine when `DATA_STORE_ID` set
+- Docs: [`DISCOVERY_ENGINE_RAG.md`](DISCOVERY_ENGINE_RAG.md)
 
 ---
 
