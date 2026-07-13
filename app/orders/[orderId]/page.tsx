@@ -2,18 +2,19 @@
 
 import { useAcceptDelivery, useDelivery, useOrder, usePlan } from "@/lib/hooks";
 import { taskStatusClientLabel, taskStatusTone } from "@/lib/state-labels";
-import Header from "@/components/header";
 import Footer from "@/components/footer";
+import JourneyStepper from "@/components/journey-stepper";
+import { CLIENT_JOURNEY_STAGES, clientStageForOrder } from "@/components/journey";
 import Link from "next/link";
 import { useState } from "react";
 
 const toneColors: Record<string, string> = {
   neutral: "bg-muted text-muted-foreground",
-  info: "bg-blue-100 text-blue-900",
-  active: "bg-indigo-100 text-indigo-900",
+  info: "bg-secondary/15 text-secondary-foreground",
+  active: "bg-primary/10 text-primary",
   review: "bg-amber-100 text-amber-900",
-  success: "bg-green-100 text-green-900",
-  danger: "bg-red-100 text-red-900",
+  success: "bg-primary/15 text-primary",
+  danger: "bg-destructive/10 text-destructive",
 };
 
 export default function OrderTrackerPage({ params }: { params: { orderId: string } }) {
@@ -44,8 +45,7 @@ export default function OrderTrackerPage({ params }: { params: { orderId: string
   if (orderLoading || planLoading) {
     return (
       <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center">
+        <main id="main-content" className="flex-1 flex items-center justify-center">
           <p className="text-muted-foreground">Loading order...</p>
         </main>
         <Footer />
@@ -56,8 +56,7 @@ export default function OrderTrackerPage({ params }: { params: { orderId: string
   if (!order || !plan) {
     return (
       <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center">
+        <main id="main-content" className="flex-1 flex items-center justify-center">
           <p className="text-muted-foreground">Order not found</p>
         </main>
         <Footer />
@@ -67,15 +66,13 @@ export default function OrderTrackerPage({ params }: { params: { orderId: string
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-      <Header />
-
-      <main className="flex-1 border-b border-border">
-        <div className="max-w-5xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
+      <main id="main-content" className="flex-1 border-b border-border">
+        <div className="max-w-5xl mx-auto px-6 lg:px-8 py-16 lg:py-24">
           
           {/* Header */}
-          <div className="mb-12">
+          <div className="mb-10">
             <p className="text-xs font-mono tracking-widest uppercase text-primary mb-4">Order tracker</p>
-            <h1 className="text-4xl font-bold mb-6">HealthTrack — Launch Studio</h1>
+            <h1 className="text-4xl font-bold mb-6 text-balance">HealthTrack — Launch Studio</h1>
             
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
@@ -96,6 +93,52 @@ export default function OrderTrackerPage({ params }: { params: { orderId: string
               </div>
             </div>
           </div>
+
+          {/* Journey stepper */}
+          <div className="mb-10 rounded-sm border border-border bg-card p-6 lg:p-8">
+            <JourneyStepper
+              stages={CLIENT_JOURNEY_STAGES}
+              currentStageId={clientStageForOrder(order.status)}
+            />
+          </div>
+
+          {/* Assemble-team CTA — client staffs the work while team is forming */}
+          {order.status === "assembling_team" || order.status === "confirmed" ? (
+            <div className="mb-10 flex flex-col gap-4 rounded-sm border border-primary/40 bg-primary/5 p-6 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Assemble your team</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Rank the specialists we shortlisted so we can invite your top choices first.
+                </p>
+              </div>
+              {plan.tasks.length > 0 ? (
+                <Link
+                  href={`/orders/${orderId}/preferences/${plan.tasks[0].id}`}
+                  className="inline-flex h-10 flex-shrink-0 items-center justify-center rounded-sm bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+                >
+                  Assemble team
+                </Link>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* Review-delivery CTA — outcome is ready for the client to accept */}
+          {order.status === "delivered" ? (
+            <div className="mb-10 flex flex-col gap-4 rounded-sm border border-primary/40 bg-primary/5 p-6 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Your delivery is ready</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Review the final deliverables and accept your outcome to close the order.
+                </p>
+              </div>
+              <a
+                href="#deliverables"
+                className="inline-flex h-10 flex-shrink-0 items-center justify-center rounded-sm bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+              >
+                Review delivery
+              </a>
+            </div>
+          ) : null}
 
           {/* Progress bar */}
           <div className="mb-16">
@@ -186,7 +229,7 @@ export default function OrderTrackerPage({ params }: { params: { orderId: string
                 </div>
               </section>
 
-              <section>
+              <section id="deliverables" className="scroll-mt-24">
                 <h2 className="text-base font-semibold mb-4">Deliverables</h2>
                 {delivery ? (
                   <div className="border border-border p-6 space-y-4">

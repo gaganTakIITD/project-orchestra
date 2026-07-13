@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCandidates, useSetPreferences } from "@/lib/hooks";
-import Header from "@/components/header";
 import Footer from "@/components/footer";
 
 export default function WorkerPreferencesPage({
@@ -63,8 +62,7 @@ export default function WorkerPreferencesPage({
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center">
+        <main id="main-content" className="flex-1 flex items-center justify-center">
           <p className="text-muted-foreground">Loading candidates...</p>
         </main>
         <Footer />
@@ -75,8 +73,7 @@ export default function WorkerPreferencesPage({
   if (!candidates || candidates.length === 0) {
     return (
       <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center">
+        <main id="main-content" className="flex-1 flex items-center justify-center">
           <p className="text-muted-foreground">No candidates available</p>
         </main>
         <Footer />
@@ -88,9 +85,7 @@ export default function WorkerPreferencesPage({
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-      <Header />
-
-      <main className="flex-1 border-b border-border">
+      <main id="main-content" className="flex-1 border-b border-border">
         <div className="max-w-6xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
           
           {/* Header */}

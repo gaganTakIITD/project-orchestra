@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { UserButton } from "@clerk/nextjs";
 import { useMe } from "@/lib/hooks";
-import type { UserRole } from "@/lib/types";
+import type { User, UserRole } from "@/lib/types";
 
 const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
@@ -32,7 +32,8 @@ function isActive(pathname: string, href: string) {
 }
 
 export default function WorkspaceHeader() {
-  const { data: me } = useMe();
+  const { data } = useMe();
+  const me = data as User | undefined;
   const [open, setOpen] = useState(false);
 
   const role: UserRole = me?.role ?? "client";
@@ -137,7 +138,7 @@ export default function WorkspaceHeader() {
  */
 function AccountControl({ role, name }: { role: UserRole; name?: string }) {
   if (clerkEnabled) {
-    return <UserButton afterSignOutUrl="/" />;
+    return <UserButton />;
   }
 
   const initial = (name?.trim()?.[0] ?? role[0] ?? "?").toUpperCase();
