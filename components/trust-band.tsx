@@ -10,62 +10,46 @@ const TrustBand = memo(function TrustBand() {
   const isInView = useInView(ref, { once: true, margin: "0px 0px -100px 0px" });
 
   return (
-    <section className="bg-card border-b border-border" ref={ref}>
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
-
-        <motion.div 
-          className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-16"
+    <section
+      className="bg-highlight text-highlight-foreground border-b border-border"
+      ref={ref}
+    >
+      <div className="max-w-7xl mx-auto px-8 lg:px-12 py-24 lg:py-32">
+        <motion.h2
+          className="font-serif text-5xl sm:text-6xl lg:text-7xl font-semibold tracking-[-0.03em] leading-[0.98] max-w-4xl mb-20 text-balance"
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
           transition={springConfig.scrollReveal}
         >
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Built on trust</h2>
-          <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-            Three non-negotiable pillars behind every outcome we deliver.
-          </p>
-        </motion.div>
+          Built on trust, backed by proof.
+        </motion.h2>
 
-        <motion.div 
-          className="grid grid-cols-1 md:grid-cols-3 border border-border divide-y md:divide-y-0 md:divide-x divide-border"
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8"
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
           variants={staggerContainer}
         >
           {trustPoints.map((point) => (
-            <motion.div 
-              key={point.label} 
-              className="p-8 flex flex-col gap-4 hover:bg-background/50 transition-colors"
+            <motion.div
+              key={point.label}
+              className="flex flex-col bg-card text-card-foreground p-8"
               variants={staggerItem}
-              whileHover={{ y: -2 }}
             >
-              <motion.span 
-                className="text-3xl font-bold font-mono text-primary"
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={isInView ? { scale: 1, opacity: 1 } : { scale: 0.8, opacity: 0 }}
-                transition={{ ...springConfig.scrollReveal, delay: 0.2 }}
-              >
-                {point.label}
-              </motion.span>
-              <motion.h3 
-                className="text-base font-semibold"
-                initial={{ opacity: 0, y: 10 }}
-                animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-                transition={{ ...springConfig.scrollReveal, delay: 0.3 }}
-              >
+              <h3 className="text-lg font-serif font-medium tracking-[-0.01em] mb-6">
                 {point.title}
-              </motion.h3>
-              <motion.p 
-                className="text-sm text-muted-foreground leading-relaxed"
-                initial={{ opacity: 0, y: 10 }}
-                animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-                transition={{ ...springConfig.scrollReveal, delay: 0.4 }}
-              >
+              </h3>
+              <div className="border-t border-border pt-6 mb-8">
+                <span className="font-serif text-6xl font-semibold tracking-[-0.03em] leading-none text-foreground">
+                  {point.label}
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed mt-auto">
                 {point.description}
-              </motion.p>
+              </p>
             </motion.div>
           ))}
         </motion.div>
-
       </div>
     </section>
   );

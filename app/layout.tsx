@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Playfair_Display } from "next/font/google";
+import { Inter_Tight } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
 
@@ -14,10 +14,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const playfair = Playfair_Display({
+// Lumena-style display type: a tight neutral grotesk for all headings.
+// Kept on the --font-serif variable so every existing `font-serif` heading
+// picks it up without touching each component.
+const displayGrotesk = Inter_Tight({
   variable: "--font-serif",
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -34,7 +37,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} h-full antialiased bg-background`}
+      className={`${geistSans.variable} ${geistMono.variable} ${displayGrotesk.variable} h-full antialiased bg-background`}
     >
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>

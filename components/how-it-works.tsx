@@ -37,7 +37,7 @@ const HowItWorks = memo(function HowItWorks() {
           {steps.map((step) => (
             <motion.div 
               key={step.number} 
-              className="bg-secondary rounded-lg p-8 border border-transparent hover:border-primary/20"
+              className="bg-secondary rounded-sm p-8 border border-transparent hover:border-primary/20"
               variants={staggerItem}
               whileHover={{ 
                 y: -6,
