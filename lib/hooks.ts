@@ -50,6 +50,13 @@ export const useSetRole = () => {
 
 // --- Scope chat (job description extraction) -------------------------------
 
+/** Active scope drafts for the current client — powers "Resume scope" on /start. */
+export const useMyScopes = () =>
+  useQuery({
+    queryKey: ["scopes"],
+    queryFn: () => chatApi.listScopes(),
+  });
+
 export const useStartScopeSession = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -184,6 +191,13 @@ export const useUndoChatSession = () => {
 
 // --- Client journey --------------------------------------------------------
 
+/** The current client's outcomes, newest first — client home / re-entry point. */
+export const useMyOrders = () =>
+  useQuery({
+    queryKey: ["orders"],
+    queryFn: () => clientApi.listOrders(),
+  });
+
 export const useOrder = (orderId: string) =>
   useQuery({
     queryKey: ["order", orderId],
@@ -218,6 +232,7 @@ export const useAcceptQuote = () => {
   return useMutation({
     mutationFn: (quoteId: string) => clientApi.acceptQuote(quoteId),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["orders"] });
       qc.invalidateQueries({ queryKey: ["order"] });
       qc.invalidateQueries({ queryKey: ["plan"] });
     },

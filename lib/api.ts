@@ -19,6 +19,7 @@ import {
   mockInterests,
   mockNotifications,
   mockOrder,
+  mockOrders,
   mockPlan,
   mockPreferenceSet,
   mockSkus,
@@ -45,6 +46,7 @@ import type {
   Candidate,
   Charter,
   ChatSession,
+  ChatSessionSummary,
   ChatStreamEvent,
   ChatStreamHandlers,
   DeliveryBundle,
@@ -231,6 +233,10 @@ export const clientApi = {
       ? mock({ order_id: mockOrder.id })
       : apiFetch(`/quotes/${id}/accept`, { method: "POST" }),
 
+  /** The current client's outcomes, newest first — powers the /orders dashboard. */
+  listOrders: (): Promise<OutcomeOrder[]> =>
+    USE_MOCKS ? mock(mockOrders) : apiFetch("/orders"),
+
   getOrder: (id: string): Promise<OutcomeOrder> =>
     USE_MOCKS ? mock(mockOrder) : apiFetch(`/orders/${id}`),
 
@@ -364,6 +370,25 @@ export const chatApi = {
     USE_MOCKS
       ? mock(getOrCreateMockSession())
       : apiFetch("/chat/sessions", { method: "POST" }),
+
+  /** Active scope drafts for the current client — powers "Resume scope". */
+  listScopes: (): Promise<ChatSessionSummary[]> =>
+    USE_MOCKS
+      ? mock(
+          [getOrCreateMockSession()]
+            .filter((s) => s.agent_type === "spec_compiler" && s.status === "active")
+            .map<ChatSessionSummary>((s) => ({
+              id: s.id,
+              agent_type: s.agent_type,
+              status: s.status,
+              title: s.spec_draft?.outcome_statement?.trim() || "Untitled outcome",
+              completeness_pct: s.completeness_pct,
+              ready_for_quote: s.ready_for_quote,
+              spec_version: s.spec_version,
+              created_at: s.created_at,
+            }))
+        )
+      : apiFetch("/chat/sessions"),
 
   /** Stage 2 — Pricing Reasoner Confirm Chat bound to an issued quote. */
   startPricingSession: (quoteId: string): Promise<ChatSession> =>

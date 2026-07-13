@@ -103,6 +103,34 @@ class ChatSessionOut(BaseModel):
         )
 
 
+class ChatSessionSummaryOut(BaseModel):
+    """Lightweight row for the 'Resume scope' list (GET /chat/sessions)."""
+
+    id: str
+    agent_type: str
+    status: str
+    title: str
+    completeness_pct: int
+    ready_for_quote: bool
+    spec_version: int
+    created_at: datetime
+
+    @classmethod
+    def from_session(cls, session) -> "ChatSessionSummaryOut":
+        draft = session.spec_draft or {}
+        title = (draft.get("outcome_statement") or "").strip() or "Untitled outcome"
+        return cls(
+            id=str(session.id),
+            agent_type=session.agent_type,
+            status=session.status,
+            title=title,
+            completeness_pct=session.completeness_pct,
+            ready_for_quote=session.ready_for_quote,
+            spec_version=session.spec_version,
+            created_at=session.created_at,
+        )
+
+
 class SendMessageIn(BaseModel):
     body: str = Field(min_length=1)
 

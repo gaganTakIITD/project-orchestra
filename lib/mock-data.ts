@@ -252,6 +252,42 @@ export const mockOrder: OutcomeOrder = {
   updated_at: hoursFromNow(-4),
 };
 
+/**
+ * The demo client's full outcome list — powers the /orders dashboard (useMyOrders).
+ * Newest first, mirroring the real `GET /orders` ordering (created_at desc).
+ */
+export const mockOrders: OutcomeOrder[] = [
+  {
+    id: "ord_brandkit",
+    client_id: mockClient.id,
+    quote_id: "quote_brandkit",
+    spec_id: mockSpec.id,
+    sku_id: "sku_launch_studio",
+    status: "assembling_team",
+    price: 4500,
+    deadline: daysFromNow(14),
+    revision_limit: 2,
+    progress_pct: 0,
+    created_at: hoursFromNow(-6),
+    updated_at: hoursFromNow(-6),
+  },
+  mockOrder,
+  {
+    id: "ord_pitchdeck",
+    client_id: mockClient.id,
+    quote_id: "quote_pitchdeck",
+    spec_id: mockSpec.id,
+    sku_id: "sku_launch_studio",
+    status: "delivered",
+    price: 6000,
+    deadline: daysFromNow(2),
+    revision_limit: 2,
+    progress_pct: 100,
+    created_at: daysFromNow(-12),
+    updated_at: hoursFromNow(-20),
+  },
+];
+
 // ----------------------------------------------------------------------------
 // Fulfillment plan — the 5-task DAG (Spec §8.3 Architect example)
 // ----------------------------------------------------------------------------

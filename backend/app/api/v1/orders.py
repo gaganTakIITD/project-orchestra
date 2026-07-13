@@ -1,6 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -20,6 +21,21 @@ from app.services.delivery import DeliveryService
 from app.services.fulfillment import FulfillmentService
 
 router = APIRouter(prefix="/orders", tags=["orders"])
+
+
+@router.get("", response_model=list[OutcomeOrderOut])
+async def list_orders(
+    db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
+) -> list[OutcomeOrderOut]:
+    """The current client's outcomes, newest first — powers the /orders dashboard."""
+    stmt = (
+        select(OutcomeOrder)
+        .where(OutcomeOrder.client_id == client.id)
+        .order_by(OutcomeOrder.created_at.desc())
+    )
+    rows = (await db.scalars(stmt)).all()
+    return [OutcomeOrderOut.from_orm_row(r) for r in rows]
 
 
 @router.get("/{order_id}", response_model=OutcomeOrderOut)

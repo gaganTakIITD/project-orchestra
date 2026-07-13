@@ -189,6 +189,19 @@ class ChatService:
     async def get_session(self, session_id: uuid.UUID) -> ChatSession | None:
         return await self.session.get(ChatSession, session_id)
 
+    async def list_scope_sessions(self, *, client_id: uuid.UUID) -> list[ChatSession]:
+        """Active (unfinalized) scope drafts for a client, newest first — 'Resume scope'."""
+        result = await self.session.execute(
+            select(ChatSession)
+            .where(
+                ChatSession.client_id == client_id,
+                ChatSession.agent_type == "spec_compiler",
+                ChatSession.status == "active",
+            )
+            .order_by(ChatSession.created_at.desc())
+        )
+        return list(result.scalars().all())
+
     async def list_messages(self, session_id: uuid.UUID) -> list[ChatMessage]:
         result = await self.session.execute(
             select(ChatMessage)

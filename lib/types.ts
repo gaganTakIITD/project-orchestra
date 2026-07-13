@@ -626,6 +626,19 @@ export interface ChatSession {
   created_at: string;
 }
 
+/** Lightweight row for the "Resume scope" list (GET /chat/sessions). */
+export interface ChatSessionSummary {
+  id: string;
+  agent_type: ChatAgentType;
+  status: ChatSessionStatus;
+  /** Draft outcome_statement, or a placeholder when the draft is still empty. */
+  title: string;
+  completeness_pct: number;
+  ready_for_quote: boolean;
+  spec_version: number;
+  created_at: string;
+}
+
 export interface FinalizeChatSessionResult {
   intent_id: string;
   quote_id: string;

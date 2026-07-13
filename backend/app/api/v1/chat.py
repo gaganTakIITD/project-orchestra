@@ -10,6 +10,7 @@ from app.models.chat import ChatSession
 from app.models.identity import User
 from app.schemas.chat import (
     ChatSessionOut,
+    ChatSessionSummaryOut,
     FinalizeChatIn,
     FinalizeChatOut,
     SendMessageIn,
@@ -86,6 +87,17 @@ async def start_session(
 
     await db.commit()
     return ChatSessionOut.from_session(chat, messages)
+
+
+@router.get("", response_model=list[ChatSessionSummaryOut])
+async def list_sessions(
+    db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
+) -> list[ChatSessionSummaryOut]:
+    """The current client's active scope drafts, newest first — powers 'Resume scope'."""
+    service = ChatService(db)
+    sessions = await service.list_scope_sessions(client_id=client.id)
+    return [ChatSessionSummaryOut.from_session(s) for s in sessions]
 
 
 @router.get("/{session_id}", response_model=ChatSessionOut)
