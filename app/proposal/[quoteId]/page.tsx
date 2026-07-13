@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useQuote, useSpec, useAcceptQuote } from "@/lib/hooks";
-import Header from "@/components/header";
 import Footer from "@/components/footer";
 
 export default function ProposalPage({ params }: { params: { quoteId: string } }) {
@@ -44,8 +43,7 @@ export default function ProposalPage({ params }: { params: { quoteId: string } }
   if (quoteLoading || specLoading) {
     return (
       <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center">
+        <main id="main-content" className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <p className="text-muted-foreground">Loading proposal...</p>
           </div>
@@ -58,8 +56,7 @@ export default function ProposalPage({ params }: { params: { quoteId: string } }
   if (!quote || !spec) {
     return (
       <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center">
+        <main id="main-content" className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <p className="text-muted-foreground">Proposal not found</p>
           </div>
@@ -71,9 +68,7 @@ export default function ProposalPage({ params }: { params: { quoteId: string } }
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-      <Header />
-
-      <main className="flex-1 border-b border-border">
+      <main id="main-content" className="flex-1 border-b border-border">
         <div className="max-w-4xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
           
           {/* Header */}

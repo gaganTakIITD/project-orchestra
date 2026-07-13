@@ -283,8 +283,7 @@ export default function WorkerTaskDetail({ params }: { params: { taskId: string 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-      <Header />
-      <main className="flex-1 border-b border-border">
+      <main id="main-content" className="flex-1 border-b border-border">
         <div className="max-w-6xl mx-auto px-6 lg:px-8 py-16 lg:py-20">{children}</div>
       </main>
       <Footer />

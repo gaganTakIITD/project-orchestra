@@ -1,4 +1,3 @@
-import Header from "@/components/header";
 import Footer from "@/components/footer";
 import ScopeChatSurface from "@/components/scope-chat-surface";
 
@@ -11,9 +10,7 @@ export const metadata = {
 export default function StartPage() {
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-      <Header />
-
-      <main className="flex-1 border-b border-border">
+      <main id="main-content" className="flex-1 border-b border-border">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16 lg:py-20">
           <p className="text-xs font-mono tracking-widest uppercase text-primary mb-6">For clients</p>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-none text-balance mb-4">
