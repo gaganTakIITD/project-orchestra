@@ -4,7 +4,7 @@ import Link from "next/link";
 import Footer from "@/components/footer";
 import JourneyStepper from "@/components/journey-stepper";
 import { CLIENT_JOURNEY_STAGES, clientStageForOrder } from "@/lib/journey";
-import { useMyOrders, useMyScopes } from "@/components/portal-data";
+import { useMyOrders, useMyScopes } from "@/lib/hooks";
 import { orderStatusClientLabel } from "@/lib/state-labels";
 import type { OutcomeOrder } from "@/lib/types";
 
@@ -25,8 +25,8 @@ function formatDate(dateStr: string) {
 }
 
 export default function MyOutcomesPage() {
-  const { orders, isLoading } = useMyOrders();
-  const { scopes } = useMyScopes();
+  const { data: orders = [], isLoading } = useMyOrders();
+  const { data: scopes = [] } = useMyScopes();
 
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
@@ -50,7 +50,6 @@ export default function MyOutcomesPage() {
             </Link>
           </div>
 
-          {/* Resume in-progress scopes */}
           {scopes.length > 0 ? (
             <section className="mb-12">
               <h2 className="mb-4 text-sm font-semibold text-muted-foreground">
@@ -63,8 +62,12 @@ export default function MyOutcomesPage() {
                       href={`/scope/${s.id}`}
                       className="flex items-center justify-between rounded-sm border border-border bg-card px-5 py-4 transition-colors hover:border-primary/50"
                     >
-                      <span className="text-sm font-medium">Draft scope · {s.id}</span>
-                      <span className="font-mono text-xs text-muted-foreground">Resume →</span>
+                      <span className="text-sm font-medium">
+                        {s.title || `Draft scope · ${s.id}`}
+                      </span>
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {s.completeness_pct}% · Resume →
+                      </span>
                     </Link>
                   </li>
                 ))}
@@ -100,7 +103,7 @@ function OutcomeCard({ order }: { order: OutcomeOrder }) {
     >
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3 className="text-xl font-semibold">HealthTrack — Launch Studio</h3>
+          <h3 className="text-xl font-semibold">{orderStatusClientLabel[order.status]} outcome</h3>
           <p className="mt-1 font-mono text-xs text-muted-foreground">{order.id}</p>
         </div>
         <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
