@@ -107,6 +107,7 @@ class OutcomeOrderOut(BaseModel):
     spec_id: str
     sku_id: str | None = None
     status: str
+    ledger_state: str = "unfunded"
     price: float
     deadline: datetime
     revision_limit: int
@@ -123,6 +124,7 @@ class OutcomeOrderOut(BaseModel):
             spec_id=str(row.spec_id) if row.spec_id else "",
             sku_id=str(row.sku_id) if row.sku_id else None,
             status=row.status,
+            ledger_state=getattr(row, "ledger_state", None) or "unfunded",
             price=float(row.price),
             deadline=row.deadline,
             revision_limit=row.revision_limit,

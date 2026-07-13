@@ -7,6 +7,8 @@ import {
   useAdminAiDecisions,
   useAdminOrderEvents,
   useAdminOrders,
+  useAdminVerifyWorker,
+  useAdminWorkers,
 } from "@/lib/admin-hooks";
 
 export default function AdminPage() {
@@ -18,30 +20,76 @@ export default function AdminPage() {
   const { data: eventsData, isLoading: eventsLoading } =
     useAdminOrderEvents(selectedOrderId);
   const { data: aiData, isLoading: aiLoading } = useAdminAiDecisions(50);
+  const { data: workersData, isLoading: workersLoading } = useAdminWorkers();
+  const verifyWorker = useAdminVerifyWorker();
 
   const orders = ordersData?.orders ?? [];
   const events = eventsData?.events ?? [];
   const decisions = aiData?.decisions ?? [];
+  const workers = workersData?.workers ?? [];
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-
       <main className="flex-1 border-b border-border">
         <div className="max-w-6xl mx-auto px-6 lg:px-8 py-16 lg:py-20 space-y-14">
           <div>
             <p className="text-xs font-mono tracking-widest uppercase text-primary mb-2">
-              Admin ┬╖ read-only
+              Admin · ops
             </p>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
               Ops console
             </h1>
             <p className="text-sm text-muted-foreground max-w-xl">
-              Inspect order state, event_log timeline, and AI decision audit ΓÇö
-              no writes.
+              Inspect orders, verify campus workers, and audit AI decisions.
             </p>
           </div>
 
-          {/* Orders */}
+          <section>
+            <h2 className="text-lg font-semibold tracking-tight mb-4">Workers</h2>
+            {workersLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : workers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No workers.</p>
+            ) : (
+              <div className="overflow-x-auto border border-border">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-xs font-mono uppercase tracking-wider text-muted-foreground">
+                      <th className="px-3 py-2 font-medium">Name</th>
+                      <th className="px-3 py-2 font-medium">Verified</th>
+                      <th className="px-3 py-2 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workers.map((w) => (
+                      <tr key={w.user_id} className="border-t border-border">
+                        <td className="px-3 py-2">{w.full_name}</td>
+                        <td className="px-3 py-2 font-mono text-xs">
+                          {w.campus_verified ? "yes" : "no"}
+                        </td>
+                        <td className="px-3 py-2">
+                          <button
+                            type="button"
+                            disabled={verifyWorker.isPending}
+                            onClick={() =>
+                              verifyWorker.mutate({
+                                workerId: w.user_id,
+                                verify: !w.campus_verified,
+                              })
+                            }
+                            className="h-7 px-2 text-xs border border-border"
+                          >
+                            {w.campus_verified ? "Unverify" : "Verify"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
           <section>
             <div className="flex flex-wrap items-end justify-between gap-4 mb-4">
               <h2 className="text-lg font-semibold tracking-tight">Orders</h2>
@@ -61,7 +109,7 @@ export default function AdminPage() {
                 Failed to load orders ({String(ordersError)})
               </p>
             ) : ordersLoading ? (
-              <p className="text-sm text-muted-foreground">LoadingΓÇª</p>
+              <p className="text-sm text-muted-foreground">Loading…</p>
             ) : orders.length === 0 ? (
               <p className="text-sm text-muted-foreground">No orders.</p>
             ) : (
@@ -104,7 +152,6 @@ export default function AdminPage() {
             )}
           </section>
 
-          {/* Event timeline */}
           <section>
             <h2 className="text-lg font-semibold tracking-tight mb-4">
               Event timeline
@@ -119,7 +166,7 @@ export default function AdminPage() {
                 Select an order to load event_log (order + child tasks).
               </p>
             ) : eventsLoading ? (
-              <p className="text-sm text-muted-foreground">LoadingΓÇª</p>
+              <p className="text-sm text-muted-foreground">Loading…</p>
             ) : events.length === 0 ? (
               <p className="text-sm text-muted-foreground">No events.</p>
             ) : (
@@ -135,7 +182,7 @@ export default function AdminPage() {
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(e.created_at).toLocaleString()}
-                      {e.actor_type ? ` ┬╖ ${e.actor_type}` : ""}
+                      {e.actor_type ? ` · ${e.actor_type}` : ""}
                     </p>
                   </li>
                 ))}
@@ -143,13 +190,12 @@ export default function AdminPage() {
             )}
           </section>
 
-          {/* AI decisions */}
           <section>
             <h2 className="text-lg font-semibold tracking-tight mb-4">
               AI decisions
             </h2>
             {aiLoading ? (
-              <p className="text-sm text-muted-foreground">LoadingΓÇª</p>
+              <p className="text-sm text-muted-foreground">Loading…</p>
             ) : decisions.length === 0 ? (
               <p className="text-sm text-muted-foreground">No AI decisions logged.</p>
             ) : (
@@ -172,12 +218,12 @@ export default function AdminPage() {
                         </td>
                         <td className="px-3 py-2 font-mono text-xs">{d.agent_type}</td>
                         <td className="px-3 py-2">{d.source}</td>
-                        <td className="px-3 py-2 text-xs">{d.model ?? "ΓÇö"}</td>
+                        <td className="px-3 py-2 text-xs">{d.model ?? "—"}</td>
                         <td className="px-3 py-2 text-xs max-w-md truncate">
                           {d.error ? (
                             <span className="text-destructive">{d.error}</span>
                           ) : (
-                            d.reply ?? "ΓÇö"
+                            d.reply ?? "—"
                           )}
                         </td>
                       </tr>

@@ -2,15 +2,19 @@
 
 import {
   useAcceptDelivery,
+  useAmendments,
+  useApproveAmendment,
   useDelivery,
   useDiscussion,
   useMe,
   useOrder,
   usePlan,
   usePostDiscussion,
+  useRejectAmendment,
 } from "@/lib/hooks";
 import { useOrderLiveInvalidation } from "@/lib/live";
 import { taskStatusClientLabel, taskStatusTone } from "@/lib/state-labels";
+import { AmendmentCard } from "@/components/amendment-card";
 import Footer from "@/components/footer";
 import JourneyStepper from "@/components/journey-stepper";
 import { LedgerStrip } from "@/components/ledger-strip";
@@ -73,10 +77,14 @@ export default function OrderTrackerPage() {
   const activeChatTaskId = chatTaskId || defaultChatTaskId;
   const { data: discussion, isPending: discussionPending } = useDiscussion(activeChatTaskId);
   const postDiscussion = usePostDiscussion(activeChatTaskId);
+  const { data: amendmentsData } = useAmendments(orderId);
+  const approveAmendment = useApproveAmendment(orderId);
+  const rejectAmendment = useRejectAmendment(orderId);
   const chatTask = plan?.tasks.find((t) => t.id === activeChatTaskId);
   const hasScopeWarning = Boolean(
     discussion?.messages?.some((msg) => isScopeFlaggedMessage(msg))
   );
+  const amendments = amendmentsData?.amendments ?? [];
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("en-IN", {
@@ -163,6 +171,7 @@ export default function OrderTrackerPage() {
 
             <div className="mt-8">
               <LedgerStrip
+                ledgerState={order.ledger_state}
                 orderStatus={order.status}
                 deliveryAcceptedAt={delivery?.accepted_at}
               />
@@ -188,7 +197,7 @@ export default function OrderTrackerPage() {
                 href={`/orders/${orderId}/preferences/${assembleTask.id}`}
                 className="inline-flex h-10 flex-shrink-0 items-center justify-center rounded-sm bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
               >
-                Assemble team
+                Assemble your team →
               </Link>
             </div>
           ) : null}
@@ -196,7 +205,7 @@ export default function OrderTrackerPage() {
           {order.status === "delivered" ? (
             <div className="mb-10 flex flex-col gap-4 rounded-sm bg-highlight p-6 text-highlight-foreground sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-semibold">Your delivery is ready</p>
+                <p className="text-sm font-semibold">Review &amp; accept delivery</p>
                 <p className="mt-1 text-sm text-highlight-foreground/75">
                   Review the final deliverables and accept your outcome to close the order.
                 </p>
@@ -205,7 +214,7 @@ export default function OrderTrackerPage() {
                 href="#deliverables"
                 className="inline-flex h-10 flex-shrink-0 items-center justify-center rounded-sm bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
               >
-                Review delivery
+                Review &amp; accept delivery →
               </a>
             </div>
           ) : null}
@@ -303,6 +312,25 @@ export default function OrderTrackerPage() {
           </div>
 
           <div className="mt-16 pt-8 border-t border-border">
+            {amendments.length > 0 ? (
+              <section className="mb-10 space-y-3">
+                <h2 className="text-base font-semibold">Amendments</h2>
+                <p className="text-sm text-muted-foreground">
+                  Scope changes flagged in discussion — approve to apply to the charter.
+                </p>
+                {amendments.map((a) => (
+                  <AmendmentCard
+                    key={a.id}
+                    amendment={a}
+                    busy={
+                      approveAmendment.isPending || rejectAmendment.isPending
+                    }
+                    onApprove={(id) => approveAmendment.mutate(id)}
+                    onReject={(id) => rejectAmendment.mutate(id)}
+                  />
+                ))}
+              </section>
+            ) : null}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <section>
                 <div className="flex items-center justify-between gap-3 mb-4">

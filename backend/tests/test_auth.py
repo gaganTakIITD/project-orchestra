@@ -1,7 +1,7 @@
 """Auth mode demo still resolves seeded users without Bearer.
 
-Also scaffolds a Clerk JWT path with a mock JWKS signing key (Phase 4 prep —
-founder still must set real Clerk keys + AUTH_MODE=clerk on Cloud Run).
+Clerk JWT path uses a mock JWKS signing key (AUTH_MODE=clerk is live in prod;
+these tests exercise RBAC + admin elevation without hitting real Clerk).
 """
 
 from __future__ import annotations
@@ -183,3 +183,115 @@ async def test_auth_me_reflects_admin_role_clerk(api_client: AsyncClient, monkey
     )
     assert res.status_code == 200
     assert res.json()["role"] == "admin"
+
+
+@pytest.mark.asyncio
+async def test_worker_role_cannot_hit_client_route_clerk(
+    api_client: AsyncClient, monkeypatch
+):
+    """RBAC: active role=worker → client routes (e.g. POST /intents) return 403."""
+    private_key, issuer = _setup_clerk_mode(monkeypatch)
+    token = jwt.encode(
+        {
+            "sub": "user_worker_blocks_client",
+            "email": "seller@example.com",
+            "iss": issuer,
+        },
+        private_key,
+        algorithm="RS256",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
+    me = await api_client.get("/api/v1/auth/me", headers=headers)
+    assert me.status_code == 200
+    assert me.json()["role"] == "client"
+
+    switched = await api_client.patch(
+        "/api/v1/auth/role",
+        json={"role": "worker"},
+        headers=headers,
+    )
+    assert switched.status_code == 200
+    assert switched.json()["role"] == "worker"
+
+    denied = await api_client.post(
+        "/api/v1/intents",
+        json={"raw_text": "Need a logo for my cafe within two weeks please"},
+        headers=headers,
+    )
+    assert denied.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_admin_claim_persists_across_auth_me_calls(
+    api_client: AsyncClient, monkeypatch
+):
+    """Admin elevation from Clerk claims is committed; survives a follow-up /auth/me
+    even when the second token no longer carries the admin claim (no auto-demote)."""
+    private_key, issuer = _setup_clerk_mode(monkeypatch)
+    sub = "user_admin_persist"
+    admin_token = jwt.encode(
+        {
+            "sub": sub,
+            "email": "persist.admin@example.com",
+            "iss": issuer,
+            "public_metadata": {"role": "admin"},
+        },
+        private_key,
+        algorithm="RS256",
+    )
+    first = await api_client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert first.status_code == 200
+    assert first.json()["role"] == "admin"
+    user_id = first.json()["id"]
+
+    plain_token = jwt.encode(
+        {
+            "sub": sub,
+            "email": "persist.admin@example.com",
+            "iss": issuer,
+            "public_metadata": {"role": "client"},
+        },
+        private_key,
+        algorithm="RS256",
+    )
+    second = await api_client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {plain_token}"},
+    )
+    assert second.status_code == 200
+    assert second.json()["id"] == user_id
+    assert second.json()["role"] == "admin"
+
+
+@pytest.mark.asyncio
+async def test_patch_auth_role_rejected_for_admin(
+    api_client: AsyncClient, monkeypatch
+):
+    """Admin is IdP-owned — PATCH /auth/role must not demote or reassign it."""
+    private_key, issuer = _setup_clerk_mode(monkeypatch)
+    token = jwt.encode(
+        {
+            "sub": "user_admin_no_patch",
+            "email": "locked.admin@example.com",
+            "iss": issuer,
+            "public_metadata": {"role": "admin"},
+        },
+        private_key,
+        algorithm="RS256",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
+    me = await api_client.get("/api/v1/auth/me", headers=headers)
+    assert me.status_code == 200
+    assert me.json()["role"] == "admin"
+
+    rejected = await api_client.patch(
+        "/api/v1/auth/role",
+        json={"role": "worker"},
+        headers=headers,
+    )
+    assert rejected.status_code == 403

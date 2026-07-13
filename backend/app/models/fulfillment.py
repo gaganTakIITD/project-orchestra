@@ -19,10 +19,14 @@ class OutcomeOrder(Base):
     spec_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     sku_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     status: Mapped[str] = mapped_column(String(30), nullable=False, default=OrderStatus.CONFIRMED)
+    # Mock money only — Held → Reserved → Released via LedgerService lifecycle hooks.
+    ledger_state: Mapped[str] = mapped_column(String(30), nullable=False, default="unfunded")
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=Decimal("0"))
     deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revision_limit: Mapped[int] = mapped_column(Integer, default=2)
     progress_pct: Mapped[int] = mapped_column(Integer, default=0)
+    # Open dispute blocks payout_released until resolved (Sprint 7).
+    dispute_open: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -188,3 +192,54 @@ class DeliveryBundleRecord(Base):
     delivered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     accepted_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+
+
+class AmendmentRecord(Base):
+    """Formal scope change — only legal path to mutate a frozen Charter."""
+
+    __tablename__ = "amendments"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("outcome_orders.id"), nullable=False, index=True
+    )
+    charter_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("charters.id"), nullable=True
+    )
+    task_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("fulfillment_tasks.id"), nullable=True, index=True
+    )
+    requested_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
+    delta_description: Mapped[str] = mapped_column(Text, nullable=False)
+    proposed_delta: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    price_delta: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=Decimal("0"))
+    time_delta_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    new_criteria: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="requested", index=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DisputeCaseRecord(Base):
+    __tablename__ = "dispute_cases"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("outcome_orders.id"), nullable=False, index=True
+    )
+    task_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("fulfillment_tasks.id"), nullable=True
+    )
+    raised_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="open", index=True)
+    ai_summary: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    resolution: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resolved_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

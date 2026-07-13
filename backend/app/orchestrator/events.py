@@ -43,6 +43,11 @@ class EventWriter:
         self.session.add(entry)
         await self.session.flush()
 
+        # Project selected events → in-app notifications (same transaction).
+        from app.services.notifications import NotificationService
+
+        await NotificationService(self.session).project_from_event(entry)
+
         message: dict[str, Any] = {
             "aggregate_type": aggregate_type,
             "aggregate_id": str(aggregate_id),

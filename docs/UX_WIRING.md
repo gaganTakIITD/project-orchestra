@@ -225,4 +225,4 @@ Do not add auth pages. Do not edit lib/** or backend/**. Reuse existing screens'
 
 - [x] Framework + IA + journey model + v0 handoff (this doc)
 - [x] Contract glue: `GET /orders` + `useMyOrders`, `lib/journey.ts`, resume-scope (`GET /chat/sessions` + `useMyScopes`) — tests green, `tsc --noEmit` clean
-- [ ] v0: WorkspaceHeader + layouts + `/orders` dashboard + JourneyStepper + reframed steps (handoff in §8)
+- [x] v0: WorkspaceHeader + layouts + `/orders` dashboard + JourneyStepper (scope/proposal/order/worker task) + reframed Assemble/Accept CTAs + Resume scope on `/start` (Plan E, 2026-07-13)

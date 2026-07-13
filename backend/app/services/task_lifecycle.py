@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.gateway import generate_qa_proposal
-from app.ai.matcher import match_candidates
+from app.config import settings
 from app.models.commerce import OutcomeSpecRecord
 from app.models.fulfillment import (
     CharterRecord,
@@ -23,8 +23,22 @@ from app.models.identity import User
 from app.models.platform import AiDecisionLog
 from app.orchestrator.spine import OrderSpine, TaskSpine
 from app.orchestrator.states import ActorType, OrderStatus, TaskStatus
+from app.orchestrator.timers import DurableTimerService, TimerKind
 from app.orchestrator.transitions import IllegalTransitionError
 from app.schemas.qa import QACriterionEvidenceOut, QAReviewOut
+
+
+class TaskNotInvitedError(Exception):
+    """Accept requires client preferences_set → invited first."""
+
+
+def _parse_worker_uuid(raw: str | None) -> uuid.UUID | None:
+    if not raw:
+        return None
+    try:
+        return uuid.UUID(str(raw))
+    except (ValueError, TypeError, AttributeError):
+        return None
 
 
 class TaskLifecycleService:
@@ -32,10 +46,13 @@ class TaskLifecycleService:
         self.session = session
         self.task_spine = TaskSpine(session)
         self.order_spine = OrderSpine(session)
+        self.timers = DurableTimerService(session)
 
     async def accept_interest(self, *, task: FulfillmentTask, worker: User) -> FulfillmentTask:
         if task.status == TaskStatus.READY:
-            await self._ensure_invited(task=task, worker_id=worker.id)
+            raise TaskNotInvitedError(
+                "Task must be invited via client preferences before accept"
+            )
 
         if task.status == TaskStatus.INVITED:
             await self.task_spine.transition(
@@ -59,14 +76,100 @@ class TaskLifecycleService:
             raise ValueError(f"Cannot accept interest when task is {task.status!r}")
 
         task.assigned_worker_id = worker.id
+        await self._schedule_priority_window(task=task, worker_id=worker.id)
         await self.session.flush()
         return task
+
+    async def promote_backup(self, *, task: FulfillmentTask) -> FulfillmentTask:
+        """Priority window expired — promote next ranked UUID worker or exhaust prefs."""
+        if task.status != TaskStatus.PRIORITY_ACTIVE:
+            return task
+
+        pref = await self.session.scalar(
+            select(TaskPreferenceSet)
+            .where(TaskPreferenceSet.task_id == task.id)
+            .order_by(TaskPreferenceSet.created_at.desc())
+        )
+        entries = list(pref.entries or []) if pref is not None else []
+        ranked: list[uuid.UUID] = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            wid = _parse_worker_uuid(entry.get("worker_id"))
+            if wid is not None and wid not in ranked:
+                ranked.append(wid)
+
+        current = task.assigned_worker_id
+        next_worker: uuid.UUID | None = None
+        if ranked:
+            if current is None:
+                next_worker = ranked[0]
+            else:
+                try:
+                    idx = ranked.index(current)
+                except ValueError:
+                    idx = -1
+                if idx + 1 < len(ranked):
+                    next_worker = ranked[idx + 1]
+
+        if next_worker is None:
+            await self.task_spine.transition(
+                task,
+                "preferences_exhausted",
+                actor_type=ActorType.SYSTEM,
+                payload={
+                    "from_worker_id": str(current) if current else None,
+                    "reason": "priority_window_expired",
+                },
+            )
+            task.assigned_worker_id = None
+            task.priority_window_ends = None
+            await self.timers.cancel(
+                kind=TimerKind.PRIORITY_WINDOW,
+                aggregate_id=task.id,
+            )
+            await self.session.flush()
+            return task
+
+        await self.task_spine.transition(
+            task,
+            "priority_expired",
+            actor_type=ActorType.SYSTEM,
+            payload={
+                "from_worker_id": str(current) if current else None,
+                "to_worker_id": str(next_worker),
+                "reason": "priority_window_expired",
+            },
+        )
+        task.assigned_worker_id = next_worker
+        await self._schedule_priority_window(task=task, worker_id=next_worker)
+        await self.session.flush()
+        return task
+
+    async def _schedule_priority_window(
+        self, *, task: FulfillmentTask, worker_id: uuid.UUID
+    ) -> None:
+        delay = timedelta(hours=float(settings.priority_window_hours))
+        fire_at = datetime.now(timezone.utc) + delay
+        task.priority_window_ends = fire_at
+        await self.timers.schedule(
+            kind=TimerKind.PRIORITY_WINDOW,
+            aggregate_id=task.id,
+            fire_at=fire_at,
+            payload={"worker_id": str(worker_id), "task_id": str(task.id)},
+            cancel_existing=True,
+        )
 
     async def ready_to_start(self, *, task: FulfillmentTask, worker: User) -> FulfillmentTask:
         if task.assigned_worker_id and task.assigned_worker_id != worker.id:
             raise ValueError("Not your task")
 
         if task.status == TaskStatus.PRIORITY_ACTIVE:
+            await self.timers.cancel(
+                kind=TimerKind.PRIORITY_WINDOW,
+                aggregate_id=task.id,
+            )
+            task.priority_window_ends = None
             await self.task_spine.transition(
                 task,
                 "ready_to_start",
@@ -226,6 +329,15 @@ class TaskLifecycleService:
                 },
             )
             task.completed_at = datetime.now(timezone.utc)
+            if task.assigned_worker_id:
+                from app.services.worker_stats import WorkerStatsService
+
+                await WorkerStatsService(self.session).record_qa(
+                    worker_id=task.assigned_worker_id,
+                    task_type_slug=task.task_type_slug,
+                    passed=True,
+                    confidence=proposal.confidence,
+                )
             await self._unlock_dependents(task)
             await self._maybe_advance_order_to_delivered(task.order_id)
         else:
@@ -242,6 +354,29 @@ class TaskLifecycleService:
                 },
             )
             task.revision_count = int(task.revision_count or 0) + 1
+            if task.assigned_worker_id:
+                from app.services.worker_stats import WorkerStatsService
+
+                await WorkerStatsService(self.session).record_qa(
+                    worker_id=task.assigned_worker_id,
+                    task_type_slug=task.task_type_slug,
+                    passed=False,
+                    confidence=proposal.confidence,
+                )
+                # Best-effort email (no-op without RESEND_API_KEY).
+                try:
+                    from app.models.identity import User
+                    from app.services.email import EmailService
+
+                    worker = await self.session.get(User, task.assigned_worker_id)
+                    if worker is not None and worker.email:
+                        await EmailService().send_qa_fail(
+                            to=worker.email,
+                            task_title=task.title or "task",
+                            feedback=proposal.feedback or "",
+                        )
+                except Exception:  # noqa: BLE001
+                    pass
 
         await self.session.flush()
         return task, submission
@@ -348,42 +483,6 @@ class TaskLifecycleService:
         self.session.add(bundle)
         await self.session.flush()
         return bundle
-
-    async def _ensure_invited(self, *, task: FulfillmentTask, worker_id: uuid.UUID) -> None:
-        existing = await self.session.scalar(
-            select(TaskPreferenceSet.id).where(TaskPreferenceSet.task_id == task.id)
-        )
-        if existing is None:
-            candidates = await match_candidates(self.session, task=task)
-            ranked = [c["worker_id"] for c in candidates[:3]]
-            ranked = [str(worker_id)] + [w for w in ranked if w != str(worker_id)]
-            ranked = ranked[:3]
-            while len(ranked) < 3:
-                ranked.append(f"usr_worker_backup_{len(ranked)}")
-            pref = TaskPreferenceSet(
-                task_id=task.id,
-                order_id=task.order_id,
-                entries=[{"worker_id": wid, "rank": i + 1} for i, wid in enumerate(ranked[:3])],
-            )
-            self.session.add(pref)
-
-        await self.task_spine.transition(
-            task,
-            "preferences_set",
-            actor_id=worker_id,
-            actor_type=ActorType.SYSTEM,
-            payload={"source": "accept_interest_bootstrap", "worker_id": str(worker_id)},
-        )
-
-        order = await self.session.get(OutcomeOrder, task.order_id)
-        if order is not None and order.status == OrderStatus.CONFIRMED:
-            await self.order_spine.transition(
-                order,
-                "plan_and_preferences_set",
-                actor_id=worker_id,
-                actor_type=ActorType.SYSTEM,
-                payload={"task_id": str(task.id)},
-            )
 
     async def get_latest_qa_review(self, task_id: uuid.UUID) -> QAReviewOut | None:
         """Latest QA Judge proposal for this task (from ai_decision_log)."""

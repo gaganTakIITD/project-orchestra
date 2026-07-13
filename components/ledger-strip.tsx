@@ -18,13 +18,18 @@ const LEDGER_STEP_LABEL: Record<LedgerStripStepState, string> = {
 };
 
 /**
- * Map order / delivery acceptance → LedgerState for the mock funds strip.
- * Delivery acceptance (or closed) advances to Released; cancelled → refunded.
+ * Prefer Spine-persisted `ledgerState` from GET /orders/{id}.
+ * Fallback maps order status when the field is absent (mocks / legacy).
  */
 export function ledgerStateFromOrder(input: {
   orderStatus: OrderStatus;
   deliveryAcceptedAt?: string | null;
+  ledgerState?: LedgerState | null;
 }): LedgerState {
+  if (input.ledgerState) {
+    return input.ledgerState;
+  }
+
   const { orderStatus, deliveryAcceptedAt } = input;
 
   if (orderStatus === "cancelled") {
@@ -39,13 +44,20 @@ export function ledgerStateFromOrder(input: {
     return "funds_authorized";
   }
 
-  if (orderStatus === "delivered") {
+  // assembling_team stays Held until mutual start — only advance past Held
+  // when delivery is active (mutual start happened) or further along.
+  if (
+    orderStatus === "delivery_active" ||
+    orderStatus === "under_quality_check" ||
+    orderStatus === "delivered" ||
+    orderStatus === "amendment_pending" ||
+    orderStatus === "escalated"
+  ) {
     return "milestone_reserved";
   }
 
-  // assembling_team | delivery_active | under_quality_check |
-  // amendment_pending | escalated
-  return "milestone_reserved";
+  // assembling_team (and unknown): still Held after confirm, not yet reserved
+  return "funds_authorized";
 }
 
 function stepIndexForState(state: LedgerState): number {
@@ -63,8 +75,10 @@ function stepIndexForState(state: LedgerState): number {
 }
 
 export type LedgerStripProps = {
+  /** Preferred: Spine-persisted state from the order API. */
+  ledgerState?: LedgerState | null;
   orderStatus: OrderStatus;
-  /** When set (e.g. delivery.accepted_at), funds show as Released. */
+  /** When set (e.g. delivery.accepted_at), funds show as Released if no ledgerState. */
   deliveryAcceptedAt?: string | null;
   className?: string;
 };
@@ -76,20 +90,25 @@ export type LedgerStripProps = {
  * ```tsx
  * import { LedgerStrip } from "@/components/ledger-strip";
  * <LedgerStrip
+ *   ledgerState={order.ledger_state}
  *   orderStatus={order.status}
- *   deliveryAcceptedAt={delivery?.accepted_at}
  * />
  * ```
  */
 export function LedgerStrip({
+  ledgerState,
   orderStatus,
   deliveryAcceptedAt,
   className = "",
 }: LedgerStripProps) {
-  const ledgerState = ledgerStateFromOrder({ orderStatus, deliveryAcceptedAt });
-  const activeIndex = stepIndexForState(ledgerState);
+  const resolved = ledgerStateFromOrder({
+    ledgerState,
+    orderStatus,
+    deliveryAcceptedAt,
+  });
+  const activeIndex = stepIndexForState(resolved);
   const isTerminalRefund =
-    ledgerState === "refunded" || ledgerState === "refund_pending";
+    resolved === "refunded" || resolved === "refund_pending";
 
   return (
     <div

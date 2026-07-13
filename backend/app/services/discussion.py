@@ -13,6 +13,7 @@ from app.models.fulfillment import (
     DiscussionMessageRecord,
     DiscussionThreadRecord,
     FulfillmentTask,
+    OutcomeOrder,
 )
 from app.models.identity import User
 from app.models.platform import AiDecisionLog
@@ -117,18 +118,41 @@ class DiscussionService:
             scope_flagged=flagged,
         )
         self.session.add(msg)
+
+        # Attribute by task participation, not active portal role (hybrid accounts).
+        order = await self.session.get(OutcomeOrder, task.order_id)
+        actor_type = (
+            ActorType.CLIENT
+            if order is not None and sender.id == order.client_id
+            else ActorType.WORKER
+        )
         await self.events.emit(
             aggregate_type="task",
             aggregate_id=task.id,
             event_type="DiscussionMessagePosted",
             actor_id=sender.id,
-            actor_type=ActorType.CLIENT if sender.role == "client" else ActorType.WORKER,
+            actor_type=actor_type,
             payload={
                 "thread_id": str(thread.id),
                 "message_type": effective_type,
                 "scope_flagged": flagged,
             },
         )
+
+        if flagged:
+            from app.services.amendment import AmendmentService
+
+            await AmendmentService(self.session).create_from_scope_flag(
+                task=task,
+                requested_by=sender.id,
+                delta_description=body,
+                proposed_delta={
+                    "reason": guard.reason,
+                    "confidence": guard.confidence,
+                    "message_id": str(msg.id),
+                },
+            )
+
         await self.session.flush()
         messages = await self.list_messages(thread.id)
         return thread, messages

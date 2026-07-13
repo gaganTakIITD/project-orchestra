@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useQuote, useSpec, useAcceptQuote } from "@/lib/hooks";
 import Footer from "@/components/footer";
+import JourneyStepper from "@/components/journey-stepper";
+import { CLIENT_JOURNEY_STAGES } from "@/lib/journey";
 
 export default function ProposalPage({ params }: { params: { quoteId: string } }) {
   const router = useRouter();
@@ -72,7 +74,7 @@ export default function ProposalPage({ params }: { params: { quoteId: string } }
         <div className="max-w-4xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
           
           {/* Header */}
-          <div className="mb-16">
+          <div className="mb-10">
             <p className="text-xs font-mono tracking-widest uppercase text-primary mb-4">
               Your scoped proposal
             </p>
@@ -82,6 +84,13 @@ export default function ProposalPage({ params }: { params: { quoteId: string } }
             <p className="text-lg text-muted-foreground">
               Here&apos;s the plan we&apos;ve compiled from your brief. Review the scope, deadlines, and price. Everything is fixed until completion.
             </p>
+          </div>
+
+          <div className="mb-16 rounded-sm border border-border bg-card p-6 lg:p-8">
+            <JourneyStepper
+              stages={CLIENT_JOURNEY_STAGES}
+              currentStageId="quote"
+            />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">

@@ -13,10 +13,14 @@ from app.schemas.fulfillment import (
 from app.schemas.qa import QAReviewOut
 from app.schemas.worker import CharterOut, TaskPacketOut
 from app.models.identity import User
-from app.services.auth import get_current_user_for_me, get_current_worker
+from app.services.auth import (
+    get_current_user_for_me,
+    get_current_worker,
+    require_task_discussion_participant,
+)
 from app.services.discussion import DiscussionService
 from app.services.fulfillment import FulfillmentService
-from app.services.task_lifecycle import TaskLifecycleService
+from app.services.task_lifecycle import TaskLifecycleService, TaskNotInvitedError
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -65,6 +69,8 @@ async def accept_interest(
     lifecycle = TaskLifecycleService(db)
     try:
         task = await lifecycle.accept_interest(task=task, worker=worker)
+    except TaskNotInvitedError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -143,11 +149,13 @@ async def get_task_qa(
 async def get_discussion(
     task_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    viewer: User = Depends(get_current_user_for_me),
 ) -> DiscussionThreadOut:
     fulfillment = FulfillmentService(db)
     task = await fulfillment.get_task_by_id(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
+    await require_task_discussion_participant(db, viewer, task)
 
     discussion = DiscussionService(db)
     thread = await discussion.get_or_create_thread(task)
@@ -161,14 +169,14 @@ async def post_discussion_message(
     task_id: uuid.UUID,
     body: DiscussionMessageIn,
     db: AsyncSession = Depends(get_db),
-    # Role-agnostic: whoever is on the thread (client OR assigned worker) posts
-    # as themselves so discussion identity is attributed correctly.
+    # Role-agnostic identity, then task-scoped participation check below.
     sender: User = Depends(get_current_user_for_me),
 ) -> DiscussionThreadOut:
     fulfillment = FulfillmentService(db)
     task = await fulfillment.get_task_by_id(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
+    await require_task_discussion_participant(db, sender, task)
 
     discussion = DiscussionService(db)
     thread, messages = await discussion.post_message(

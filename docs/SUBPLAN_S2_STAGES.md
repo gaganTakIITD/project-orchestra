@@ -76,7 +76,7 @@ Mocks remain only for CI / offline v0 work — not the “app works” story.
 
 ## Stage D — Deepen ⟵ **NOW**
 
-- [x] **Auth first slice:** `AUTH_MODE=demo|clerk`, Clerk JWT verify + `users.external_auth_id`, FastAPI `get_current_client` / `get_current_worker`, frontend `@clerk/nextjs` + `/sign-in` `/sign-up` (keys optional — demo remains default; Cloud Run `AUTH_MODE=demo`)
+- [x] **Auth first slice:** `AUTH_MODE=demo|clerk`, Clerk JWT verify + `users.external_auth_id`, FastAPI `get_current_client` / `get_current_worker`, frontend `@clerk/nextjs` + `/sign-in` `/sign-up` (Clerk live on Vercel + Cloud Run; see `docs/DEPLOY_API.md`)
 - [x] **Clerk go-live:** Vercel + Cloud Run `AUTH_MODE=clerk` (`arriving-serval-22`; see `docs/DEPLOY_API.md`)
 - [x] Gemini required gate in code (`APP_ENV=production` / `REQUIRE_GEMINI`; Spec Compiler + Task Packet via gateway; no silent fixture)
 - [x] Founder: `GEMINI_API_KEY` on Cloud Run via Secret Manager (`orchestra-gemini-api-key`) — live

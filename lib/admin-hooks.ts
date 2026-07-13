@@ -1,8 +1,8 @@
 /**
- * Admin read-only TanStack Query hooks (Track D).
+ * Admin TanStack Query hooks (Track D + Sprint 3 verify).
  * Import from here — do not wire through lib/hooks.ts wholesale.
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi } from "./admin-api";
 
 export const useAdminOrders = (status?: string) =>
@@ -23,3 +23,26 @@ export const useAdminAiDecisions = (limit = 50) =>
     queryKey: ["admin", "ai-decisions", limit],
     queryFn: () => adminApi.listAiDecisions(limit),
   });
+
+export const useAdminWorkers = () =>
+  useQuery({
+    queryKey: ["admin", "workers"],
+    queryFn: () => adminApi.listWorkers(),
+  });
+
+export const useAdminVerifyWorker = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      workerId,
+      verify,
+    }: {
+      workerId: string;
+      verify: boolean;
+    }) =>
+      verify
+        ? adminApi.verifyWorker(workerId)
+        : adminApi.unverifyWorker(workerId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "workers"] }),
+  });
+};

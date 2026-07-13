@@ -10,9 +10,14 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.get("/me", response_model=UserOut)
 async def me(
+    db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user_for_me),
 ) -> UserOut:
-    """Current user — demo stubs when AUTH_MODE=demo; Clerk JWT when AUTH_MODE=clerk."""
+    """Current user — demo stubs when AUTH_MODE=demo; Clerk JWT when AUTH_MODE=clerk.
+
+    Commit so Clerk upsert / admin elevation from claims persists across requests.
+    """
+    await db.commit()
     return UserOut.from_orm_row(user)
 
 

@@ -115,6 +115,13 @@ class WorkerStatsOut(BaseModel):
     last_active_at: str | None = None
 
 
+class TaskTypeStatsOut(BaseModel):
+    task_type_slug: str
+    completed: int = 0
+    reworked: int = 0
+    avg_qa_confidence: float | None = None
+
+
 class WorkerProfileOut(BaseModel):
     user_id: str
     full_name: str
@@ -139,11 +146,24 @@ class WorkerProfileOut(BaseModel):
     task_types: list[dict] = Field(default_factory=list)
     portfolio: list[dict] = Field(default_factory=list)
     stats: WorkerStatsOut | None = None
+    task_type_stats: list[TaskTypeStatsOut] = Field(default_factory=list)
 
     @classmethod
-    def from_orm_rows(cls, user, profile) -> "WorkerProfileOut":
+    def from_orm_rows(cls, user, profile, task_type_stats: list | None = None) -> "WorkerProfileOut":
         stats = profile.stats
         stats_out = WorkerStatsOut(**stats) if isinstance(stats, dict) else None
+        tt_stats: list[TaskTypeStatsOut] = []
+        for row in task_type_stats or []:
+            tt_stats.append(
+                TaskTypeStatsOut(
+                    task_type_slug=row.task_type_slug,
+                    completed=int(row.completed or 0),
+                    reworked=int(row.reworked or 0),
+                    avg_qa_confidence=(
+                        float(row.avg_qa_confidence) if row.avg_qa_confidence is not None else None
+                    ),
+                )
+            )
         return cls(
             user_id=str(user.id),
             full_name=user.full_name,
@@ -168,6 +188,7 @@ class WorkerProfileOut(BaseModel):
             task_types=profile.task_types or [],
             portfolio=profile.portfolio or [],
             stats=stats_out,
+            task_type_stats=tt_stats,
         )
 
 

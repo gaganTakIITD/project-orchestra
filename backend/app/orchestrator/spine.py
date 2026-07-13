@@ -93,8 +93,31 @@ class OrderSpine:
                 **(payload or {}),
             },
         )
+        await self._sync_ledger(
+            order,
+            event,
+            actor_id=actor_id,
+            actor_type=actor_type,
+        )
         await self.session.flush()
         return order
+
+    async def _sync_ledger(
+        self,
+        order: OutcomeOrder,
+        event: str,
+        *,
+        actor_id: uuid.UUID | None,
+        actor_type: ActorType | str,
+    ) -> None:
+        """Drive mock ledger from Spine events (reserve / release)."""
+        from app.services.ledger import LedgerService
+
+        ledger = LedgerService(self.session)
+        if event == "first_mutual_start":
+            await ledger.reserve(order, actor_id=actor_id, actor_type=actor_type)
+        elif event in ("client_accept", "auto_accept"):
+            await ledger.release(order, actor_id=actor_id, actor_type=actor_type)
 
 
 def _event_log_name(trigger: str, from_status: str, to_status: str) -> str:
@@ -105,6 +128,7 @@ def _event_log_name(trigger: str, from_status: str, to_status: str) -> str:
         "interest_accepted": "InterestAccepted",
         "priority_granted": "ActivationGranted",
         "priority_expired": "ActivationExpired",
+        "preferences_exhausted": "PreferencesExhausted",
         "ready_to_start": "StartRequested",
         "mutual_start_confirmed": "MutualStartConfirmed",
         "work_started": "WorkStarted",

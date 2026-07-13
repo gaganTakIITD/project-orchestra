@@ -157,7 +157,7 @@ export default function PortalHub({
                 >
                   {isActive ? portal.homeLabel : `Enter as ${portal.id}`}
                 </button>
-                {portal.secondaryHref && portal.id === "worker" ? (
+                {portal.secondaryHref ? (
                   <Link
                     href={portal.secondaryHref}
                     className="text-center text-xs text-muted-foreground hover:text-foreground underline"

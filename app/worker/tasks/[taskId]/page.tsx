@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import Footer from "@/components/footer";
+import JourneyStepper from "@/components/journey-stepper";
 import {
   useAcceptInterest,
   useCharter,
@@ -13,6 +14,7 @@ import {
   useTaskPacket,
   useTaskQA,
 } from "@/lib/hooks";
+import { WORKER_JOURNEY_STAGES, workerStageForTask } from "@/lib/journey";
 import { useTaskLiveInvalidation } from "@/lib/live";
 import { taskStatusTone, taskStatusWorkerLabel } from "@/lib/state-labels";
 
@@ -96,6 +98,7 @@ export default function WorkerTaskDetail({ params }: { params: { taskId: string 
   }
 
   const tone = taskStatusTone[task.status] ?? "neutral";
+  const workerStage = workerStageForTask(task.status);
   const canAccept = task.status === "invited" || task.status === "interest_pool" || task.status === "ready";
   const canReady = task.status === "priority_active";
   const canSubmit =
@@ -124,6 +127,15 @@ export default function WorkerTaskDetail({ params }: { params: { taskId: string 
           {taskStatusWorkerLabel[task.status]} · {tone}
         </span>
       </div>
+
+      {workerStage ? (
+        <div className="mb-10 rounded-sm border border-border bg-card p-6 lg:p-8">
+          <JourneyStepper
+            stages={WORKER_JOURNEY_STAGES}
+            currentStageId={workerStage}
+          />
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Charter */}

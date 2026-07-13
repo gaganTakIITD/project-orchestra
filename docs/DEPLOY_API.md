@@ -139,9 +139,9 @@ gcloud run services update orchestra-api --region=us-central1 \
 
 ### Clerk (Vercel + Cloud Run) — founder checklist
 
-**Cursor-complete:** `AUTH_MODE=demo|clerk` backend + `@clerk/nextjs` frontend + mock-JWKS pytest (`backend/tests/test_auth.py`). Committed `cloudrun-service.yaml` stays `AUTH_MODE=demo` until real keys exist. Do **not** invent or commit Clerk secrets.
+**Cursor-complete:** `AUTH_MODE=demo|clerk` backend + `@clerk/nextjs` frontend + mock-JWKS pytest (`backend/tests/test_auth.py`). Committed `cloudrun-service.yaml` is a **deploy template only** (may still show `AUTH_MODE=demo`); it is **not** the live service config. Do **not** invent or commit Clerk secrets.
 
-**Status (2026-07-13):** **live** — Clerk app `arriving-serval-22`; Vercel Production + Preview have `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY`; Cloud Run revision `orchestra-api-00024-krv` has `AUTH_MODE=clerk` + JWKS/issuer for `https://arriving-serval-22.clerk.accounts.dev`. Committed `cloudrun-service.yaml` still says `demo` (template only — live service updated via `gcloud run services update`). **Rotate Clerk keys** if they were pasted in chat.
+**Status (2026-07-13):** **live** — Clerk app `arriving-serval-22`; Vercel Production + Preview have `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY`; Cloud Run revision `orchestra-api-00024-krv` has `AUTH_MODE=clerk` + JWKS/issuer for `https://arriving-serval-22.clerk.accounts.dev`. Live env was set via `gcloud run services update` (template yaml is not the source of truth for AUTH_MODE). **Rotate Clerk keys** if they were pasted in chat.
 
 **Smoke (founder):** sign in at https://project-orchestra-khaki.vercel.app → Begin → scope chat → quote → confirm. DevTools → Network: API calls carry `Authorization: Bearer …`; `GET /api/v1/auth/me` without token returns `401`.
 
@@ -175,4 +175,40 @@ gcloud run services update orchestra-api --region=us-central1 \
 
 4. **Smoke:** sign in on Vercel → `GET /api/v1/auth/me` with Bearer JWT returns the Clerk-linked user. Keep `AUTH_MODE=demo` for local Docker + pytest.
 
-Local `.env.local` should keep `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1` for Docker work; do not commit `.env.local`. See `.env.example` for the full local Clerk var list.
+Local `.env.local` should keep `NEXT_PUBLIC_API_BASE_URL=http://localhost:3000` for Docker work only when testing frontend against itself — use `http://localhost:8000/api/v1` for API. Do not commit `.env.local`. See `.env.example` for the full local Clerk var list.
+
+---
+
+## Campus dual-account smoke checklist (P0 harden)
+
+Run on **prod** (Vercel + Cloud Run) with two Clerk accounts.
+
+1. **Client account** — `/account` → client → `/start` → scope chat → Get quote → confirm → `/orders/{id}`
+2. **Assemble team** — open preferences / matcher chat; rank ≥3 real workers → finalize preferences (task → `invited`)
+3. **Worker account** — `/account` → worker → Inbox → Accept interest → Ready to start → Submit
+4. **Client** — accept delivery when order `delivered`
+5. **Admin** (claim/allowlist) — `/admin` → open order events (`event_log` trail)
+6. **Notifications** — workspace bell shows invite / QA / delivery rows; mark-read works
+7. **Ledger strip** — Held after confirm → Reserved after mutual start → Released after accept
+
+### Cloud Scheduler — durable timers
+
+Priority windows need a tick on Cloud Run (in-process loop is off by default: `TIMER_TICK_SECONDS=0`).
+
+```bash
+# Create an OIDC-authenticated job hitting the tick endpoint every 5 minutes
+gcloud scheduler jobs create http orchestra-timer-tick \
+  --location=us-central1 \
+  --schedule="*/5 * * * *" \
+  --uri="https://YOUR_CLOUD_RUN_URL/api/v1/internal/timers/tick" \
+  --http-method=POST \
+  --oidc-service-account-email=YOUR_SA@PROJECT.iam.gserviceaccount.com \
+  --project=gen-lang-client-0795401430
+```
+
+Local/dev: `POST http://localhost:8000/api/v1/internal/timers/tick` or set `TIMER_TICK_SECONDS=60`.
+
+### Founder cost cleanup
+
+Confirm then: `gcloud sql instances delete raysql --project=gen-lang-client-0795401430 --quiet` (leftover MySQL — not the Orchestra Postgres instance).
+

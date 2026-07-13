@@ -2,10 +2,12 @@ from app.models.catalog import OutcomeSku, Skill, TaskType, Tool
 from app.models.chat import ChatMessage, ChatSession
 from app.models.commerce import Intent, OutcomeSpecRecord, Quote
 from app.models.fulfillment import (
+    AmendmentRecord,
     CharterRecord,
     DeliveryBundleRecord,
     DiscussionMessageRecord,
     DiscussionThreadRecord,
+    DisputeCaseRecord,
     FulfillmentPlan,
     FulfillmentTask,
     OutcomeOrder,
@@ -14,7 +16,15 @@ from app.models.fulfillment import (
     TaskPreferenceSet,
 )
 from app.models.identity import User, WorkerProfileRecord
-from app.models.platform import AiDecisionLog, EventLog
+from app.models.platform import (
+    AiDecisionLog,
+    EventLog,
+    LedgerEntryRecord,
+    Notification,
+    ProjectTemplateRecord,
+    TimerRecord,
+    WorkerStatsRecord,
+)
 
 __all__ = [
     "OutcomeSku",
@@ -36,8 +46,15 @@ __all__ = [
     "DiscussionThreadRecord",
     "DiscussionMessageRecord",
     "DeliveryBundleRecord",
+    "AmendmentRecord",
+    "DisputeCaseRecord",
     "User",
     "WorkerProfileRecord",
     "EventLog",
     "AiDecisionLog",
+    "Notification",
+    "TimerRecord",
+    "WorkerStatsRecord",
+    "LedgerEntryRecord",
+    "ProjectTemplateRecord",
 ]

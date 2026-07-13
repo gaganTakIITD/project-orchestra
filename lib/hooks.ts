@@ -51,10 +51,11 @@ export const useSetRole = () => {
 // --- Scope chat (job description extraction) -------------------------------
 
 /** Active scope drafts for the current client — powers "Resume scope" on /start. */
-export const useMyScopes = () =>
+export const useMyScopes = (opts?: { enabled?: boolean }) =>
   useQuery({
     queryKey: ["scopes"],
     queryFn: () => chatApi.listScopes(),
+    enabled: opts?.enabled ?? true,
   });
 
 export const useStartScopeSession = () => {
@@ -366,6 +367,34 @@ export const usePostDiscussion = (taskId: string) => {
     mutationFn: (payload: { body: string; message_type?: string; attachments?: string[] }) =>
       clientApi.postDiscussion(taskId, payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["discussion", taskId] }),
+  });
+};
+
+// --- Amendments ------------------------------------------------------------
+
+export const useAmendments = (orderId: string) =>
+  useQuery({
+    queryKey: ["amendments", orderId],
+    queryFn: () => clientApi.listAmendments(orderId),
+    enabled: Boolean(orderId),
+  });
+
+export const useApproveAmendment = (orderId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (amendmentId: string) => clientApi.approveAmendment(amendmentId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["amendments", orderId] });
+      qc.invalidateQueries({ queryKey: ["order", orderId] });
+    },
+  });
+};
+
+export const useRejectAmendment = (orderId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (amendmentId: string) => clientApi.rejectAmendment(amendmentId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["amendments", orderId] }),
   });
 };
 

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { UserButton } from "@clerk/nextjs";
 import { useMe } from "@/lib/hooks";
 import type { User, UserRole } from "@/lib/types";
+import NotificationsBell from "@/components/notifications-bell";
 
 const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
@@ -84,6 +85,7 @@ export default function WorkspaceHeader() {
           </nav>
 
           <div className="flex items-center gap-3">
+            <NotificationsBell />
             <div className="hidden md:block">
               <AccountControl role={role} name={me?.full_name} />
             </div>

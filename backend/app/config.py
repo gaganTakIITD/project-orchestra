@@ -37,12 +37,27 @@ class Settings(BaseSettings):
     # no silent fixture fallback. Set REQUIRE_GEMINI=true to force locally.
     require_gemini: bool = False
 
+    # Priority window before promote_backup (Technical Spec §6.3)
+    priority_window_hours: float = 24.0
+    # Background timer tick interval (0 = disabled; prefer Cloud Scheduler → /internal/timers/tick)
+    timer_tick_seconds: float = 0.0
+
     auth_mode: str = "demo"
     clerk_jwks_url: str | None = None
     clerk_issuer: str | None = None
     clerk_audience: str | None = None
     # Comma-separated emails allowed as admins when AUTH_MODE=clerk
     admin_email_allowlist: str = ""
+
+    # Sprint 5 — email + observability (optional)
+    resend_api_key: str | None = None
+    email_from: str | None = None
+    sentry_dsn: str | None = None
+
+    # Sprint 6 — payments sandbox (off by default)
+    payments_enabled: bool = False
+    razorpay_key_id: str | None = None
+    razorpay_key_secret: str | None = None
 
     @property
     def db_connect_args(self) -> dict:

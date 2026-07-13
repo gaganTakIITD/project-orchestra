@@ -1,13 +1,51 @@
 """Worker lifecycle + discussion + delivery integration tests."""
 
+from unittest.mock import MagicMock
+
+import jwt
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
+from app.config import settings
 from app.main import app
 from app.models.identity import DEMO_WORKER_ID
 from app.models.platform import EventLog
-from app.orchestrator.states import OrderStatus, TaskStatus
+from app.orchestrator.states import ActorType, OrderStatus, TaskStatus
+from app.services import auth as auth_service
+
+
+def _setup_clerk_mode(monkeypatch):
+    """Switch settings to Clerk mode with a mock JWKS signing key."""
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public_pem = private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    issuer = "https://example.clerk.accounts.dev"
+    monkeypatch.setattr(settings, "auth_mode", "clerk")
+    monkeypatch.setattr(settings, "clerk_jwks_url", f"{issuer}/.well-known/jwks.json")
+    monkeypatch.setattr(settings, "clerk_issuer", issuer)
+    monkeypatch.setattr(settings, "clerk_audience", None)
+    monkeypatch.setattr(settings, "admin_email_allowlist", "")
+    auth_service._jwks_clients.clear()
+
+    fake_client = MagicMock()
+    fake_signing_key = MagicMock()
+    fake_signing_key.key = public_pem
+    fake_client.get_signing_key_from_jwt.return_value = fake_signing_key
+    monkeypatch.setattr(auth_service, "_jwks_client", lambda: fake_client)
+    return private_key, issuer
+
+
+def _clerk_token(private_key, issuer: str, *, sub: str, email: str) -> str:
+    return jwt.encode(
+        {"sub": sub, "email": email, "name": email.split("@")[0], "iss": issuer},
+        private_key,
+        algorithm="RS256",
+    )
 
 
 @pytest.fixture
@@ -32,6 +70,13 @@ async def api_client():
         yield client
 
 
+_DEMO_RANKED = [
+    str(DEMO_WORKER_ID),
+    "usr_worker_meera",
+    "usr_worker_kabir",
+]
+
+
 async def _order_with_ready_task(api_client: AsyncClient) -> tuple[str, str]:
     create = await api_client.post(
         "/api/v1/intents",
@@ -46,7 +91,25 @@ async def _order_with_ready_task(api_client: AsyncClient) -> tuple[str, str]:
     return order_id, ready["id"]
 
 
-async def _complete_task(api_client: AsyncClient, task_id: str) -> None:
+async def _set_preferences(
+    api_client: AsyncClient,
+    order_id: str,
+    task_id: str,
+    *,
+    ranked_worker_ids: list[str] | None = None,
+    headers: dict | None = None,
+) -> None:
+    pref = await api_client.post(
+        f"/api/v1/orders/{order_id}/tasks/{task_id}/preferences",
+        json={"ranked_worker_ids": ranked_worker_ids or list(_DEMO_RANKED)},
+        headers=headers or {},
+    )
+    assert pref.status_code == 200, pref.text
+
+
+async def _complete_task(api_client: AsyncClient, order_id: str, task_id: str) -> None:
+    await _set_preferences(api_client, order_id, task_id)
+
     acc = await api_client.post(f"/api/v1/tasks/{task_id}/accept-interest")
     assert acc.status_code == 200, acc.text
     # Contract alias — Spine state is priority_active
@@ -76,19 +139,7 @@ async def _complete_task(api_client: AsyncClient, task_id: str) -> None:
 async def test_accept_interest_ready_to_start_submit(api_client: AsyncClient):
     order_id, task_id = await _order_with_ready_task(api_client)
 
-    pref = await api_client.post(
-        f"/api/v1/orders/{order_id}/tasks/{task_id}/preferences",
-        json={
-            "ranked_worker_ids": [
-                str(DEMO_WORKER_ID),
-                "usr_worker_meera",
-                "usr_worker_kabir",
-            ]
-        },
-    )
-    assert pref.status_code == 200
-
-    await _complete_task(api_client, task_id)
+    await _complete_task(api_client, order_id, task_id)
 
     plan = (await api_client.get(f"/api/v1/orders/{order_id}/milestones")).json()
     task = next(t for t in plan["tasks"] if t["id"] == task_id)
@@ -134,13 +185,8 @@ async def test_accept_from_ready_without_preferences(api_client: AsyncClient):
     _order_id, task_id = await _order_with_ready_task(api_client)
 
     accept = await api_client.post(f"/api/v1/tasks/{task_id}/accept-interest")
-    assert accept.status_code == 200
-    assert accept.json()["status"] == "accepted"
-
-    ready = await api_client.post(f"/api/v1/tasks/{task_id}/ready-to-start")
-    assert ready.status_code == 200
-    assert ready.json()["status"] == TaskStatus.IN_PROGRESS
-
+    assert accept.status_code == 409
+    assert "invited" in accept.json()["detail"].lower()
 
 @pytest.mark.asyncio
 async def test_discussion_thread(api_client: AsyncClient):
@@ -161,6 +207,115 @@ async def test_discussion_thread(api_client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_assigned_worker_discussion_attributed_as_worker_even_if_db_role_client(
+    api_client: AsyncClient, monkeypatch
+):
+    """Hybrid account: assigned worker posts with DB role=client still attributed
+    as worker (sender_id + DiscussionMessagePosted actor_type), not the client."""
+    private_key, issuer = _setup_clerk_mode(monkeypatch)
+    client_headers = {
+        "Authorization": f"Bearer {_clerk_token(private_key, issuer, sub='user_disc_client', email='disc.client@example.com')}"
+    }
+    worker_headers = {
+        "Authorization": f"Bearer {_clerk_token(private_key, issuer, sub='user_disc_worker', email='disc.worker@example.com')}"
+    }
+
+    client_me = await api_client.get("/api/v1/auth/me", headers=client_headers)
+    assert client_me.status_code == 200
+    client_id = client_me.json()["id"]
+
+    create = await api_client.post(
+        "/api/v1/intents",
+        json={"raw_text": "Launch Studio brand and landing for my SaaS.", "attachments": []},
+        headers=client_headers,
+    )
+    assert create.status_code == 201, create.text
+    accept = await api_client.post(
+        f"/api/v1/quotes/{create.json()['quote_id']}/accept",
+        headers=client_headers,
+    )
+    assert accept.status_code == 200, accept.text
+    order_id = accept.json()["order_id"]
+    plan = (
+        await api_client.get(
+            f"/api/v1/orders/{order_id}/milestones",
+            headers=client_headers,
+        )
+    ).json()
+    task_id = next(t["id"] for t in plan["tasks"] if t["status"] == TaskStatus.READY)
+
+    switch = await api_client.patch(
+        "/api/v1/auth/role",
+        json={"role": "worker"},
+        headers=worker_headers,
+    )
+    assert switch.status_code == 200
+    worker_id = switch.json()["id"]
+    assert worker_id != client_id
+
+    await _set_preferences(
+        api_client,
+        order_id,
+        task_id,
+        ranked_worker_ids=[worker_id, "usr_worker_meera", "usr_worker_kabir"],
+        headers=client_headers,
+    )
+
+    acc = await api_client.post(
+        f"/api/v1/tasks/{task_id}/accept-interest",
+        headers=worker_headers,
+    )
+    assert acc.status_code == 200, acc.text
+    assert acc.json()["status"] == "accepted"
+
+    assigned = (
+        await api_client.get(
+            f"/api/v1/orders/{order_id}/milestones",
+            headers=client_headers,
+        )
+    ).json()
+    task_row = next(t for t in assigned["tasks"] if t["id"] == task_id)
+    assert task_row["assigned_worker_id"] == worker_id
+
+    # Active portal role flipped back to client — participation still governs chat.
+    demote = await api_client.patch(
+        "/api/v1/auth/role",
+        json={"role": "client"},
+        headers=worker_headers,
+    )
+    assert demote.status_code == 200
+    assert demote.json()["role"] == "client"
+
+    post = await api_client.post(
+        f"/api/v1/tasks/{task_id}/discussion",
+        json={"body": "Worker note while portal role is client.", "message_type": "clarification"},
+        headers=worker_headers,
+    )
+    assert post.status_code == 200, post.text
+    mine = [m for m in post.json()["messages"] if m["body"].startswith("Worker note")]
+    assert len(mine) == 1
+    assert mine[0]["sender_id"] == worker_id
+
+    from app.db.session import AsyncSessionLocal
+    import uuid as uuid_mod
+
+    async with AsyncSessionLocal() as session:
+        events = (
+            await session.execute(
+                select(EventLog).where(
+                    EventLog.aggregate_type == "task",
+                    EventLog.aggregate_id == uuid_mod.UUID(task_id),
+                    EventLog.event_type == "DiscussionMessagePosted",
+                )
+            )
+        ).scalars().all()
+        assert events
+        latest = max(events, key=lambda e: e.created_at)
+        assert str(latest.actor_id) == worker_id
+        assert latest.actor_type == ActorType.WORKER
+
+
+@pytest.mark.asyncio
 async def test_full_dag_delivery_and_accept(api_client: AsyncClient):
     order_id, _ = await _order_with_ready_task(api_client)
 
@@ -168,7 +323,7 @@ async def test_full_dag_delivery_and_accept(api_client: AsyncClient):
         plan = (await api_client.get(f"/api/v1/orders/{order_id}/milestones")).json()
         ready = [t for t in plan["tasks"] if t["status"] == TaskStatus.READY]
         assert ready, f"no ready task; {[t['status'] for t in plan['tasks']]}"
-        await _complete_task(api_client, ready[0]["id"])
+        await _complete_task(api_client, order_id, ready[0]["id"])
 
     order = (await api_client.get(f"/api/v1/orders/{order_id}")).json()
     assert order["status"] == OrderStatus.DELIVERED
@@ -213,6 +368,7 @@ async def test_submit_qa_fail_moves_to_rework(api_client: AsyncClient, monkeypat
         _fail_qa,
     )
 
+    await _set_preferences(api_client, order_id, task_id)
     acc = await api_client.post(f"/api/v1/tasks/{task_id}/accept-interest")
     assert acc.status_code == 200
     ready = await api_client.post(f"/api/v1/tasks/{task_id}/ready-to-start")
@@ -245,8 +401,8 @@ async def test_submit_qa_fail_moves_to_rework(api_client: AsyncClient, monkeypat
 @pytest.mark.asyncio
 async def test_submit_qa_pass_exposes_review(api_client: AsyncClient):
     """Pass path: GET /tasks/{id}/qa returns the latest review."""
-    _order_id, task_id = await _order_with_ready_task(api_client)
-    await _complete_task(api_client, task_id)
+    order_id, task_id = await _order_with_ready_task(api_client)
+    await _complete_task(api_client, order_id, task_id)
 
     qa = await api_client.get(f"/api/v1/tasks/{task_id}/qa")
     assert qa.status_code == 200, qa.text

@@ -7,8 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.commerce import OutcomeSpecRecord, Quote
 from app.models.fulfillment import OutcomeOrder
 from app.orchestrator.events import EventWriter
-from app.orchestrator.states import OrderStatus
+from app.orchestrator.states import ActorType, OrderStatus
 from app.services.fulfillment import FulfillmentService
+from app.services.ledger import LedgerService
 
 
 class QuoteService:
@@ -38,6 +39,7 @@ class QuoteService:
             spec_id=spec.id,
             sku_id=spec.sku_id,
             status=OrderStatus.CONFIRMED,
+            ledger_state="unfunded",
             price=quote.price,
             deadline=quote.deadline,
             revision_limit=quote.revision_limit,
@@ -53,6 +55,11 @@ class QuoteService:
             actor_id=client_id,
             actor_type="client",
             payload={"quote_id": str(quote.id), "spec_id": str(spec.id)},
+        )
+
+        # Held — mock authorize on confirm (no real payment gateway).
+        await LedgerService(self.session).authorize(
+            order, actor_id=client_id, actor_type=ActorType.CLIENT
         )
 
         fulfillment = FulfillmentService(self.session)

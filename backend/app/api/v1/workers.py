@@ -21,7 +21,10 @@ async def get_worker_profile(
     if result is None:
         raise HTTPException(status_code=404, detail="Worker profile not found")
     user, profile = result
-    return WorkerProfileOut.from_orm_rows(user, profile)
+    from app.services.worker_stats import WorkerStatsService
+
+    tt_stats = await WorkerStatsService(db).list_for_worker(worker.id)
+    return WorkerProfileOut.from_orm_rows(user, profile, task_type_stats=tt_stats)
 
 
 @router.patch("/profile", response_model=WorkerProfileOut)

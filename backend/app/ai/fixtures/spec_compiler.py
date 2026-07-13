@@ -11,9 +11,17 @@ def compile_spec_fixture(
     intent_id: uuid.UUID,
     sku_id: uuid.UUID,
     raw_text: str,
+    rag_summaries: list[str] | None = None,
 ) -> dict:
-    """Return OutcomeSpec-shaped fields for MVP bind gate #2."""
-    _ = raw_text  # reserved for future Gemini scoping
+    """Return OutcomeSpec-shaped fields for MVP bind gate #2.
+
+    When rag_summaries are provided (from project_templates keyword retrieve),
+    fold a short hint into workflow_summary / assumptions for the fixture path.
+    """
+    rag_note = ""
+    if rag_summaries:
+        rag_note = " Prior similar outcomes: " + "; ".join(rag_summaries[:3])
+
     return {
         "intent_id": intent_id,
         "sku_id": sku_id,
@@ -48,7 +56,10 @@ def compile_spec_fixture(
         ],
         "in_scope": ["1 landing page", "2 revision rounds", "Logo + brand guide"],
         "out_of_scope": ["CMS", "SEO", "Content writing", "Mobile app"],
-        "assumptions": ["Client provides company name and tagline"],
+        "assumptions": [
+            "Client provides company name and tagline",
+            *([f"RAG context applied:{rag_note}"] if rag_note else []),
+        ],
         "client_inputs_required": ["company_name", "tagline", "reference_sites"],
         "mapped_task_types": [
             "brand_identity",
@@ -61,9 +72,11 @@ def compile_spec_fixture(
         "workflow_summary": (
             "Brand direction → Logo design → UI design in Figma → "
             "Build landing page → Deploy to live URL"
+            + rag_note
         ),
         "version": 1,
         "frozen_at": None,
+        "rag_context": rag_summaries or [],
     }
 
 

@@ -125,6 +125,15 @@ class DeliveryService:
         bundle.accepted_at = datetime.now(timezone.utc)
         bundle.accepted_by = client_id
         order.progress_pct = 100
+
+        # RAG ingest on OutcomeClosed (Sprint 8).
+        try:
+            from app.services.rag import RagService
+
+            await RagService(self.session).ingest_from_order(order)
+        except Exception:  # noqa: BLE001 — never block accept on RAG
+            pass
+
         await self.session.flush()
         return order, bundle
 

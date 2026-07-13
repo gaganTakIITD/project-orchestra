@@ -13,7 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db.session import get_db
+from app.models.fulfillment import FulfillmentTask, OutcomeOrder
 from app.models.identity import DEMO_CLIENT_ID, DEMO_WORKER_ID, User, WorkerProfileRecord
+from app.orchestrator.states import ActorType
 
 _jwks_clients: dict[str, PyJWKClient] = {}
 
@@ -208,6 +210,28 @@ async def get_current_user_for_me(
 ) -> User:
     prefer = "worker" if (x_orchestra_role or "").lower() == "worker" else "client"
     return await resolve_user(db, request, prefer_role=prefer)
+
+
+async def require_task_discussion_participant(
+    session: AsyncSession,
+    user: User,
+    task: FulfillmentTask,
+) -> ActorType:
+    """Allow only the order's client or the task's assigned worker.
+
+    Returns CLIENT or WORKER for event attribution (independent of portal role).
+    """
+    order = await session.get(OutcomeOrder, task.order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if user.id == order.client_id:
+        return ActorType.CLIENT
+    if task.assigned_worker_id is not None and user.id == task.assigned_worker_id:
+        return ActorType.WORKER
+    raise HTTPException(
+        status_code=403,
+        detail="Only the order client or assigned worker may access this discussion",
+    )
 
 
 def _claims_are_admin(claims: dict[str, Any]) -> bool:

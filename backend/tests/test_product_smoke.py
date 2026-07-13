@@ -43,7 +43,25 @@ async def api_client():
         yield client
 
 
-async def _complete_ready_task(api_client: AsyncClient, task_id: str) -> None:
+_DEMO_RANKED = [
+    str(DEMO_WORKER_ID),
+    "usr_worker_meera",
+    "usr_worker_kabir",
+]
+
+
+async def _set_preferences(api_client: AsyncClient, order_id: str, task_id: str) -> None:
+    pref = await api_client.post(
+        f"/api/v1/orders/{order_id}/tasks/{task_id}/preferences",
+        json={"ranked_worker_ids": list(_DEMO_RANKED)},
+    )
+    assert pref.status_code == 200, pref.text
+
+
+async def _complete_ready_task(
+    api_client: AsyncClient, order_id: str, task_id: str
+) -> None:
+    await _set_preferences(api_client, order_id, task_id)
     assert (await api_client.post(f"/api/v1/tasks/{task_id}/accept-interest")).json()[
         "status"
     ] == "accepted"
@@ -85,23 +103,10 @@ async def test_product_path_scope_to_submit(api_client: AsyncClient):
     task = next(t for t in plan["tasks"] if t["status"] == TaskStatus.READY)
     task_id = task["id"]
 
-    # 3) Client preferences (demo worker first)
-    pref = await api_client.post(
-        f"/api/v1/orders/{order_id}/tasks/{task_id}/preferences",
-        json={
-            "ranked_worker_ids": [
-                str(DEMO_WORKER_ID),
-                "usr_worker_meera",
-                "usr_worker_kabir",
-            ]
-        },
-    )
-    assert pref.status_code == 200
+    # 3) Client preferences → worker accept → ready → submit
+    await _complete_ready_task(api_client, order_id, task_id)
 
-    # 4) Worker accept → ready → submit
-    await _complete_ready_task(api_client, task_id)
-
-    # 5) Order advanced; discussion available
+    # 4) Order advanced; discussion available
     order = (await api_client.get(f"/api/v1/orders/{order_id}")).json()
     assert order["status"] == OrderStatus.DELIVERY_ACTIVE
 
@@ -138,26 +143,13 @@ async def test_chat_path_finalize_to_delivery_accept(api_client: AsyncClient):
     assert accept_quote.status_code == 200
     order_id = accept_quote.json()["order_id"]
 
-    # Walk the full DAG (preferences on first ready task; later tasks bootstrap prefs).
-    for i in range(8):
+    # Walk the full DAG — preferences required on every ready task before accept.
+    for _ in range(8):
         plan = (await api_client.get(f"/api/v1/orders/{order_id}/milestones")).json()
         ready = [t for t in plan["tasks"] if t["status"] == TaskStatus.READY]
         if not ready:
             break
-        task_id = ready[0]["id"]
-        if i == 0:
-            pref = await api_client.post(
-                f"/api/v1/orders/{order_id}/tasks/{task_id}/preferences",
-                json={
-                    "ranked_worker_ids": [
-                        str(DEMO_WORKER_ID),
-                        "usr_worker_meera",
-                        "usr_worker_kabir",
-                    ]
-                },
-            )
-            assert pref.status_code == 200
-        await _complete_ready_task(api_client, task_id)
+        await _complete_ready_task(api_client, order_id, ready[0]["id"])
     else:
         pytest.fail("DAG did not finish within task budget")
 

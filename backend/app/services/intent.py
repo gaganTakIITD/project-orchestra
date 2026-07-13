@@ -36,11 +36,23 @@ class IntentService:
         self.session.add(intent)
         await self.session.flush()
 
+        from app.services.rag import RagService
+
+        rag_hits = await RagService(self.session).retrieve(query=raw_text, limit=3, sku_id=sku.id)
+        rag_summaries = [
+            str(h.get("plan_summary") or h.get("name") or "")
+            for h in rag_hits
+            if h.get("plan_summary") or h.get("name")
+        ]
+
         spec_fields = compile_spec_fixture(
             intent_id=intent.id,
             sku_id=sku.id,
             raw_text=raw_text,
+            rag_summaries=rag_summaries or None,
         )
+        # Drop fixture-only keys not on OutcomeSpecRecord.
+        spec_fields.pop("rag_context", None)
         spec = OutcomeSpecRecord(**spec_fields)
         self.session.add(spec)
         await self.session.flush()

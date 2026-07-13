@@ -43,6 +43,8 @@ import {
   mockUndoScopeSession,
 } from "./mock-chat";
 import type {
+  Amendment,
+  AppNotification,
   Candidate,
   Charter,
   ChatSession,
@@ -51,10 +53,12 @@ import type {
   ChatStreamHandlers,
   DeliveryBundle,
   DiscussionThread,
+  DisputeCase,
   FinalizeChatSessionResult,
   FinalizeMatcherSessionResult,
   FinalizePricingSessionResult,
   FulfillmentPlan,
+  LedgerEntry,
   OutcomeOrder,
   OutcomeSku,
   OutcomeSpec,
@@ -281,6 +285,65 @@ export const clientApi = {
           method: "POST",
           body: JSON.stringify(payload),
         }),
+
+  listAmendments: (orderId: string): Promise<{ amendments: Amendment[] }> =>
+    USE_MOCKS
+      ? mock({ amendments: [] })
+      : apiFetch(`/orders/${orderId}/amendments`),
+
+  approveAmendment: (amendmentId: string): Promise<Amendment> =>
+    USE_MOCKS
+      ? mock({
+          id: amendmentId,
+          order_id: mockOrder.id,
+          requested_by: mockClient.id,
+          delta_description: "Mock amendment",
+          price_delta: 0,
+          time_delta_hours: 0,
+          status: "applied" as const,
+          created_at: new Date().toISOString(),
+        })
+      : apiFetch(`/amendments/${amendmentId}/approve`, { method: "POST" }),
+
+  rejectAmendment: (amendmentId: string): Promise<Amendment> =>
+    USE_MOCKS
+      ? mock({
+          id: amendmentId,
+          order_id: mockOrder.id,
+          requested_by: mockClient.id,
+          delta_description: "Mock amendment",
+          price_delta: 0,
+          time_delta_hours: 0,
+          status: "rejected" as const,
+          created_at: new Date().toISOString(),
+        })
+      : apiFetch(`/amendments/${amendmentId}/reject`, { method: "POST" }),
+
+  fundOrder: (orderId: string): Promise<Record<string, unknown>> =>
+    USE_MOCKS
+      ? mock({ order_id: orderId, ledger_state: "funds_authorized", payments_enabled: false })
+      : apiFetch(`/orders/${orderId}/fund`, { method: "POST" }),
+
+  listLedgerEntries: (orderId: string): Promise<{ entries: LedgerEntry[] }> =>
+    USE_MOCKS
+      ? mock({ entries: [] })
+      : apiFetch(`/orders/${orderId}/ledger-entries`),
+
+  openDispute: (
+    orderId: string,
+    payload: { reason: string; task_id?: string }
+  ): Promise<Record<string, unknown>> =>
+    USE_MOCKS
+      ? mock({ id: "disp_mock", order_id: orderId, status: "open", ...payload })
+      : apiFetch(`/orders/${orderId}/disputes`, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        }),
+
+  listDisputes: (orderId: string): Promise<{ disputes: DisputeCase[] }> =>
+    USE_MOCKS
+      ? mock({ disputes: [] })
+      : apiFetch(`/orders/${orderId}/disputes`),
 };
 
 // ----------------------------------------------------------------------------
@@ -346,7 +409,16 @@ export const workerApi = {
 };
 
 export const notificationsApi = {
-  list: () => (USE_MOCKS ? mock(mockNotifications) : apiFetch("/notifications")),
+  list: (): Promise<AppNotification[]> =>
+    USE_MOCKS ? mock(mockNotifications) : apiFetch("/notifications"),
+
+  markRead: (id: string): Promise<AppNotification> =>
+    USE_MOCKS
+      ? mock({
+          ...(mockNotifications.find((n) => n.id === id) ?? mockNotifications[0]),
+          read: true,
+        })
+      : apiFetch(`/notifications/${id}/read`, { method: "POST" }),
 };
 
 export const authApi = {

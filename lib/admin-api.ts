@@ -157,4 +157,55 @@ export const adminApi = {
     }
     return adminFetch(`/admin/ai-decisions?limit=${limit}`);
   },
+
+  listWorkers: (): Promise<{ workers: Array<{ user_id: string; full_name: string; campus_verified: boolean }> }> => {
+    if (USE_MOCKS) {
+      return Promise.resolve({
+        workers: [
+          {
+            user_id: "usr_mock_worker",
+            full_name: "Mock Worker",
+            campus_verified: false,
+          },
+        ],
+      });
+    }
+    return adminFetch("/admin/workers");
+  },
+
+  verifyWorker: (workerId: string): Promise<{ user_id: string; campus_verified: boolean }> => {
+    if (USE_MOCKS) {
+      return Promise.resolve({ user_id: workerId, campus_verified: true });
+    }
+    return adminMutate(`/admin/workers/${workerId}/verify`, "POST");
+  },
+
+  unverifyWorker: (workerId: string): Promise<{ user_id: string; campus_verified: boolean }> => {
+    if (USE_MOCKS) {
+      return Promise.resolve({ user_id: workerId, campus_verified: false });
+    }
+    return adminMutate(`/admin/workers/${workerId}/unverify`, "POST");
+  },
+
+  aiQuality: (): Promise<{ count: number; avg_confidence: number | null; escalate_count: number }> => {
+    if (USE_MOCKS) {
+      return Promise.resolve({ count: 1, avg_confidence: 0.88, escalate_count: 0 });
+    }
+    return adminFetch("/admin/ai-quality");
+  },
 };
+
+async function adminMutate<T>(path: string, method: string): Promise<T> {
+  const { getAuthToken } = await import("./auth-token");
+  const token = await getAuthToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}${path}`, { method, headers });
+  if (!res.ok) {
+    throw new ApiError(res.status, `${method} ${path} failed`);
+  }
+  return (await res.json()) as T;
+}

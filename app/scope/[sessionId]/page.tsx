@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Footer from "@/components/footer";
+import JourneyStepper from "@/components/journey-stepper";
 import JobDescriptionPanel from "@/components/job-description-panel";
 import { rememberScopeSession } from "@/components/portal-data";
 import {
@@ -12,6 +13,7 @@ import {
   useChatSession,
   useUndoChatSession,
 } from "@/lib/hooks";
+import { CLIENT_JOURNEY_STAGES } from "@/lib/journey";
 
 export default function ScopePage() {
   const router = useRouter();
@@ -126,6 +128,13 @@ export default function ScopePage() {
           <p className="text-sm text-muted-foreground leading-relaxed mb-10 max-w-2xl">
             Continue refining your job description. We ask only what&apos;s still missing before we quote.
           </p>
+
+          <div className="mb-10 rounded-sm border border-border bg-card p-6 lg:p-8">
+            <JourneyStepper
+              stages={CLIENT_JOURNEY_STAGES}
+              currentStageId="scope"
+            />
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
             {/* Conversation */}

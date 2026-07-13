@@ -135,6 +135,8 @@ async def match_candidates(
 ) -> list[dict[str, Any]]:
     """Filter live worker_profiles and return ranked Candidate shapes.
 
+    Prefer campus_verified=True. If zero verified profiles match the live
+    threshold, fall back to all live profiles so demos don't break empty.
     Empty pool → empty list (caller decides how to surface that).
     """
     slug = task_type_slug
@@ -145,18 +147,29 @@ async def match_candidates(
         if row is not None:
             slug = row.task_type_slug
 
-    result = await session.execute(
+    base_filters = (
+        User.role == "worker",
+        User.is_active.is_(True),
+        WorkerProfileRecord.is_active.is_(True),
+        WorkerProfileRecord.profile_completion_pct >= PROFILE_LIVE_THRESHOLD,
+        WorkerProfileRecord.availability_status.in_(("available", "busy")),
+    )
+
+    verified = await session.execute(
         select(User, WorkerProfileRecord)
         .join(WorkerProfileRecord, WorkerProfileRecord.user_id == User.id)
-        .where(
-            User.role == "worker",
-            User.is_active.is_(True),
-            WorkerProfileRecord.is_active.is_(True),
-            WorkerProfileRecord.profile_completion_pct >= PROFILE_LIVE_THRESHOLD,
-            WorkerProfileRecord.availability_status.in_(("available", "busy")),
-        )
+        .where(*base_filters, WorkerProfileRecord.campus_verified.is_(True))
     )
-    rows = list(result.all())
+    rows = list(verified.all())
+
+    # Fallback: no verified talent in pool → include unverified live profiles.
+    if not rows:
+        fallback = await session.execute(
+            select(User, WorkerProfileRecord)
+            .join(WorkerProfileRecord, WorkerProfileRecord.user_id == User.id)
+            .where(*base_filters)
+        )
+        rows = list(fallback.all())
 
     scored: list[tuple[float, dict[str, Any]]] = []
     for user, profile in rows:

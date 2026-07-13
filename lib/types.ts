@@ -59,6 +59,15 @@ export interface WorkerProfile {
   task_types: WorkerTaskType[];
   portfolio: PortfolioItem[];
   stats?: WorkerStats;
+  task_type_stats?: TaskTypeStats[];
+}
+
+/** Per-task-type reputation from worker_stats table. */
+export interface TaskTypeStats {
+  task_type_slug: string;
+  completed: number;
+  reworked: number;
+  avg_qa_confidence?: number | null;
 }
 
 /** PATCH/POST /workers/profile body — completion % and campus_verified are server-owned. */
@@ -278,6 +287,8 @@ export interface OutcomeOrder {
   spec_id: string;
   sku_id?: string | null;
   status: OrderStatus;
+  /** Mock funds strip — advanced by lifecycle events, not display heuristics. */
+  ledger_state?: LedgerState;
   price: number;
   deadline: string;
   revision_limit: number;
@@ -329,18 +340,43 @@ export interface TaskPacket {
   created_at: string;
 }
 
-export type AmendmentStatus = "requested" | "priced" | "approved" | "rejected";
+export type AmendmentStatus =
+  | "requested"
+  | "priced"
+  | "approved"
+  | "rejected"
+  | "applied";
 
 export interface Amendment {
   id: string;
   order_id: string;
-  charter_id: string;
+  charter_id?: string | null;
+  task_id?: string | null;
   requested_by: string;
   delta_description: string;
+  proposed_delta?: Record<string, unknown> | null;
   price_delta: number;
   time_delta_hours: number;
   status: AmendmentStatus;
+  approved_at?: string | null;
   created_at: string;
+}
+
+export interface LedgerEntry {
+  id: string;
+  account: string;
+  debit: number;
+  credit: number;
+  event_type: string;
+  created_at?: string | null;
+}
+
+export interface DisputeCase {
+  id: string;
+  reason: string;
+  status: string;
+  resolution?: string | null;
+  created_at?: string | null;
 }
 
 // ----------------------------------------------------------------------------

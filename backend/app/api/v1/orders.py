@@ -19,6 +19,9 @@ from app.schemas.fulfillment import (
 from app.services.auth import get_current_client
 from app.services.delivery import DeliveryService
 from app.services.fulfillment import FulfillmentService
+from app.services.ledger import LedgerService
+from app.services.payments import RazorpayAdapter
+from app.config import settings
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -146,3 +149,119 @@ async def accept_delivery(
 
     await db.commit()
     return TaskStatusOut(status=order.status)
+
+
+@router.post("/{order_id}/fund")
+async def fund_order(
+    order_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
+) -> dict:
+    """Authorize funds (mock ledger + optional Razorpay stub). Gated by PAYMENTS_ENABLED for provider."""
+    order = await db.get(OutcomeOrder, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.client_id != client.id:
+        raise HTTPException(status_code=403, detail="Not your order")
+
+    # Always advance mock ledger (Spine-compatible); Razorpay only when flag on.
+    await LedgerService(db).authorize(order, actor_id=client.id, actor_type="client")
+    provider = RazorpayAdapter().create_order(
+        order_id=order.id,
+        amount=float(order.price or 0),
+    )
+    await db.commit()
+    return {
+        "order_id": str(order.id),
+        "ledger_state": order.ledger_state,
+        "payments_enabled": settings.payments_enabled,
+        "provider": provider,
+    }
+
+
+@router.get("/{order_id}/ledger-entries")
+async def list_ledger_entries(
+    order_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
+) -> dict:
+    order = await db.get(OutcomeOrder, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.client_id != client.id:
+        raise HTTPException(status_code=403, detail="Not your order")
+    rows = await LedgerService(db).list_entries(order_id)
+    return {
+        "order_id": str(order_id),
+        "entries": [
+            {
+                "id": str(r.id),
+                "account": r.account,
+                "debit": float(r.debit or 0),
+                "credit": float(r.credit or 0),
+                "event_type": r.event_type,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in rows
+        ],
+    }
+
+
+@router.post("/{order_id}/disputes")
+async def open_dispute(
+    order_id: uuid.UUID,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
+) -> dict:
+    from app.services.dispute import DisputeService
+
+    order = await db.get(OutcomeOrder, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.client_id != client.id:
+        raise HTTPException(status_code=403, detail="Not your order")
+
+    reason = str((body or {}).get("reason") or "Dispute opened")
+    task_id_raw = (body or {}).get("task_id")
+    task_id = uuid.UUID(str(task_id_raw)) if task_id_raw else None
+    row = await DisputeService(db).open(
+        order=order, raised_by=client.id, reason=reason, task_id=task_id
+    )
+    await db.commit()
+    return {
+        "id": str(row.id),
+        "order_id": str(row.order_id),
+        "status": row.status,
+        "reason": row.reason,
+        "dispute_open": order.dispute_open,
+    }
+
+
+@router.get("/{order_id}/disputes")
+async def list_disputes(
+    order_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
+) -> dict:
+    from app.services.dispute import DisputeService
+
+    order = await db.get(OutcomeOrder, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.client_id != client.id:
+        raise HTTPException(status_code=403, detail="Not your order")
+    rows = await DisputeService(db).list_for_order(order_id)
+    return {
+        "order_id": str(order_id),
+        "disputes": [
+            {
+                "id": str(r.id),
+                "reason": r.reason,
+                "status": r.status,
+                "resolution": r.resolution,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in rows
+        ],
+    }
