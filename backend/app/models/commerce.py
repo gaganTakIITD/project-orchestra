@@ -38,6 +38,7 @@ class OutcomeSpecRecord(Base):
     client_inputs_required: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     mapped_task_types: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     risk_tier: Mapped[str] = mapped_column(String(5), nullable=False, default="L1")
+    workflow_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     frozen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

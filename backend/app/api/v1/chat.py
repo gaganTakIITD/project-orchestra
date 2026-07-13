@@ -8,7 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.models.chat import ChatSession
 from app.models.identity import User
-from app.schemas.chat import ChatSessionOut, FinalizeChatOut, SendMessageIn
+from app.schemas.chat import (
+    ChatSessionOut,
+    ChatSessionSummaryOut,
+    FinalizeChatIn,
+    FinalizeChatOut,
+    SendMessageIn,
+    StartChatSessionIn,
+)
 from app.services.auth import get_current_client
 from app.services.chat import ChatService
 
@@ -26,14 +33,71 @@ async def _load_owned(service: ChatService, session_id: uuid.UUID, client: User)
 
 
 @router.post("", response_model=ChatSessionOut, status_code=201)
-async def start_scope_session(
+async def start_session(
+    body: StartChatSessionIn | None = None,
     db: AsyncSession = Depends(get_db),
     client: User = Depends(get_current_client),
 ) -> ChatSessionOut:
+    """Start Scope (default), Matcher, or Pricing Reasoner chat."""
     service = ChatService(db)
-    chat, messages = await service.start_scope_session(client=client)
+    payload = body or StartChatSessionIn()
+
+    if payload.agent_type == "matcher":
+        if not payload.ref_id or not payload.order_id:
+            raise HTTPException(
+                status_code=400,
+                detail="matcher sessions require order_id and ref_id (task)",
+            )
+        try:
+            chat, messages = await service.start_matcher_session(
+                client=client,
+                order_id=payload.order_id,
+                task_id=payload.ref_id,
+            )
+        except LookupError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        except PermissionError as e:
+            raise HTTPException(status_code=403, detail=str(e)) from e
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+    elif payload.agent_type == "pricing":
+        if not payload.ref_id:
+            raise HTTPException(
+                status_code=400,
+                detail="pricing sessions require ref_id (quote)",
+            )
+        try:
+            chat, messages = await service.start_pricing_session(
+                client=client,
+                quote_id=payload.ref_id,
+            )
+        except LookupError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        except PermissionError as e:
+            raise HTTPException(status_code=403, detail=str(e)) from e
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+    elif payload.agent_type in (None, "", "spec_compiler"):
+        chat, messages = await service.start_scope_session(client=client)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported agent_type: {payload.agent_type!r}",
+        )
+
     await db.commit()
     return ChatSessionOut.from_session(chat, messages)
+
+
+@router.get("", response_model=list[ChatSessionSummaryOut])
+async def list_sessions(
+    db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
+) -> list[ChatSessionSummaryOut]:
+    """The current client's active scope drafts, newest first — powers 'Resume scope'."""
+    service = ChatService(db)
+    sessions = await service.list_scope_sessions(client_id=client.id)
+    return [ChatSessionSummaryOut.from_session(s) for s in sessions]
 
 
 @router.get("/{session_id}", response_model=ChatSessionOut)
@@ -72,7 +136,7 @@ async def send_message_stream(
     db: AsyncSession = Depends(get_db),
     client: User = Depends(get_current_client),
 ) -> StreamingResponse:
-    """SSE stream: draft_patch → token* → turn_complete."""
+    """SSE stream: draft_patch|artifact_updated → token* → turn_complete."""
     service = ChatService(db)
     chat = await _load_owned(service, session_id, client)
 
@@ -98,14 +162,53 @@ async def send_message_stream(
 @router.post("/{session_id}/finalize", response_model=FinalizeChatOut)
 async def finalize_session(
     session_id: uuid.UUID,
+    body: FinalizeChatIn | None = None,
     db: AsyncSession = Depends(get_db),
     client: User = Depends(get_current_client),
 ) -> FinalizeChatOut:
     service = ChatService(db)
     chat = await _load_owned(service, session_id, client)
+    payload = body or FinalizeChatIn()
     try:
+        if chat.agent_type == "matcher":
+            pref_id, order_id, task_id = await service.finalize_matcher(
+                chat=chat,
+                client=client,
+                ranked_worker_ids=payload.ranked_worker_ids,
+            )
+            await db.commit()
+            return FinalizeChatOut(
+                preference_set_id=pref_id,
+                order_id=order_id,
+                task_id=task_id,
+            )
+        if chat.agent_type == "pricing":
+            quote_id, order_id = await service.finalize_pricing(chat=chat, client=client)
+            await db.commit()
+            return FinalizeChatOut(quote_id=quote_id, order_id=order_id)
         intent_id, quote_id = await service.finalize_scope(chat=chat, client=client)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e)) from e
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     await db.commit()
     return FinalizeChatOut(intent_id=intent_id, quote_id=quote_id)
+
+
+@router.post("/{session_id}/undo", response_model=ChatSessionOut)
+async def undo_session(
+    session_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
+) -> ChatSessionOut:
+    """Restore the previous scope draft snapshot (Stage 1 undo)."""
+    service = ChatService(db)
+    chat = await _load_owned(service, session_id, client)
+    try:
+        chat, messages = await service.undo_scope_turn(chat=chat)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    await db.commit()
+    return ChatSessionOut.from_session(chat, messages)

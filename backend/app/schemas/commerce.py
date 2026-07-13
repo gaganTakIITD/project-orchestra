@@ -41,6 +41,7 @@ class OutcomeSpecOut(BaseModel):
     client_inputs_required: list[str]
     mapped_task_types: list[str]
     risk_tier: str
+    workflow_summary: str = ""
     version: int
     frozen_at: datetime | None = None
 
@@ -59,6 +60,7 @@ class OutcomeSpecOut(BaseModel):
             client_inputs_required=row.client_inputs_required,
             mapped_task_types=row.mapped_task_types,
             risk_tier=row.risk_tier,
+            workflow_summary=getattr(row, "workflow_summary", None) or "",
             version=row.version,
             frozen_at=row.frozen_at,
         )

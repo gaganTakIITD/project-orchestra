@@ -8,7 +8,9 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.fixtures.architect import match_candidates_fixture
+from app.ai.gateway import generate_qa_proposal
+from app.ai.matcher import match_candidates
+from app.models.commerce import OutcomeSpecRecord
 from app.models.fulfillment import (
     CharterRecord,
     DeliveryBundleRecord,
@@ -18,9 +20,11 @@ from app.models.fulfillment import (
     TaskPreferenceSet,
 )
 from app.models.identity import User
+from app.models.platform import AiDecisionLog
 from app.orchestrator.spine import OrderSpine, TaskSpine
 from app.orchestrator.states import ActorType, OrderStatus, TaskStatus
 from app.orchestrator.transitions import IllegalTransitionError
+from app.schemas.qa import QACriterionEvidenceOut, QAReviewOut
 
 
 class TaskLifecycleService:
@@ -169,17 +173,76 @@ class TaskLifecycleService:
             submitted_at=datetime.now(timezone.utc),
         )
         self.session.add(submission)
+        await self.session.flush()
 
-        await self.task_spine.transition(
-            task,
-            "qa_pass",
-            actor_type=ActorType.AI,
-            payload={"source": "stage_auto_qa", "score": 0.9},
+        outcome = ""
+        order = await self.session.get(OutcomeOrder, task.order_id)
+        if order is not None and order.spec_id is not None:
+            spec = await self.session.get(OutcomeSpecRecord, order.spec_id)
+            if spec is not None:
+                outcome = spec.outcome_statement or ""
+
+        proposal = generate_qa_proposal(
+            task=task,
+            notes=notes or "",
+            asset_urls=asset_urls or [],
+            outcome_statement=outcome,
         )
-        task.completed_at = datetime.now(timezone.utc)
+        self.session.add(
+            AiDecisionLog(
+                session_id=None,
+                agent_type="qa_judge",
+                source=proposal.source,
+                model=proposal.model,
+                input_text=(task.title or "")[:2000],
+                output_draft={
+                    "task_id": str(task.id),
+                    "submission_id": str(submission.id),
+                    "result": proposal.result,
+                    "score": proposal.score,
+                    "confidence": proposal.confidence,
+                    "feedback": proposal.feedback,
+                    "evidence": proposal.evidence,
+                    "action": proposal.action,
+                },
+                reply=proposal.feedback,
+                confidence=proposal.confidence,
+                latency_ms=proposal.latency_ms,
+                error=proposal.error,
+            )
+        )
 
-        await self._unlock_dependents(task)
-        await self._maybe_advance_order_to_delivered(task.order_id)
+        if proposal.result == "pass":
+            await self.task_spine.transition(
+                task,
+                "qa_pass",
+                actor_type=ActorType.AI,
+                payload={
+                    "source": f"qa_judge:{proposal.source}",
+                    "score": proposal.score,
+                    "confidence": proposal.confidence,
+                    "feedback": proposal.feedback,
+                    "action": proposal.action,
+                },
+            )
+            task.completed_at = datetime.now(timezone.utc)
+            await self._unlock_dependents(task)
+            await self._maybe_advance_order_to_delivered(task.order_id)
+        else:
+            await self.task_spine.transition(
+                task,
+                "qa_fail",
+                actor_type=ActorType.AI,
+                payload={
+                    "source": f"qa_judge:{proposal.source}",
+                    "score": proposal.score,
+                    "confidence": proposal.confidence,
+                    "feedback": proposal.feedback,
+                    "action": proposal.action,
+                },
+            )
+            task.revision_count = int(task.revision_count or 0) + 1
+
         await self.session.flush()
         return task, submission
 
@@ -280,7 +343,7 @@ class TaskLifecycleService:
         bundle = DeliveryBundleRecord(
             order_id=order.id,
             assets=assets,
-            qa_summary="All task acceptance criteria passed (stage auto-QA).",
+            qa_summary="All task acceptance criteria passed (QA Judge).",
         )
         self.session.add(bundle)
         await self.session.flush()
@@ -291,7 +354,7 @@ class TaskLifecycleService:
             select(TaskPreferenceSet.id).where(TaskPreferenceSet.task_id == task.id)
         )
         if existing is None:
-            candidates = match_candidates_fixture(task_id=task.id)
+            candidates = await match_candidates(self.session, task=task)
             ranked = [c["worker_id"] for c in candidates[:3]]
             ranked = [str(worker_id)] + [w for w in ranked if w != str(worker_id)]
             ranked = ranked[:3]
@@ -321,6 +384,67 @@ class TaskLifecycleService:
                 actor_type=ActorType.SYSTEM,
                 payload={"task_id": str(task.id)},
             )
+
+    async def get_latest_qa_review(self, task_id: uuid.UUID) -> QAReviewOut | None:
+        """Latest QA Judge proposal for this task (from ai_decision_log)."""
+        latest_submission = (
+            await self.session.execute(
+                select(SubmissionRecord)
+                .where(SubmissionRecord.task_id == task_id)
+                .order_by(SubmissionRecord.version.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if latest_submission is None:
+            return None
+
+        rows = (
+            await self.session.execute(
+                select(AiDecisionLog)
+                .where(AiDecisionLog.agent_type == "qa_judge")
+                .order_by(AiDecisionLog.created_at.desc())
+                .limit(50)
+            )
+        ).scalars().all()
+
+        submission_id = str(latest_submission.id)
+        task_id_str = str(task_id)
+        matched: AiDecisionLog | None = None
+        for row in rows:
+            draft = row.output_draft or {}
+            if draft.get("submission_id") == submission_id:
+                matched = row
+                break
+            if matched is None and draft.get("task_id") == task_id_str:
+                matched = row
+
+        if matched is None:
+            return None
+
+        draft = matched.output_draft or {}
+        evidence_raw = draft.get("evidence") or []
+        evidence = [
+            QACriterionEvidenceOut(
+                criterion=str(e.get("criterion", "")),
+                check_type=str(e.get("check_type", "deterministic")),
+                passed=bool(e.get("passed", False)),
+                detail=e.get("detail"),
+            )
+            for e in evidence_raw
+            if isinstance(e, dict)
+        ]
+        return QAReviewOut(
+            id=str(matched.id),
+            submission_id=str(draft.get("submission_id") or submission_id),
+            task_id=task_id_str,
+            result=str(draft.get("result") or "fail"),
+            score=float(draft.get("score") or 0.0),
+            confidence=float(draft.get("confidence") or 0.0),
+            feedback=str(draft.get("feedback") or matched.reply or ""),
+            evidence=evidence,
+            reviewed_by="ai",
+            created_at=matched.created_at,
+        )
 
     async def _next_submission_version(self, task_id: uuid.UUID) -> int:
         current = await self.session.scalar(

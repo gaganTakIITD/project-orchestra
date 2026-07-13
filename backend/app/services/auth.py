@@ -86,18 +86,19 @@ async def _upsert_clerk_user(
     session: AsyncSession,
     *,
     claims: dict[str, Any],
-    prefer_role: str,
 ) -> User:
+    """Link a Clerk subject to a User row.
+
+    Role model ("D + Hybrid"): admin is IdP-owned (Clerk claim / allowlist);
+    everyone else defaults to ``client`` and self-serves the client<->worker
+    switch via ``PATCH /auth/role``. We elevate to admin from claims but never
+    auto-demote (claim removal is handled out-of-band).
+    """
     external_id = str(claims.get("sub") or "")
     if not external_id:
         raise HTTPException(status_code=401, detail="Token missing sub")
 
-    meta = claims.get("public_metadata") or claims.get("metadata") or {}
-    if isinstance(meta, dict) and meta.get("role") in ("client", "worker"):
-        role = str(meta["role"])
-    else:
-        role = prefer_role if prefer_role in ("client", "worker") else "client"
-
+    is_admin = _claims_are_admin(claims)
     email = _claim_email(claims) or f"{external_id}@users.clerk.orchestra.local"
     name = claims.get("name") or claims.get("full_name") or email.split("@")[0]
 
@@ -109,7 +110,7 @@ async def _upsert_clerk_user(
             id=uuid.uuid4(),
             email=email,
             full_name=str(name)[:255],
-            role=role,
+            role="admin" if is_admin else "client",
             external_auth_id=external_id,
             email_verified=True,
             is_active=True,
@@ -119,6 +120,30 @@ async def _upsert_clerk_user(
         user.external_auth_id = external_id
         if name:
             user.full_name = str(name)[:255]
+        if is_admin and user.role != "admin":
+            user.role = "admin"
+    await session.flush()
+    return user
+
+
+async def set_user_role(session: AsyncSession, user: User, role: str) -> User:
+    """Switch portal role (client ↔ worker). Admin cannot be set via API."""
+    if role not in ("client", "worker"):
+        raise ValueError(f"Invalid role: {role}")
+    if user.role == "admin":
+        raise PermissionError("Admin role cannot be changed via API")
+
+    user.role = role
+    if role == "worker":
+        profile = await session.get(WorkerProfileRecord, user.id)
+        if profile is None:
+            session.add(
+                WorkerProfileRecord(
+                    user_id=user.id,
+                    headline="",
+                    bio="",
+                )
+            )
     await session.flush()
     return user
 
@@ -129,7 +154,12 @@ async def resolve_user(
     *,
     prefer_role: str,
 ) -> User:
-    """Resolve actor: Clerk JWT when AUTH_MODE=clerk, else demo stubs."""
+    """Resolve actor *identity* (no role gate).
+
+    Demo mode returns the seeded stub for ``prefer_role``; Clerk mode verifies
+    the JWT and upserts the linked user. Role enforcement is the caller's job
+    via ``_require_active_role`` (``get_current_client`` / ``get_current_worker``).
+    """
     if settings.auth_mode != "clerk":
         if prefer_role == "worker":
             return await get_demo_worker(session)
@@ -139,23 +169,36 @@ async def resolve_user(
     if not token:
         raise HTTPException(status_code=401, detail="Authorization Bearer required")
     claims = _verify_clerk_token(token)
-    role_header = request.headers.get("X-Orchestra-Role", prefer_role)
-    role = role_header if role_header in ("client", "worker") else prefer_role
-    return await _upsert_clerk_user(session, claims=claims, prefer_role=role)
+    return await _upsert_clerk_user(session, claims=claims)
+
+
+def _require_active_role(user: User, required: str) -> User:
+    """Enforce the active portal role. Admin is a super-role (allowed in any lane)."""
+    if user.role == required or user.role == "admin":
+        return user
+    raise HTTPException(
+        status_code=403,
+        detail=(
+            f"This action requires the {required} portal, but your active role "
+            f"is '{user.role}'. Switch with PATCH /auth/role."
+        ),
+    )
 
 
 async def get_current_client(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    return await resolve_user(db, request, prefer_role="client")
+    user = await resolve_user(db, request, prefer_role="client")
+    return _require_active_role(user, "client")
 
 
 async def get_current_worker(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    return await resolve_user(db, request, prefer_role="worker")
+    user = await resolve_user(db, request, prefer_role="worker")
+    return _require_active_role(user, "worker")
 
 
 async def get_current_user_for_me(
@@ -165,3 +208,36 @@ async def get_current_user_for_me(
 ) -> User:
     prefer = "worker" if (x_orchestra_role or "").lower() == "worker" else "client"
     return await resolve_user(db, request, prefer_role=prefer)
+
+
+def _claims_are_admin(claims: dict[str, Any]) -> bool:
+    """True when Clerk public_metadata.role is admin or email is allowlisted."""
+    meta = claims.get("public_metadata") or claims.get("metadata") or {}
+    if isinstance(meta, dict) and str(meta.get("role", "")).lower() == "admin":
+        return True
+    email = _claim_email(claims)
+    if email and email.lower() in settings.admin_email_allowlist_set:
+        return True
+    return False
+
+
+async def get_current_admin(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Admin is IdP-owned. Clerk: require admin claim / allowlist. Demo: dev-only
+    convenience — never allowed when APP_ENV=production (defense in depth)."""
+    if settings.auth_mode != "clerk":
+        if settings.is_production:
+            raise HTTPException(
+                status_code=403, detail="Admin requires Clerk auth in production"
+            )
+        return await get_demo_client(db)
+
+    token = _bearer_token(request)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authorization Bearer required")
+    claims = _verify_clerk_token(token)
+    if not _claims_are_admin(claims):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return await _upsert_clerk_user(db, claims=claims)

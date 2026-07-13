@@ -58,6 +58,10 @@ def compile_spec_fixture(
             "deployment_devops",
         ],
         "risk_tier": "L1",
+        "workflow_summary": (
+            "Brand direction → Logo design → UI design in Figma → "
+            "Build landing page → Deploy to live URL"
+        ),
         "version": 1,
         "frozen_at": None,
     }

@@ -25,6 +25,7 @@ class IntentService:
         raw_text: str,
         attachments: list[str],
     ) -> tuple[Intent, OutcomeSpecRecord, Quote]:
+        """Legacy/demo one-shot: fixture Spec Compiler. Prod UX uses scope chat."""
         sku = await self._default_sku()
         intent = Intent(
             client_id=client.id,
@@ -104,6 +105,7 @@ class IntentService:
             client_inputs_required=draft.get("client_inputs_required") or [],
             mapped_task_types=draft.get("mapped_task_types") or [],
             risk_tier=draft.get("risk_tier") or "L1",
+            workflow_summary=draft.get("workflow_summary") or "",
             version=int(draft.get("version") or 1),
         )
         self.session.add(spec)

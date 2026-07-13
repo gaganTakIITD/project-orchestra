@@ -1,10 +1,12 @@
-"""Fixture-first Architect — 5-task Launch Studio DAG."""
+"""Fixture-first Architect — thin wrapper over spec-driven builder."""
 
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import Any
+
+from app.ai.architect import DEFAULT_MAPPED_TASK_TYPES, build_plan_from_spec
 
 
 def build_plan_fixture(
@@ -12,131 +14,17 @@ def build_plan_fixture(
     order_id: uuid.UUID,
     order_deadline: datetime,
     revision_limit: int,
+    mapped_task_types: list[str] | None = None,
+    order_price: float | None = None,
 ) -> dict[str, Any]:
-    """Return plan + task blueprint matching lib/mock-data.ts Launch Studio DAG."""
-    now = datetime.now(timezone.utc)
-    total_days = max((order_deadline - now).days, 9)
-
-    def offset_days(fraction: float) -> datetime:
-        return now + timedelta(days=max(1, int(total_days * fraction)))
-
-    task_ids = [uuid.uuid4() for _ in range(5)]
-    id_str = [str(t) for t in task_ids]
-
-    tasks = [
-        {
-            "id": task_ids[0],
-            "task_type_slug": "brand_identity",
-            "title": "Brand direction",
-            "description": "Define the visual direction: mood, palette, typography.",
-            "acceptance_criteria": [
-                {"criterion": "Mood board + palette + type approved", "check_type": "human_required"},
-            ],
-            "status": "ready",
-            "sequence_order": 1,
-            "payout_amount": 1500,
-            "deadline": offset_days(0.33),
-            "depends_on": [],
-        },
-        {
-            "id": task_ids[1],
-            "task_type_slug": "logo_design",
-            "title": "Logo design",
-            "description": "Design the logo in SVG + PNG.",
-            "acceptance_criteria": [
-                {
-                    "criterion": "Logo delivered in SVG and PNG",
-                    "check_type": "deterministic",
-                    "rule": "files_include_format(['svg','png'])",
-                },
-                {
-                    "criterion": "Matches approved brand direction",
-                    "check_type": "ai_judged",
-                    "rubric": "Consistent with mood board and palette.",
-                },
-            ],
-            "status": "blocked",
-            "sequence_order": 2,
-            "payout_amount": 2000,
-            "deadline": offset_days(0.55),
-            "depends_on": [id_str[0]],
-        },
-        {
-            "id": task_ids[2],
-            "task_type_slug": "figma_ui_design",
-            "title": "UI design",
-            "description": "Design the landing page UI in Figma.",
-            "acceptance_criteria": [
-                {"criterion": "Desktop + mobile frames", "check_type": "human_required"},
-            ],
-            "status": "blocked",
-            "sequence_order": 3,
-            "payout_amount": 3000,
-            "deadline": offset_days(0.7),
-            "depends_on": [id_str[1]],
-        },
-        {
-            "id": task_ids[3],
-            "task_type_slug": "landing_page_frontend",
-            "title": "Build landing page",
-            "description": "Implement the landing page (Next.js + Tailwind).",
-            "acceptance_criteria": [
-                {
-                    "criterion": "Lighthouse performance >= 70 on mobile",
-                    "check_type": "deterministic",
-                    "rule": "lighthouse_performance >= 70",
-                },
-                {
-                    "criterion": "Responsive on mobile and desktop",
-                    "check_type": "deterministic",
-                    "rule": "responsive_check_pass",
-                },
-            ],
-            "status": "blocked",
-            "sequence_order": 4,
-            "payout_amount": 4000,
-            "deadline": offset_days(0.85),
-            "depends_on": [id_str[2]],
-        },
-        {
-            "id": task_ids[4],
-            "task_type_slug": "deployment_devops",
-            "title": "Deploy",
-            "description": "Deploy the landing page to a live URL.",
-            "acceptance_criteria": [
-                {"criterion": "URL reachable (200)", "check_type": "deterministic", "rule": "url_reachable"},
-            ],
-            "status": "blocked",
-            "sequence_order": 5,
-            "payout_amount": 1000,
-            "deadline": order_deadline,
-            "depends_on": [id_str[3]],
-        },
-    ]
-
-    milestones = [
-        {
-            "name": "Brand ready",
-            "task_ids": [id_str[0], id_str[1]],
-            "client_label": "Brand identity complete",
-        },
-        {
-            "name": "Design ready",
-            "task_ids": [id_str[2]],
-            "client_label": "UI design complete",
-        },
-        {
-            "name": "Live site",
-            "task_ids": [id_str[3], id_str[4]],
-            "client_label": "Website live",
-        },
-    ]
-
-    return {
-        "critical_path_hours": 30,
-        "milestones": milestones,
-        "tasks": tasks,
-    }
+    """Return plan + task blueprint (Launch Studio DAG when types omitted)."""
+    return build_plan_from_spec(
+        order_id=order_id,
+        order_deadline=order_deadline,
+        revision_limit=revision_limit,
+        order_price=order_price,
+        mapped_task_types=mapped_task_types or list(DEFAULT_MAPPED_TASK_TYPES),
+    )
 
 
 def match_candidates_fixture(*, task_id: uuid.UUID) -> list[dict[str, Any]]:

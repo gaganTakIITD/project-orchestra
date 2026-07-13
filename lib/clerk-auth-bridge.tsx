@@ -10,10 +10,9 @@ import { setAuthTokenGetter } from "./auth-token";
  * Mounted only inside ClerkProvider.
  */
 export function ClerkAuthBridge({ children }: { children: React.ReactNode }) {
-  const { getToken, isLoaded } = useAuth();
+  const { getToken } = useAuth();
 
   useEffect(() => {
-    if (!isLoaded) return;
     setAuthTokenGetter(async () => {
       try {
         return (await getToken()) ?? null;
@@ -22,7 +21,7 @@ export function ClerkAuthBridge({ children }: { children: React.ReactNode }) {
       }
     });
     return () => setAuthTokenGetter(null);
-  }, [getToken, isLoaded]);
+  }, [getToken]);
 
   return <>{children}</>;
 }

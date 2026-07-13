@@ -1,4 +1,4 @@
-"""Product-path smoke: intent → quote → order → accept → start → submit (no mocks).
+"""Product-path smoke: intent/chat → quote → order → accept → start → submit (no mocks).
 
 Run with Postgres up (docker compose) from backend/:
 
@@ -11,6 +11,14 @@ from httpx import ASGITransport, AsyncClient
 from app.main import app
 from app.models.identity import DEMO_WORKER_ID
 from app.orchestrator.states import OrderStatus, TaskStatus
+
+# Assets that satisfy Architect deterministic rules across the Launch Studio DAG.
+_PASSING_ASSETS = [
+    "https://files.example/logo.svg",
+    "https://files.example/logo.png",
+    "https://files.example/out.pdf",
+    "https://preview.example/live",
+]
 
 
 @pytest.fixture
@@ -33,6 +41,24 @@ async def api_client():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
+
+
+async def _complete_ready_task(api_client: AsyncClient, task_id: str) -> None:
+    assert (await api_client.post(f"/api/v1/tasks/{task_id}/accept-interest")).json()[
+        "status"
+    ] == "accepted"
+    assert (await api_client.post(f"/api/v1/tasks/{task_id}/ready-to-start")).json()[
+        "status"
+    ] == TaskStatus.IN_PROGRESS
+    submit = await api_client.post(
+        f"/api/v1/tasks/{task_id}/submit",
+        json={
+            "notes": "Work product attached. lighthouse: 85",
+            "asset_urls": list(_PASSING_ASSETS),
+        },
+    )
+    assert submit.status_code == 200, submit.text
+    assert submit.json()["status"] == TaskStatus.COMPLETED
 
 
 @pytest.mark.asyncio
@@ -73,22 +99,7 @@ async def test_product_path_scope_to_submit(api_client: AsyncClient):
     assert pref.status_code == 200
 
     # 4) Worker accept → ready → submit
-    # accept-interest returns soft "accepted" (Spine state is priority_active)
-    assert (await api_client.post(f"/api/v1/tasks/{task_id}/accept-interest")).json()[
-        "status"
-    ] == "accepted"
-    assert (await api_client.post(f"/api/v1/tasks/{task_id}/ready-to-start")).json()[
-        "status"
-    ] == TaskStatus.IN_PROGRESS
-    submit = await api_client.post(
-        f"/api/v1/tasks/{task_id}/submit",
-        json={
-            "notes": "Brand direction v1",
-            "asset_urls": ["https://files.example/brand.pdf"],
-        },
-    )
-    assert submit.status_code == 200
-    assert submit.json()["status"] == TaskStatus.COMPLETED
+    await _complete_ready_task(api_client, task_id)
 
     # 5) Order advanced; discussion available
     order = (await api_client.get(f"/api/v1/orders/{order_id}")).json()
@@ -97,3 +108,66 @@ async def test_product_path_scope_to_submit(api_client: AsyncClient):
     disc = await api_client.get(f"/api/v1/tasks/{task_id}/discussion")
     assert disc.status_code == 200
     assert disc.json()["task_id"] == task_id
+
+
+@pytest.mark.asyncio
+async def test_chat_path_finalize_to_delivery_accept(api_client: AsyncClient):
+    """Chat finalize → quote accept → prefs → worker submit → delivery accept."""
+    start = await api_client.post("/api/v1/chat/sessions")
+    assert start.status_code == 201
+    sid = start.json()["id"]
+
+    detailed = await api_client.post(
+        f"/api/v1/chat/sessions/{sid}/messages",
+        json={
+            "body": (
+                "HealthTrack — chronic condition tracking startup. Brand + landing page, "
+                "trustworthy healthcare tone. Tagline: Your health, tracked. "
+                "References: apple.com"
+            )
+        },
+    )
+    assert detailed.status_code == 200
+    assert detailed.json()["ready_for_quote"] is True
+
+    fin = await api_client.post(f"/api/v1/chat/sessions/{sid}/finalize")
+    assert fin.status_code == 200
+    quote_id = fin.json()["quote_id"]
+
+    accept_quote = await api_client.post(f"/api/v1/quotes/{quote_id}/accept")
+    assert accept_quote.status_code == 200
+    order_id = accept_quote.json()["order_id"]
+
+    # Walk the full DAG (preferences on first ready task; later tasks bootstrap prefs).
+    for i in range(8):
+        plan = (await api_client.get(f"/api/v1/orders/{order_id}/milestones")).json()
+        ready = [t for t in plan["tasks"] if t["status"] == TaskStatus.READY]
+        if not ready:
+            break
+        task_id = ready[0]["id"]
+        if i == 0:
+            pref = await api_client.post(
+                f"/api/v1/orders/{order_id}/tasks/{task_id}/preferences",
+                json={
+                    "ranked_worker_ids": [
+                        str(DEMO_WORKER_ID),
+                        "usr_worker_meera",
+                        "usr_worker_kabir",
+                    ]
+                },
+            )
+            assert pref.status_code == 200
+        await _complete_ready_task(api_client, task_id)
+    else:
+        pytest.fail("DAG did not finish within task budget")
+
+    order = (await api_client.get(f"/api/v1/orders/{order_id}")).json()
+    assert order["status"] == OrderStatus.DELIVERED
+
+    delivery = await api_client.get(f"/api/v1/orders/{order_id}/delivery")
+    assert delivery.status_code == 200
+    assert len(delivery.json()["assets"]) >= 1
+
+    closed = await api_client.post(f"/api/v1/orders/{order_id}/accept-delivery")
+    assert closed.status_code == 200
+    assert closed.json()["status"] == OrderStatus.CLOSED

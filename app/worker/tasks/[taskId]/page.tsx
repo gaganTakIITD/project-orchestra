@@ -12,8 +12,19 @@ import {
   useReadyToStart,
   useSubmit,
   useTaskPacket,
+  useTaskQA,
 } from "@/lib/hooks";
+import { useTaskLiveInvalidation } from "@/lib/live";
 import { taskStatusTone, taskStatusWorkerLabel } from "@/lib/state-labels";
+
+function isScopeFlaggedMessage(msg: {
+  scope_flagged?: boolean;
+  message_type?: string;
+}): boolean {
+  return Boolean(
+    msg.scope_flagged || msg.message_type === "scope_change_request"
+  );
+}
 
 export default function WorkerTaskDetail({ params }: { params: { taskId: string } }) {
   const { taskId } = params;
@@ -24,6 +35,7 @@ export default function WorkerTaskDetail({ params }: { params: { taskId: string 
   const acceptInterest = useAcceptInterest(taskId);
   const readyToStart = useReadyToStart(taskId);
   const submit = useSubmit(taskId);
+  useTaskLiveInvalidation(taskId);
 
   const [notes, setNotes] = useState("");
   const [assetUrl, setAssetUrl] = useState("");
@@ -31,6 +43,7 @@ export default function WorkerTaskDetail({ params }: { params: { taskId: string 
   const [checklistDone, setChecklistDone] = useState<Record<string, boolean>>({});
 
   const task = useMemo(() => tasks?.find((t) => t.id === taskId), [tasks, taskId]);
+  const { data: qaReview } = useTaskQA(taskId, task?.status === "rework");
   const loading = tasksLoading || charterLoading || packetLoading;
 
   const handleAccept = async () => {
@@ -254,23 +267,79 @@ export default function WorkerTaskDetail({ params }: { params: { taskId: string 
         ) : null}
         {error ? <p className="text-xs text-destructive mt-3">{error}</p> : null}
         {task.status === "rework" ? (
-          <p className="text-sm text-amber-800 mt-3">
-            Rework requested — fix the checklist items and resubmit.
-          </p>
+          <div className="mt-4 border border-border bg-muted/30 p-4 space-y-3">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+              Rework requested — fix the issues below and resubmit.
+            </p>
+            {qaReview ? (
+              <>
+                <p className="text-sm leading-relaxed">{qaReview.feedback}</p>
+                <p className="text-xs font-mono text-muted-foreground">
+                  Score {Math.round(qaReview.score * (qaReview.score <= 1 ? 100 : 1))}
+                  {qaReview.confidence != null
+                    ? ` · confidence ${Math.round(qaReview.confidence * 100)}%`
+                    : ""}
+                </p>
+                {qaReview.evidence?.length ? (
+                  <ul className="space-y-2">
+                    {qaReview.evidence.map((e, i) => (
+                      <li key={i} className="text-sm">
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {e.passed ? "pass" : "fail"} · {e.check_type}
+                        </span>
+                        <p className="mt-0.5">
+                          {e.criterion}
+                          {e.detail ? ` — ${e.detail}` : ""}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Loading QA feedback…
+              </p>
+            )}
+          </div>
         ) : null}
       </section>
 
       {/* Discussion */}
       <section className="mt-8 border border-border p-5">
-        <p className="text-xs font-mono uppercase tracking-wider text-primary mb-4">Discussion</p>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <p className="text-xs font-mono uppercase tracking-wider text-primary">Discussion</p>
+          {discussion?.messages?.some((m) => isScopeFlaggedMessage(m)) ? (
+            <span className="text-[10px] font-mono uppercase tracking-wide px-2 py-0.5 border border-amber-600/40 bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+              Scope warning
+            </span>
+          ) : null}
+        </div>
         {discussion?.messages?.length ? (
           <ul className="space-y-3">
-            {discussion.messages.map((m) => (
-              <li key={m.id} className="text-sm">
-                <span className="font-mono text-xs text-muted-foreground">{m.sender_name}</span>
-                <p className="mt-1">{m.body}</p>
-              </li>
-            ))}
+            {discussion.messages.map((m) => {
+              const flagged = isScopeFlaggedMessage(m);
+              return (
+                <li
+                  key={m.id}
+                  className={
+                    flagged
+                      ? "text-sm border border-amber-600/40 bg-amber-50 dark:bg-amber-950/30 px-3 py-2"
+                      : "text-sm"
+                  }
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-muted-foreground">{m.sender_name}</span>
+                    {flagged ? (
+                      <span className="text-[10px] font-mono uppercase tracking-wide text-amber-800 dark:text-amber-200">
+                        Scope change
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1">{m.body}</p>
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground">No messages yet.</p>

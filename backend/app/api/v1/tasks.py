@@ -10,9 +10,10 @@ from app.schemas.fulfillment import (
     SubmitWorkIn,
     TaskStatusOut,
 )
+from app.schemas.qa import QAReviewOut
 from app.schemas.worker import CharterOut, TaskPacketOut
 from app.models.identity import User
-from app.services.auth import get_current_client, get_current_worker
+from app.services.auth import get_current_user_for_me, get_current_worker
 from app.services.discussion import DiscussionService
 from app.services.fulfillment import FulfillmentService
 from app.services.task_lifecycle import TaskLifecycleService
@@ -120,6 +121,24 @@ async def submit_work(
     return TaskStatusOut(status=task.status)
 
 
+@router.get("/{task_id}/qa", response_model=QAReviewOut)
+async def get_task_qa(
+    task_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> QAReviewOut:
+    """Latest QA review for a task (from submission + ai_decision_log)."""
+    fulfillment = FulfillmentService(db)
+    task = await fulfillment.get_task_by_id(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    lifecycle = TaskLifecycleService(db)
+    review = await lifecycle.get_latest_qa_review(task_id)
+    if review is None:
+        raise HTTPException(status_code=404, detail="No QA review for task")
+    return review
+
+
 @router.get("/{task_id}/discussion", response_model=DiscussionThreadOut)
 async def get_discussion(
     task_id: uuid.UUID,
@@ -142,7 +161,9 @@ async def post_discussion_message(
     task_id: uuid.UUID,
     body: DiscussionMessageIn,
     db: AsyncSession = Depends(get_db),
-    sender: User = Depends(get_current_client),
+    # Role-agnostic: whoever is on the thread (client OR assigned worker) posts
+    # as themselves so discussion identity is attributed correctly.
+    sender: User = Depends(get_current_user_for_me),
 ) -> DiscussionThreadOut:
     fulfillment = FulfillmentService(db)
     task = await fulfillment.get_task_by_id(task_id)

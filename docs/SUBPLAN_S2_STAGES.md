@@ -4,7 +4,7 @@
 >
 > **Parent:** `docs/PIPELINE.md` · **Plan principle:** top-notch for the stage ≠ forever-final.
 >
-> **When S2 A–C is done:** tick boxes here + update PIPELINE NOW/SHIPPED. Stage D stays LATER.
+> **When S2 A–C is done:** tick boxes here + update PIPELINE NOW/SHIPPED. **Stage D deepen is NOW** (bind → profiles → matcher → Gemini → Clerk).
 
 ---
 
@@ -21,7 +21,7 @@ A founder can run the product path with `NEXT_PUBLIC_USE_MOCKS=false` against Do
 | **A** | Worker lifecycle APIs + Submission + Spine | ✅ Complete |
 | **B** | Discussion thread + delivery get/accept + order close | ✅ Complete |
 | **C** | Product default = real API + smoke (scope→submit) | ✅ Complete |
-| **D** | Auth, Gemini required, Matcher from DB, deploy | 🔄 Auth slice done; rest LATER |
+| **D** | Auth, Gemini required, Matcher from DB, deploy | 🔄 **NOW** — Clerk live; **`raysql` delete founder-blocked** |
 
 ---
 
@@ -74,14 +74,18 @@ Mocks remain only for CI / offline v0 work — not the “app works” story.
 
 ---
 
-## Stage D — Deepen
+## Stage D — Deepen ⟵ **NOW**
 
-- [x] **Auth first slice:** `AUTH_MODE=demo|clerk`, Clerk JWT verify + `users.external_auth_id`, FastAPI `get_current_client` / `get_current_worker`, frontend `@clerk/nextjs` + `/sign-in` `/sign-up` (keys optional — demo remains default)
-- [ ] Founder: create Clerk app, set keys, flip `AUTH_MODE=clerk`
-- [ ] Gemini required for Spec Compiler + Task Packet in prod env
-- [ ] Matcher from DB `worker_profiles` (not fixture shortlist)
-- [ ] Onboarding persists to `worker_profiles`
-- [ ] Deploy (Vercel + API host) + secrets
+- [x] **Auth first slice:** `AUTH_MODE=demo|clerk`, Clerk JWT verify + `users.external_auth_id`, FastAPI `get_current_client` / `get_current_worker`, frontend `@clerk/nextjs` + `/sign-in` `/sign-up` (keys optional — demo remains default; Cloud Run `AUTH_MODE=demo`)
+- [x] **Clerk go-live:** Vercel + Cloud Run `AUTH_MODE=clerk` (`arriving-serval-22`; see `docs/DEPLOY_API.md`)
+- [x] Gemini required gate in code (`APP_ENV=production` / `REQUIRE_GEMINI`; Spec Compiler + Task Packet via gateway; no silent fixture)
+- [x] Founder: `GEMINI_API_KEY` on Cloud Run via Secret Manager (`orchestra-gemini-api-key`) — live
+- [x] Matcher from DB `worker_profiles` (not fixture shortlist)
+- [x] Onboarding persists to `worker_profiles`
+- [x] **Deploy API + secrets:** Cloud Run live; `DATABASE_URL` / `SECRET_KEY` via Secret Manager; plaintext removed from committed `cloudrun-service.yaml`
+- [x] **Vercel env bind:** `NEXT_PUBLIC_USE_MOCKS=false` + Cloud Run `NEXT_PUBLIC_API_BASE_URL` on Production + Preview (**non-sensitive**)
+- [x] **Bind gate #1:** Production redeployed (`vercel.json` → Next.js; `pnpm-lock` synced); Cloud Run URL baked, CORS OK, API 3 SKUs
+- [!] **Founder-blocked — `raysql` cost:** confirm then `gcloud sql instances delete raysql --project=gen-lang-client-0795401430 --quiet` (not run; MySQL leftover — see `docs/DEPLOY_API.md`)
 
 ---
 

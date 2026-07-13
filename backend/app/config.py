@@ -11,7 +11,10 @@ class Settings(BaseSettings):
     database_url: str = (
         "postgresql+asyncpg://orchestra:orchestra@localhost:5432/orchestra"
     )
-    # Production pool tuning — pre_ping avoids stale-connection errors after DB restarts.
+    # Cloud Run + Cloud SQL Connector: PROJECT:REGION:INSTANCE
+    cloud_sql_instance: str | None = None
+    # "private" (VPC) or "public" — Cloud Run gen2 unix sockets break asyncpg
+    cloud_sql_ip_type: str = "private"
     db_pool_size: int = 10
     db_max_overflow: int = 20
     db_pool_recycle_seconds: int = 1800
@@ -25,30 +28,60 @@ class Settings(BaseSettings):
 
     secret_key: str = "change-me-in-production"
     auto_seed: bool = True
-    # Dev convenience: create tables from models on boot. Set false in prod and
-    # rely on `alembic upgrade head` (the versioned source of truth).
     auto_create_all: bool = True
 
-    # --- Gemini AI gateway (key-ready; falls back to fixture when unset) ---
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-2.5-flash"
     gemini_timeout_seconds: float = 20.0
+    # When true (or APP_ENV=production), Spec Compiler + Task Packet must use Gemini —
+    # no silent fixture fallback. Set REQUIRE_GEMINI=true to force locally.
+    require_gemini: bool = False
 
-    # --- Auth (Stage D) ---
-    # demo = seeded get_demo_* stubs (tests + local without Clerk)
-    # clerk = require Bearer JWT verified via CLERK_JWKS_URL
     auth_mode: str = "demo"
     clerk_jwks_url: str | None = None
     clerk_issuer: str | None = None
     clerk_audience: str | None = None
+    # Comma-separated emails allowed as admins when AUTH_MODE=clerk
+    admin_email_allowlist: str = ""
+
+    @property
+    def db_connect_args(self) -> dict:
+        # Unix sockets via /cloudsql/... break asyncpg on Cloud Run gen2
+        # (NotADirectoryError). Use CLOUD_SQL_INSTANCE + Connector instead.
+        return {}
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.lower() in ("production", "prod")
+
+    @property
+    def gemini_required(self) -> bool:
+        return self.require_gemini or self.is_production
 
     @property
     def gemini_enabled(self) -> bool:
         return bool(self.gemini_api_key)
 
+    def ensure_gemini_configured(self) -> None:
+        """Fail loud when Gemini is required but GEMINI_API_KEY is missing."""
+        if self.gemini_required and not self.gemini_enabled:
+            raise RuntimeError(
+                "GEMINI_API_KEY is required when APP_ENV=production or REQUIRE_GEMINI=true. "
+                "Set the key via Secret Manager on Cloud Run (see docs/DEPLOY_API.md). "
+                "Silent fixture fallback is disabled for Spec Compiler and Task Packet."
+            )
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def admin_email_allowlist_set(self) -> set[str]:
+        return {
+            e.strip().lower()
+            for e in self.admin_email_allowlist.split(",")
+            if e.strip()
+        }
 
 
 settings = Settings()

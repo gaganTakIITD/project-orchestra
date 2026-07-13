@@ -217,6 +217,8 @@ export const mockSpec: OutcomeSpec = {
   client_inputs_required: ["company_name", "tagline", "reference_sites"],
   mapped_task_types: ["brand_identity", "logo_design", "figma_ui_design", "landing_page_frontend", "deployment_devops"],
   risk_tier: "L1",
+  workflow_summary:
+    "Brand direction → Logo design → UI design in Figma → Build landing page → Deploy to live URL",
   version: 1,
   frozen_at: daysFromNow(-5),
 };
@@ -249,6 +251,42 @@ export const mockOrder: OutcomeOrder = {
   created_at: daysFromNow(-5),
   updated_at: hoursFromNow(-4),
 };
+
+/**
+ * The demo client's full outcome list — powers the /orders dashboard (useMyOrders).
+ * Newest first, mirroring the real `GET /orders` ordering (created_at desc).
+ */
+export const mockOrders: OutcomeOrder[] = [
+  {
+    id: "ord_brandkit",
+    client_id: mockClient.id,
+    quote_id: "quote_brandkit",
+    spec_id: mockSpec.id,
+    sku_id: "sku_launch_studio",
+    status: "assembling_team",
+    price: 4500,
+    deadline: daysFromNow(14),
+    revision_limit: 2,
+    progress_pct: 0,
+    created_at: hoursFromNow(-6),
+    updated_at: hoursFromNow(-6),
+  },
+  mockOrder,
+  {
+    id: "ord_pitchdeck",
+    client_id: mockClient.id,
+    quote_id: "quote_pitchdeck",
+    spec_id: mockSpec.id,
+    sku_id: "sku_launch_studio",
+    status: "delivered",
+    price: 6000,
+    deadline: daysFromNow(2),
+    revision_limit: 2,
+    progress_pct: 100,
+    created_at: daysFromNow(-12),
+    updated_at: hoursFromNow(-20),
+  },
+];
 
 // ----------------------------------------------------------------------------
 // Fulfillment plan — the 5-task DAG (Spec §8.3 Architect example)
@@ -556,6 +594,17 @@ export const mockDiscussion: DiscussionThread = {
       attachments: [],
       scope_flagged: false,
       created_at: hoursFromNow(-3),
+    },
+    {
+      id: "msg_3",
+      thread_id: "thread_logo",
+      sender_id: mockClient.id,
+      sender_name: "Ananya Sharma",
+      body: "Also add a blog section to the landing page.",
+      message_type: "scope_change_request",
+      attachments: [],
+      scope_flagged: true,
+      created_at: hoursFromNow(-2),
     },
   ],
 };

@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import { useRouter } from 'next/navigation';
+import { useSaveWorkerProfile } from '@/lib/hooks';
+import type { WorkerProfileSaveInput } from '@/lib/types';
 
 type Step = 'basics' | 'skills' | 'portfolio' | 'payout';
 
@@ -27,8 +29,59 @@ interface ProfileData {
   upiId: string;
 }
 
+function slugify(label: string): string {
+  return label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '');
+}
+
+function toSavePayload(profile: ProfileData): WorkerProfileSaveInput {
+  return {
+    full_name: profile.fullName,
+    community_type: 'both',
+    headline: profile.bio.slice(0, 120) || profile.fullName,
+    bio: profile.location
+      ? `${profile.bio}\n\nBased in ${profile.location}`
+      : profile.bio,
+    availability_status: 'available',
+    weekly_hours_available: 20,
+    max_concurrent_tasks: 2,
+    payout_min: profile.bankAccount || profile.upiId ? 1500 : null,
+    payout_max: profile.bankAccount || profile.upiId ? 6000 : null,
+    skills: profile.skills.map((name) => ({
+      skill_id: `skill_${slugify(name)}`,
+      name,
+      proficiency: 'intermediate' as const,
+    })),
+    tools: profile.tools.map((name) => ({
+      tool_id: `tool_${slugify(name)}`,
+      name,
+      proficiency: 'intermediate' as const,
+    })),
+    task_types: [],
+    portfolio: profile.portfolioUrl
+      ? [
+          {
+            id: 'pf_onboard',
+            worker_id: '',
+            title: profile.portfolioDescription || 'Portfolio',
+            description: profile.portfolioDescription || undefined,
+            project_url: profile.portfolioUrl,
+            tags: [],
+            tools_used: profile.tools,
+            is_featured: true,
+          },
+        ]
+      : [],
+    is_active: true,
+  };
+}
+
 export default function OnboardingContent() {
   const router = useRouter();
+  const saveProfile = useSaveWorkerProfile();
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<Step>('basics');
   const [profile, setProfile] = useState<ProfileData>({
     fullName: 'Rohan Sharma',
@@ -73,9 +126,14 @@ export default function OnboardingContent() {
     }
   };
 
-  const handleComplete = () => {
-    if (canProceed) {
+  const handleComplete = async () => {
+    if (!canProceed || saveProfile.isPending) return;
+    setSaveError(null);
+    try {
+      await saveProfile.mutateAsync(toSavePayload(profile));
       router.push('/worker');
+    } catch {
+      setSaveError('Could not save profile. Try again.');
     }
   };
 
@@ -342,13 +400,22 @@ export default function OnboardingContent() {
             </button>
 
             {currentStep === 'payout' ? (
-              <button
-                onClick={handleComplete}
-                disabled={!canProceed}
-                className="h-11 px-8 bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-              >
-                {canProceed ? 'Start working' : 'Complete profile'}
-              </button>
+              <div className="flex flex-col items-end gap-2">
+                {saveError ? (
+                  <p className="text-xs text-destructive">{saveError}</p>
+                ) : null}
+                <button
+                  onClick={handleComplete}
+                  disabled={!canProceed || saveProfile.isPending}
+                  className="h-11 px-8 bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                >
+                  {saveProfile.isPending
+                    ? 'Saving…'
+                    : canProceed
+                      ? 'Start working'
+                      : 'Complete profile'}
+                </button>
+              </div>
             ) : (
               <button
                 onClick={handleNext}

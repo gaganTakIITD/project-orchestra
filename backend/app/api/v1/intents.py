@@ -1,3 +1,13 @@
+"""Intent routes.
+
+`POST /intents` is a **legacy / demo shortcut**: it compiles via the fixture Spec
+Compiler (`compile_spec_fixture`) in one shot — useful for pytest and smoke
+paths. Production client UX co-creates the OutcomeSpec on `/scope/[sessionId]`
+(chat Spec Compiler → finalize), which is Gemini-gated when required.
+
+Prefer scope chat for real scoping; keep this route for demos and tests.
+"""
+
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,7 +22,16 @@ from app.services.intent import IntentService
 router = APIRouter(prefix="/intents", tags=["intents"])
 
 
-@router.post("", response_model=CreateIntentOut, status_code=201)
+@router.post(
+    "",
+    response_model=CreateIntentOut,
+    status_code=201,
+    summary="Create intent (legacy / demo fixture Spec Compiler)",
+    description=(
+        "One-shot fixture compile for demos and tests. Production scoping uses "
+        "POST /chat/sessions + messages on /scope/[sessionId], then finalize."
+    ),
+)
 async def create_intent(
     body: CreateIntentIn,
     db: AsyncSession = Depends(get_db),

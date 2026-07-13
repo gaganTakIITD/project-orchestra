@@ -19,42 +19,56 @@ import {
   mockInterests,
   mockNotifications,
   mockOrder,
+  mockOrders,
   mockPlan,
   mockPreferenceSet,
-  mockQuote,
   mockSkus,
-  mockSpec,
   mockSkills,
   mockTaskTypes,
   mockTools,
   mockWorkerMe,
+  mockQAReview,
 } from "./mock-data";
 import {
   getOrCreateMockSession,
+  getMockQuote,
+  getMockSpec,
+  mockFinalizeMatcherSession,
+  mockFinalizePricingSession,
   mockFinalizeScopeSession,
   mockSendScopeMessage,
   mockSendScopeMessageStream,
+  mockStartMatcherSession,
+  mockStartPricingSession,
+  mockUndoScopeSession,
 } from "./mock-chat";
 import type {
   Candidate,
   Charter,
   ChatSession,
+  ChatSessionSummary,
   ChatStreamEvent,
   ChatStreamHandlers,
   DeliveryBundle,
   DiscussionThread,
   FinalizeChatSessionResult,
+  FinalizeMatcherSessionResult,
+  FinalizePricingSessionResult,
   FulfillmentPlan,
   OutcomeOrder,
   OutcomeSku,
   OutcomeSpec,
   PreferenceSet,
+  QAReview,
   Quote,
   Skill,
+  StartChatSessionInput,
   TaskPacket,
   TaskType,
   Tool,
+  User,
   WorkerProfile,
+  WorkerProfileSaveInput,
 } from "./types";
 
 export const USE_MOCKS =
@@ -154,6 +168,9 @@ async function streamChatMessage(
         case "draft_patch":
           handlers.onDraftPatch?.(event);
           break;
+        case "artifact_updated":
+          handlers.onArtifactUpdated?.(event);
+          break;
         case "turn_complete":
           finalSession = event.session;
           handlers.onTurnComplete?.(event.session);
@@ -206,15 +223,19 @@ export const clientApi = {
 
   /** spec_id from Quote — matches v0 proposal page (`useSpec(quote.spec_id)`). */
   getSpec: (specId: string): Promise<OutcomeSpec> =>
-    USE_MOCKS ? mock(mockSpec) : apiFetch(`/specs/${specId}`),
+    USE_MOCKS ? mock(getMockSpec(specId)) : apiFetch(`/specs/${specId}`),
 
   getQuote: (id: string): Promise<Quote> =>
-    USE_MOCKS ? mock(mockQuote) : apiFetch(`/quotes/${id}`),
+    USE_MOCKS ? mock(getMockQuote(id)) : apiFetch(`/quotes/${id}`),
 
   acceptQuote: (id: string): Promise<{ order_id: string }> =>
     USE_MOCKS
       ? mock({ order_id: mockOrder.id })
       : apiFetch(`/quotes/${id}/accept`, { method: "POST" }),
+
+  /** The current client's outcomes, newest first — powers the /orders dashboard. */
+  listOrders: (): Promise<OutcomeOrder[]> =>
+    USE_MOCKS ? mock(mockOrders) : apiFetch("/orders"),
 
   getOrder: (id: string): Promise<OutcomeOrder> =>
     USE_MOCKS ? mock(mockOrder) : apiFetch(`/orders/${id}`),
@@ -270,6 +291,26 @@ export const workerApi = {
   getProfile: (): Promise<WorkerProfile> =>
     USE_MOCKS ? mock(mockWorkerMe) : apiFetch("/workers/profile"),
 
+  saveProfile: (payload: WorkerProfileSaveInput): Promise<WorkerProfile> =>
+    USE_MOCKS
+      ? mock({
+          ...mockWorkerMe,
+          ...payload,
+          user_id: mockWorkerMe.user_id,
+          campus_verified: mockWorkerMe.campus_verified,
+          profile_completion_pct: mockWorkerMe.profile_completion_pct,
+          stats: mockWorkerMe.stats,
+          full_name: payload.full_name ?? mockWorkerMe.full_name,
+          skills: payload.skills ?? mockWorkerMe.skills,
+          tools: payload.tools ?? mockWorkerMe.tools,
+          task_types: payload.task_types ?? mockWorkerMe.task_types,
+          portfolio: payload.portfolio ?? mockWorkerMe.portfolio,
+        } as WorkerProfile)
+      : apiFetch("/workers/profile", {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        }),
+
   getMyTasks: (): Promise<FulfillmentPlan["tasks"]> =>
     USE_MOCKS ? mock(mockPlan.tasks) : apiFetch("/workers/me/tasks"),
 
@@ -299,6 +340,9 @@ export const workerApi = {
           method: "POST",
           body: JSON.stringify(payload),
         }),
+
+  getTaskQA: (taskId: string): Promise<QAReview> =>
+    USE_MOCKS ? mock(mockQAReview) : apiFetch(`/tasks/${taskId}/qa`),
 };
 
 export const notificationsApi = {
@@ -306,11 +350,19 @@ export const notificationsApi = {
 };
 
 export const authApi = {
-  me: () => (USE_MOCKS ? mock(mockClient) : apiFetch("/auth/me")),
+  me: (): Promise<User> => (USE_MOCKS ? mock(mockClient) : apiFetch<User>("/auth/me")),
+
+  setRole: (role: "client" | "worker"): Promise<User> =>
+    USE_MOCKS
+      ? mock({ ...mockClient, role })
+      : apiFetch<User>("/auth/role", {
+          method: "PATCH",
+          body: JSON.stringify({ role }),
+        }),
 };
 
 // ----------------------------------------------------------------------------
-// Scope chat — schema-driven job description extraction
+// Chat surfaces — Scope (Stage 1) + Pricing (Stage 2) + Matcher (Stage 3)
 // ----------------------------------------------------------------------------
 
 export const chatApi = {
@@ -318,6 +370,52 @@ export const chatApi = {
     USE_MOCKS
       ? mock(getOrCreateMockSession())
       : apiFetch("/chat/sessions", { method: "POST" }),
+
+  /** Active scope drafts for the current client — powers "Resume scope". */
+  listScopes: (): Promise<ChatSessionSummary[]> =>
+    USE_MOCKS
+      ? mock(
+          [getOrCreateMockSession()]
+            .filter((s) => s.agent_type === "spec_compiler" && s.status === "active")
+            .map<ChatSessionSummary>((s) => ({
+              id: s.id,
+              agent_type: s.agent_type,
+              status: s.status,
+              title: s.spec_draft?.outcome_statement?.trim() || "Untitled outcome",
+              completeness_pct: s.completeness_pct,
+              ready_for_quote: s.ready_for_quote,
+              spec_version: s.spec_version,
+              created_at: s.created_at,
+            }))
+        )
+      : apiFetch("/chat/sessions"),
+
+  /** Stage 2 — Pricing Reasoner Confirm Chat bound to an issued quote. */
+  startPricingSession: (quoteId: string): Promise<ChatSession> =>
+    USE_MOCKS
+      ? mock(mockStartPricingSession(quoteId))
+      : apiFetch("/chat/sessions", {
+          method: "POST",
+          body: JSON.stringify({
+            agent_type: "pricing",
+            ref_type: "quote",
+            ref_id: quoteId,
+          } satisfies StartChatSessionInput),
+        }),
+
+  /** Stage 3 — Matcher Preference Chat bound to an order task. */
+  startMatcherSession: (orderId: string, taskId: string): Promise<ChatSession> =>
+    USE_MOCKS
+      ? mock(mockStartMatcherSession(orderId, taskId))
+      : apiFetch("/chat/sessions", {
+          method: "POST",
+          body: JSON.stringify({
+            agent_type: "matcher",
+            ref_type: "task",
+            ref_id: taskId,
+            order_id: orderId,
+          } satisfies StartChatSessionInput),
+        }),
 
   getSession: (sessionId: string): Promise<ChatSession> =>
     USE_MOCKS
@@ -332,7 +430,7 @@ export const chatApi = {
           body: JSON.stringify({ body }),
         }),
 
-  /** SSE stream — draft_patch → tokens → turn_complete. Preferred over sendMessage when live. */
+  /** SSE stream — draft_patch|artifact_updated → tokens → turn_complete. */
   sendMessageStream: (
     sessionId: string,
     body: string,
@@ -348,4 +446,27 @@ export const chatApi = {
     USE_MOCKS
       ? mock(mockFinalizeScopeSession(sessionId))
       : apiFetch(`/chat/sessions/${sessionId}/finalize`, { method: "POST" }),
+
+  finalizeMatcherSession: (
+    sessionId: string,
+    ranked_worker_ids?: string[]
+  ): Promise<FinalizeMatcherSessionResult> =>
+    USE_MOCKS
+      ? mock(mockFinalizeMatcherSession(sessionId))
+      : apiFetch(`/chat/sessions/${sessionId}/finalize`, {
+          method: "POST",
+          body: JSON.stringify(
+            ranked_worker_ids?.length ? { ranked_worker_ids } : {}
+          ),
+        }),
+
+  finalizePricingSession: (sessionId: string): Promise<FinalizePricingSessionResult> =>
+    USE_MOCKS
+      ? mock(mockFinalizePricingSession(sessionId))
+      : apiFetch(`/chat/sessions/${sessionId}/finalize`, { method: "POST" }),
+
+  undoSession: (sessionId: string): Promise<ChatSession> =>
+    USE_MOCKS
+      ? mock(mockUndoScopeSession(sessionId))
+      : apiFetch(`/chat/sessions/${sessionId}/undo`, { method: "POST" }),
 };
