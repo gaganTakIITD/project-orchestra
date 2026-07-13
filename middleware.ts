@@ -16,7 +16,10 @@ const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 export default clerkEnabled
   ? clerkMiddleware(async (auth, req) => {
       if (isProtected(req)) {
-        await auth.protect();
+        // Redirect unsigned users to sign-in (not a bare 404 rewrite).
+        await auth.protect({
+          unauthenticatedUrl: new URL("/sign-in", req.url).toString(),
+        });
       }
     })
   : function middleware() {
