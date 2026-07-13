@@ -1,7 +1,17 @@
 /**
- * Mock scope-chat sessions — simulates schema-driven Q&A until backend is live.
+ * Mock chat sessions — Scope (Stage 1) + Pricing (Stage 2) + Matcher (Stage 3).
  */
-import type { ChatMessage, ChatSession, ChatStreamHandlers, OutcomeSpecDraft } from "./types";
+import { mockCandidates, mockClient, mockQuote, mockSpec } from "./mock-data";
+import type {
+  ChatMessage,
+  ChatSession,
+  ChatStreamHandlers,
+  FinalizeMatcherSessionResult,
+  FinalizePricingSessionResult,
+  OutcomeSpec,
+  OutcomeSpecDraft,
+  Quote,
+} from "./types";
 
 const emptyDraft = (): OutcomeSpecDraft => ({
   outcome_statement: "",
@@ -16,6 +26,15 @@ const emptyDraft = (): OutcomeSpecDraft => ({
   workflow_summary: "",
   version: 0,
 });
+
+type ScopeSnapshot = {
+  spec_draft: OutcomeSpecDraft;
+  completeness_pct: number;
+  missing_fields: string[];
+  ready_for_quote: boolean;
+};
+
+const mockSnapshots = new Map<string, Record<string, ScopeSnapshot>>();
 
 function computeMockCompleteness(draft: OutcomeSpecDraft, userText: string): {
   pct: number;
@@ -169,6 +188,22 @@ export function mockSendScopeMessage(
   body: string
 ): ChatSession {
   const session = mockSessions.get(sessionId) ?? getOrCreateMockSession(sessionId);
+  if (session.agent_type === "pricing") {
+    return mockPricingReply(session, body);
+  }
+  if (session.agent_type === "matcher") {
+    return mockMatcherReply(session, body);
+  }
+
+  const snaps = mockSnapshots.get(sessionId) ?? {};
+  snaps[String(session.spec_version)] = {
+    spec_draft: { ...session.spec_draft },
+    completeness_pct: session.completeness_pct,
+    missing_fields: [...session.missing_fields],
+    ready_for_quote: session.ready_for_quote,
+  };
+  mockSnapshots.set(sessionId, snaps);
+
   const userMsg: ChatMessage = {
     id: `${sessionId}_u_${Date.now()}`,
     session_id: sessionId,
@@ -207,6 +242,7 @@ export function mockSendScopeMessage(
     completeness_pct: pct,
     missing_fields: missing,
     ready_for_quote: ready,
+    can_undo: true,
     messages: [...session.messages, userMsg, assistantMsg],
   };
   mockSessions.set(sessionId, updated);
@@ -229,13 +265,31 @@ function chunkText(text: string, maxChars = 24): string[] {
   return chunks;
 }
 
-/** Mock SSE — same turn logic as mockSendScopeMessage, streamed for UI polish. */
+/** Mock SSE — routes matcher/pricing sessions to their turn logic. */
 export async function mockSendScopeMessageStream(
   sessionId: string,
   body: string,
   handlers: ChatStreamHandlers
 ): Promise<ChatSession> {
-  const session = mockSessions.get(sessionId) ?? getOrCreateMockSession(sessionId);
+  const existing = mockSessions.get(sessionId);
+  if (existing?.agent_type === "matcher") {
+    return mockSendMatcherMessageStream(sessionId, body, handlers);
+  }
+  if (existing?.agent_type === "pricing") {
+    return mockSendPricingMessageStream(sessionId, body, handlers);
+  }
+
+  const session = existing ?? getOrCreateMockSession(sessionId);
+
+  const snaps = mockSnapshots.get(sessionId) ?? {};
+  snaps[String(session.spec_version)] = {
+    spec_draft: { ...session.spec_draft },
+    completeness_pct: session.completeness_pct,
+    missing_fields: [...session.missing_fields],
+    ready_for_quote: session.ready_for_quote,
+  };
+  mockSnapshots.set(sessionId, snaps);
+
   const userMsg: ChatMessage = {
     id: `${sessionId}_u_${Date.now()}`,
     session_id: sessionId,
@@ -289,11 +343,24 @@ export async function mockSendScopeMessageStream(
     completeness_pct: pct,
     missing_fields: missing,
     ready_for_quote: ready,
+    can_undo: true,
     messages: [...session.messages, userMsg, assistantMsg],
   };
   mockSessions.set(sessionId, updated);
   handlers.onTurnComplete?.(updated);
   return updated;
+}
+
+/** Session-scoped specs/quotes from finalize — looked up by getMockSpec / getMockQuote. */
+const mockMaterializedSpecs = new Map<string, OutcomeSpec>();
+const mockMaterializedQuotes = new Map<string, Quote>();
+
+export function getMockSpec(specId: string): OutcomeSpec {
+  return mockMaterializedSpecs.get(specId) ?? mockSpec;
+}
+
+export function getMockQuote(quoteId: string): Quote {
+  return mockMaterializedQuotes.get(quoteId) ?? mockQuote;
 }
 
 export function mockFinalizeScopeSession(sessionId: string): {
@@ -304,6 +371,330 @@ export function mockFinalizeScopeSession(sessionId: string): {
   if (!session?.ready_for_quote) {
     throw new Error("Job description not complete enough to quote");
   }
+  const draft = session.spec_draft;
+  const intent_id = `int_${sessionId}`;
+  const spec_id = `spec_${sessionId}`;
+  const quote_id = `quote_${sessionId}`;
+  const now = new Date().toISOString();
+
+  const spec: OutcomeSpec = {
+    id: spec_id,
+    intent_id,
+    sku_id: draft.sku_id ?? "sku_launch_studio",
+    outcome_statement: draft.outcome_statement,
+    deliverables: draft.deliverables,
+    acceptance_criteria: draft.acceptance_criteria,
+    in_scope: draft.in_scope,
+    out_of_scope: draft.out_of_scope,
+    assumptions: draft.assumptions,
+    client_inputs_required: draft.client_inputs_required,
+    mapped_task_types: draft.mapped_task_types,
+    risk_tier: draft.risk_tier,
+    workflow_summary: draft.workflow_summary ?? "",
+    version: draft.version || 1,
+    frozen_at: now,
+  };
+
+  const quote: Quote = {
+    id: quote_id,
+    spec_id,
+    client_id: mockClient.id,
+    price: mockQuote.price,
+    deadline: mockQuote.deadline,
+    revision_limit: mockQuote.revision_limit,
+    status: "issued",
+    valid_until: mockQuote.valid_until,
+    ai_confidence: mockQuote.ai_confidence,
+    ai_rationale: mockQuote.ai_rationale,
+    created_at: now,
+  };
+
+  mockMaterializedSpecs.set(spec_id, spec);
+  mockMaterializedQuotes.set(quote_id, quote);
   mockSessions.set(sessionId, { ...session, status: "completed" });
-  return { intent_id: "int_healthtrack", quote_id: "quote_healthtrack" };
+  return { intent_id, quote_id };
+}
+
+// --- Matcher Preference Chat (Stage 3) ---------------------------------------
+
+export function mockStartMatcherSession(orderId: string, taskId: string): ChatSession {
+  const id = `chat_matcher_${Date.now()}`;
+  const candidates = mockCandidates.map((c) => ({ ...c }));
+  const opening: ChatMessage = {
+    id: `msg_${id}_0`,
+    session_id: id,
+    role: "assistant",
+    body:
+      `I found ${candidates.length} strong matches. Top pick: ${candidates[0]?.full_name}. ` +
+      `Ask why someone ranks where they do, or say "confirm these three."`,
+    spec_version_after: 0,
+    created_at: new Date().toISOString(),
+  };
+  const session: ChatSession = {
+    id,
+    agent_type: "matcher",
+    status: "active",
+    spec_draft: emptyDraft(),
+    spec_version: 0,
+    completeness_pct: 75,
+    missing_fields: [],
+    ready_for_quote: false,
+    ref_type: "task",
+    ref_id: taskId,
+    order_id: orderId,
+    candidates,
+    ready_to_confirm: candidates.length >= 3,
+    messages: [opening],
+    created_at: new Date().toISOString(),
+  };
+  mockSessions.set(id, session);
+  return session;
+}
+
+function mockMatcherReply(session: ChatSession, userText: string): ChatSession {
+  const t = userText.toLowerCase();
+  let candidates = [...(session.candidates ?? mockCandidates)];
+  let version = session.spec_version + 1;
+  let reply = `Here's the shortlist:\n${candidates
+    .map((c, i) => `${i + 1}. ${c.full_name} (${c.score})`)
+    .join("\n")}`;
+
+  if (/why|explain/.test(t)) {
+    const top = candidates[0];
+    reply = top
+      ? `${top.full_name} is #1 (score ${top.score}). ${top.rationale}`
+      : "No candidates yet.";
+    version = session.spec_version;
+  } else if (/confirm|looks good|these three/.test(t)) {
+    reply = "Ranking ready — hit Confirm ranking to submit your PreferenceSet.";
+  } else if (/move .+ to #?1|make .+ first/.test(t)) {
+    const meera = candidates.find((c) => /meera/i.test(c.full_name));
+    if (meera && /meera/.test(t)) {
+      candidates = [meera, ...candidates.filter((c) => c.worker_id !== meera.worker_id)];
+      reply = `Updated — ${meera.full_name} is now #1.`;
+    }
+  }
+
+  const userMsg: ChatMessage = {
+    id: `msg_${session.id}_u_${Date.now()}`,
+    session_id: session.id,
+    role: "user",
+    body: userText,
+    created_at: new Date().toISOString(),
+  };
+  const assistantMsg: ChatMessage = {
+    id: `msg_${session.id}_a_${Date.now()}`,
+    session_id: session.id,
+    role: "assistant",
+    body: reply,
+    spec_version_after: version,
+    created_at: new Date().toISOString(),
+  };
+  const updated: ChatSession = {
+    ...session,
+    candidates,
+    spec_version: version,
+    ready_to_confirm: candidates.length >= 3,
+    messages: [...session.messages, userMsg, assistantMsg],
+  };
+  mockSessions.set(session.id, updated);
+  return updated;
+}
+
+/** Route mock stream/send by agent_type so Preference Chat works in USE_MOCKS. */
+export async function mockSendMatcherMessageStream(
+  sessionId: string,
+  body: string,
+  handlers: ChatStreamHandlers
+): Promise<ChatSession> {
+  const session = mockSessions.get(sessionId);
+  if (!session || session.agent_type !== "matcher") {
+    throw new Error("Matcher session not found");
+  }
+  const updated = mockMatcherReply(session, body);
+  handlers.onArtifactUpdated?.({
+    type: "artifact_updated",
+    candidates: updated.candidates ?? [],
+    version: updated.spec_version,
+    ready_to_confirm: Boolean(updated.ready_to_confirm),
+  });
+  for (const word of (updated.messages.at(-1)?.body ?? "").split(/(\s+)/)) {
+    if (word) handlers.onToken?.(word);
+  }
+  handlers.onTurnComplete?.(updated);
+  return updated;
+}
+
+export function mockFinalizeMatcherSession(sessionId: string): FinalizeMatcherSessionResult {
+  const session = mockSessions.get(sessionId);
+  if (!session || session.agent_type !== "matcher") {
+    throw new Error("Matcher session not found");
+  }
+  if ((session.candidates?.length ?? 0) < 3) {
+    throw new Error("Need at least 3 ranked workers");
+  }
+  mockSessions.set(sessionId, { ...session, status: "completed" });
+  return {
+    preference_set_id: "pref_mock_1",
+    order_id: session.order_id ?? "ord_mock",
+    task_id: session.ref_id ?? "task_mock",
+  };
+}
+
+// --- Pricing Reasoner Confirm Chat (Stage 2) ---------------------------------
+
+export function mockStartPricingSession(quoteId: string): ChatSession {
+  const id = `chat_pricing_${Date.now()}`;
+  const opening: ChatMessage = {
+    id: `msg_${id}_0`,
+    session_id: id,
+    role: "assistant",
+    body:
+      `Here's your quote (₹${mockQuote.price.toLocaleString("en-IN")}). ` +
+      "Ask about price drivers, risk, or deadline — or say confirm when ready to accept.",
+    spec_version_after: 0,
+    created_at: new Date().toISOString(),
+  };
+  const session: ChatSession = {
+    id,
+    agent_type: "pricing",
+    status: "active",
+    spec_draft: emptyDraft(),
+    spec_version: 0,
+    completeness_pct: 100,
+    missing_fields: [],
+    ready_for_quote: false,
+    ref_type: "quote",
+    ref_id: quoteId,
+    ready_to_confirm: true,
+    can_undo: false,
+    messages: [opening],
+    created_at: new Date().toISOString(),
+  };
+  mockSessions.set(id, session);
+  return session;
+}
+
+function mockPricingReply(session: ChatSession, userText: string): ChatSession {
+  const t = userText.toLowerCase();
+  let reply =
+    `Quote summary: ₹${mockQuote.price.toLocaleString("en-IN")}. ` +
+    "Ask about drivers, risk, or deadline — or say confirm to accept.";
+  let version = session.spec_version;
+  let ready = Boolean(session.ready_to_confirm);
+
+  if (/confirm|accept|looks good|proceed/.test(t)) {
+    reply =
+      "Great — you're ready to accept. Hit Confirm & begin (or finalize this chat) to create your order.";
+    version = session.spec_version + 1;
+    ready = true;
+  } else if (/risk|tier|confidence/.test(t)) {
+    reply = `Risk for this quote is ${mockSpec.risk_tier}. L1 is standard delivery risk with included revisions.`;
+  } else if (/deadline|timeline|days/.test(t)) {
+    reply = `The deadline is ${mockQuote.deadline}. It's derived from the SKU typical_days band.`;
+  } else if (/why|price|driver|cost|sku/.test(t)) {
+    reply =
+      `Price drivers: SKU base band, ${mockSpec.deliverables.length} deliverables, ` +
+      `${mockQuote.revision_limit} revision rounds. ${mockQuote.ai_rationale ?? ""}`;
+  }
+
+  const userMsg: ChatMessage = {
+    id: `msg_${session.id}_u_${Date.now()}`,
+    session_id: session.id,
+    role: "user",
+    body: userText,
+    created_at: new Date().toISOString(),
+  };
+  const assistantMsg: ChatMessage = {
+    id: `msg_${session.id}_a_${Date.now()}`,
+    session_id: session.id,
+    role: "assistant",
+    body: reply,
+    spec_version_after: version,
+    created_at: new Date().toISOString(),
+  };
+  const updated: ChatSession = {
+    ...session,
+    spec_version: version,
+    ready_to_confirm: ready,
+    messages: [...session.messages, userMsg, assistantMsg],
+  };
+  mockSessions.set(session.id, updated);
+  return updated;
+}
+
+export async function mockSendPricingMessageStream(
+  sessionId: string,
+  body: string,
+  handlers: ChatStreamHandlers
+): Promise<ChatSession> {
+  const session = mockSessions.get(sessionId);
+  if (!session || session.agent_type !== "pricing") {
+    throw new Error("Pricing session not found");
+  }
+  const updated = mockPricingReply(session, body);
+  handlers.onArtifactUpdated?.({
+    type: "artifact_updated",
+    candidates: [],
+    version: updated.spec_version,
+    ready_to_confirm: Boolean(updated.ready_to_confirm),
+  });
+  for (const word of (updated.messages.at(-1)?.body ?? "").split(/(\s+)/)) {
+    if (word) handlers.onToken?.(word);
+  }
+  handlers.onTurnComplete?.(updated);
+  return updated;
+}
+
+export function mockFinalizePricingSession(sessionId: string): FinalizePricingSessionResult {
+  const session = mockSessions.get(sessionId);
+  if (!session || session.agent_type !== "pricing") {
+    throw new Error("Pricing session not found");
+  }
+  mockSessions.set(sessionId, { ...session, status: "completed" });
+  return {
+    quote_id: session.ref_id ?? mockQuote.id,
+    order_id: "ord_mock_pricing",
+  };
+}
+
+export function mockUndoScopeSession(sessionId: string): ChatSession {
+  const session = mockSessions.get(sessionId);
+  if (!session || session.agent_type !== "spec_compiler") {
+    throw new Error("Scope session not found");
+  }
+  const snaps = mockSnapshots.get(sessionId) ?? {};
+  const keys = Object.keys(snaps)
+    .map(Number)
+    .filter((n) => !Number.isNaN(n))
+    .sort((a, b) => b - a);
+  const target = keys.find((k) => k < session.spec_version) ?? keys[0];
+  if (target === undefined) {
+    throw new Error("Nothing to undo");
+  }
+  const snap = snaps[String(target)];
+  delete snaps[String(target)];
+  mockSnapshots.set(sessionId, snaps);
+
+  let messages = [...session.messages];
+  if (
+    messages.length >= 2 &&
+    messages[messages.length - 1]?.role === "assistant" &&
+    messages[messages.length - 2]?.role === "user"
+  ) {
+    messages = messages.slice(0, -2);
+  }
+
+  const updated: ChatSession = {
+    ...session,
+    spec_draft: snap.spec_draft,
+    spec_version: target,
+    completeness_pct: snap.completeness_pct,
+    missing_fields: snap.missing_fields,
+    ready_for_quote: snap.ready_for_quote,
+    can_undo: Object.keys(snaps).length > 0,
+    messages,
+  };
+  mockSessions.set(sessionId, updated);
+  return updated;
 }

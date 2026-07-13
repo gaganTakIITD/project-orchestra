@@ -7,12 +7,15 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.scope_guard import classify, summarize_charter
 from app.models.fulfillment import (
+    CharterRecord,
     DiscussionMessageRecord,
     DiscussionThreadRecord,
     FulfillmentTask,
 )
 from app.models.identity import User
+from app.models.platform import AiDecisionLog
 from app.orchestrator.events import EventWriter
 from app.orchestrator.states import ActorType
 
@@ -68,14 +71,50 @@ class DiscussionService:
         attachments: list[str] | None = None,
     ) -> tuple[DiscussionThreadRecord, list[DiscussionMessageRecord]]:
         thread = await self.get_or_create_thread(task)
+
+        charter = await self.session.scalar(
+            select(CharterRecord).where(CharterRecord.task_id == task.id)
+        )
+        charter_summary = summarize_charter(
+            task_title=task.title or "",
+            task_description=task.description or "",
+            snapshot=charter.snapshot if charter is not None else None,
+        )
+        guard = classify(body, charter_summary)
+
+        self.session.add(
+            AiDecisionLog(
+                session_id=None,
+                agent_type="scope_guard",
+                source=guard.source,
+                model=guard.model,
+                input_text=(body or "")[:2000],
+                output_draft={
+                    "task_id": str(task.id),
+                    "thread_id": str(thread.id),
+                    "scope_drift": guard.scope_drift,
+                    "reason": guard.reason,
+                    "charter_summary": charter_summary[:2000],
+                },
+                reply=guard.reason,
+                confidence=guard.confidence,
+                latency_ms=guard.latency_ms,
+                error=guard.error,
+            )
+        )
+
+        # Flag-only: never mutate Charter / OutcomeSpec.
+        flagged = bool(guard.scope_drift)
+        effective_type = "scope_change_request" if flagged else message_type
+
         msg = DiscussionMessageRecord(
             thread_id=thread.id,
             sender_id=str(sender.id),
             sender_name=sender.full_name,
             body=body,
-            message_type=message_type,
+            message_type=effective_type,
             attachments=attachments or [],
-            scope_flagged=False,
+            scope_flagged=flagged,
         )
         self.session.add(msg)
         await self.events.emit(
@@ -84,7 +123,11 @@ class DiscussionService:
             event_type="DiscussionMessagePosted",
             actor_id=sender.id,
             actor_type=ActorType.CLIENT if sender.role == "client" else ActorType.WORKER,
-            payload={"thread_id": str(thread.id), "message_type": message_type},
+            payload={
+                "thread_id": str(thread.id),
+                "message_type": effective_type,
+                "scope_flagged": flagged,
+            },
         )
         await self.session.flush()
         messages = await self.list_messages(thread.id)

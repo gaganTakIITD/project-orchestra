@@ -4,6 +4,15 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
+from pydantic import BaseModel, Field
+
+
+class SetRoleIn(BaseModel):
+    """PATCH /auth/role — choose client or worker portal (admin is Clerk-only)."""
+
+    role: str = Field(pattern="^(client|worker)$")
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

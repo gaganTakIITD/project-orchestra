@@ -61,6 +61,29 @@ export interface WorkerProfile {
   stats?: WorkerStats;
 }
 
+/** PATCH/POST /workers/profile body — completion % and campus_verified are server-owned. */
+export interface WorkerProfileSaveInput {
+  full_name?: string;
+  community_type?: CommunityType;
+  headline?: string;
+  bio?: string;
+  availability_status?: AvailabilityStatus;
+  weekly_hours_available?: number;
+  max_concurrent_tasks?: number;
+  payout_min?: number | null;
+  payout_max?: number | null;
+  github_url?: string | null;
+  figma_url?: string | null;
+  behance_url?: string | null;
+  linkedin_url?: string | null;
+  skills?: WorkerSkill[];
+  tools?: WorkerTool[];
+  task_types?: WorkerTaskType[];
+  portfolio?: PortfolioItem[];
+  /** Requested live flag; server clamps to false when completion < 70%. */
+  is_active?: boolean;
+}
+
 export interface WorkerStats {
   worker_id: string;
   tasks_completed: number;
@@ -195,6 +218,8 @@ export interface OutcomeSpec {
   client_inputs_required: string[];
   mapped_task_types: string[];
   risk_tier: RiskTier;
+  /** Ordered delivery plan — carried from scope chat for proposal parity. */
+  workflow_summary?: string;
   version: number;
   frozen_at?: string | null;
 }
@@ -569,15 +594,34 @@ export interface ChatMessage {
   created_at: string;
 }
 
+export type ChatRefType = "intent" | "order" | "task" | "quote";
+
+/** Body for POST /chat/sessions — omit or agent_type=spec_compiler for Stage 1. */
+export interface StartChatSessionInput {
+  agent_type?: ChatAgentType;
+  ref_type?: ChatRefType | null;
+  ref_id?: string | null;
+  order_id?: string | null;
+}
+
 export interface ChatSession {
   id: string;
   agent_type: ChatAgentType;
   status: ChatSessionStatus;
+  /** Scope (Stage 1) artifact — empty shell for matcher sessions. */
   spec_draft: OutcomeSpecDraft;
   spec_version: number;
   completeness_pct: number;
   missing_fields: string[];
   ready_for_quote: boolean;
+  /** Matcher (Stage 3) — task/order refs + ranked Candidate shortlist. */
+  ref_type?: ChatRefType | null;
+  ref_id?: string | null;
+  order_id?: string | null;
+  candidates?: Candidate[] | null;
+  ready_to_confirm?: boolean;
+  /** Scope undo — true when a prior draft snapshot exists. */
+  can_undo?: boolean;
   messages: ChatMessage[];
   created_at: string;
 }
@@ -585,6 +629,19 @@ export interface ChatSession {
 export interface FinalizeChatSessionResult {
   intent_id: string;
   quote_id: string;
+}
+
+/** Matcher finalize → PreferenceSet via Spine (docs/CHAT_SURFACES.md Stage 3). */
+export interface FinalizeMatcherSessionResult {
+  preference_set_id: string;
+  order_id: string;
+  task_id: string;
+}
+
+/** Pricing finalize → accept_quote via Spine (Stage 2 Confirm Chat). */
+export interface FinalizePricingSessionResult {
+  quote_id: string;
+  order_id: string;
 }
 
 /** SSE events from POST /chat/sessions/{id}/messages/stream */
@@ -598,12 +655,21 @@ export type ChatStreamEvent =
       missing_fields: string[];
       ready_for_quote: boolean;
     }
+  | {
+      type: "artifact_updated";
+      candidates: Candidate[];
+      version: number;
+      ready_to_confirm: boolean;
+    }
   | { type: "turn_complete"; session: ChatSession }
   | { type: "error"; message: string };
 
 export type ChatStreamHandlers = {
   onToken?: (content: string) => void;
   onDraftPatch?: (event: Extract<ChatStreamEvent, { type: "draft_patch" }>) => void;
+  onArtifactUpdated?: (
+    event: Extract<ChatStreamEvent, { type: "artifact_updated" }>
+  ) => void;
   onTurnComplete?: (session: ChatSession) => void;
   onError?: (message: string) => void;
 };

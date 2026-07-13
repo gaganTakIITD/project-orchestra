@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.models.identity import User
 from app.schemas.fulfillment import FulfillmentTaskOut
-from app.schemas.worker import WorkerProfileOut
+from app.schemas.worker import WorkerProfileOut, WorkerProfileUpsert
 from app.services.auth import get_current_worker
 from app.services.worker import WorkerService
 
@@ -21,6 +21,24 @@ async def get_worker_profile(
     if result is None:
         raise HTTPException(status_code=404, detail="Worker profile not found")
     user, profile = result
+    return WorkerProfileOut.from_orm_rows(user, profile)
+
+
+@router.patch("/profile", response_model=WorkerProfileOut)
+@router.post("/profile", response_model=WorkerProfileOut)
+async def upsert_worker_profile(
+    body: WorkerProfileUpsert,
+    db: AsyncSession = Depends(get_db),
+    worker: User = Depends(get_current_worker),
+) -> WorkerProfileOut:
+    service = WorkerService(db)
+    try:
+        user, profile = await service.upsert_profile(user=worker, body=body)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    await db.commit()
+    await db.refresh(user)
+    await db.refresh(profile)
     return WorkerProfileOut.from_orm_rows(user, profile)
 
 

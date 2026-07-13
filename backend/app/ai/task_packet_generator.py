@@ -1,7 +1,10 @@
-"""Task Packet Generator — OutcomeSpec + Architect task → Charter + TaskPacket.
+"""Task Packet Generator — fixture builder for Charter + TaskPacket.
 
-AI proposes (or fixture builds) the worker job card. Spine freezes Charter;
-TaskPacket is the operational checklist the worker executes.
+Production path goes through `app.ai.gateway.generate_task_packet_proposal`
+(Gemini structured JSON + ai_decision_log). This module remains the
+deterministic fixture skeleton used when no key is set (non-prod) and as the
+base overlay for Gemini enrichments. Spine freezes Charter; TaskPacket is the
+operational checklist the worker executes.
 """
 
 from __future__ import annotations
@@ -22,10 +25,7 @@ def generate_charter_and_packet(
     revision_limit: int,
     dependency_titles: list[str] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Return (charter_fields, packet_fields) ready to persist.
-
-    Fixture-first — replace body with Gemini Flash structured output later.
-    """
+    """Return (charter_fields, packet_fields) ready to persist (fixture)."""
     charter_id = uuid.uuid4()
     packet_id = uuid.uuid4()
     now = datetime.now(timezone.utc)

@@ -13,6 +13,9 @@ from app.models import catalog, chat, commerce, fulfillment, identity, platform 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Prod / REQUIRE_GEMINI: refuse to start without a key (no silent AI fixtures).
+    settings.ensure_gemini_configured()
+
     # Dev/test convenience only. In production set AUTO_CREATE_ALL=false and apply
     # the versioned schema with `alembic upgrade head` (see docker-compose api cmd).
     if settings.auto_create_all:

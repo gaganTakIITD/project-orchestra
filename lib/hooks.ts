@@ -30,8 +30,23 @@ export const useTaskTypes = () =>
 
 // --- Auth ------------------------------------------------------------------
 
-export const useMe = () =>
-  useQuery({ queryKey: ["me"], queryFn: authApi.me });
+export const useMe = (options?: { enabled?: boolean }) =>
+  useQuery({
+    queryKey: ["me"],
+    queryFn: authApi.me,
+    enabled: options?.enabled ?? true,
+  });
+
+export const useSetRole = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (role: "client" | "worker") => authApi.setRole(role),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["me"] });
+      qc.invalidateQueries({ queryKey: ["worker-profile"] });
+    },
+  });
+};
 
 // --- Scope chat (job description extraction) -------------------------------
 
@@ -39,6 +54,23 @@ export const useStartScopeSession = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => chatApi.startScopeSession(),
+    onSuccess: (session) => qc.setQueryData(["chat-session", session.id], session),
+  });
+};
+
+export const useStartMatcherSession = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ orderId, taskId }: { orderId: string; taskId: string }) =>
+      chatApi.startMatcherSession(orderId, taskId),
+    onSuccess: (session) => qc.setQueryData(["chat-session", session.id], session),
+  });
+};
+
+export const useStartPricingSession = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (quoteId: string) => chatApi.startPricingSession(quoteId),
     onSuccess: (session) => qc.setQueryData(["chat-session", session.id], session),
   });
 };
@@ -74,6 +106,20 @@ export const useSendChatMessage = (sessionId: string) => {
                 : old
           );
         },
+        onArtifactUpdated: (event) => {
+          qc.setQueryData<ChatSession>(
+            ["chat-session", sessionId],
+            (old) =>
+              old
+                ? {
+                    ...old,
+                    candidates: event.candidates,
+                    spec_version: event.version,
+                    ready_to_confirm: event.ready_to_confirm,
+                  }
+                : old
+          );
+        },
       }),
     onMutate: () => {
       setStreamingText("");
@@ -95,13 +141,62 @@ export const useFinalizeChatSession = () =>
     mutationFn: (sessionId: string) => chatApi.finalizeSession(sessionId),
   });
 
+export const useFinalizeMatcherSession = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      sessionId,
+      ranked_worker_ids,
+    }: {
+      sessionId: string;
+      ranked_worker_ids?: string[];
+    }) => chatApi.finalizeMatcherSession(sessionId, ranked_worker_ids),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["order", result.order_id] });
+      qc.invalidateQueries({ queryKey: ["plan", result.order_id] });
+      qc.invalidateQueries({
+        queryKey: ["candidates", result.order_id, result.task_id],
+      });
+    },
+  });
+};
+
+export const useFinalizePricingSession = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) => chatApi.finalizePricingSession(sessionId),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["quote", result.quote_id] });
+      qc.invalidateQueries({ queryKey: ["order", result.order_id] });
+    },
+  });
+};
+
+export const useUndoChatSession = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) => chatApi.undoSession(sessionId),
+    onSuccess: (session) => {
+      qc.setQueryData(["chat-session", session.id], session);
+    },
+  });
+};
+
 // --- Client journey --------------------------------------------------------
 
 export const useOrder = (orderId: string) =>
-  useQuery({ queryKey: ["order", orderId], queryFn: () => clientApi.getOrder(orderId) });
+  useQuery({
+    queryKey: ["order", orderId],
+    queryFn: () => clientApi.getOrder(orderId),
+    enabled: Boolean(orderId),
+  });
 
 export const usePlan = (orderId: string) =>
-  useQuery({ queryKey: ["plan", orderId], queryFn: () => clientApi.getPlan(orderId) });
+  useQuery({
+    queryKey: ["plan", orderId],
+    queryFn: () => clientApi.getPlan(orderId),
+    enabled: Boolean(orderId),
+  });
 
 export const useSpec = (specId: string) =>
   useQuery({
@@ -122,17 +217,25 @@ export const useAcceptQuote = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (quoteId: string) => clientApi.acceptQuote(quoteId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["order"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["order"] });
+      qc.invalidateQueries({ queryKey: ["plan"] });
+    },
   });
 };
 
 export const useQuote = (quoteId: string) =>
-  useQuery({ queryKey: ["quote", quoteId], queryFn: () => clientApi.getQuote(quoteId) });
+  useQuery({
+    queryKey: ["quote", quoteId],
+    queryFn: () => clientApi.getQuote(quoteId),
+    enabled: Boolean(quoteId),
+  });
 
 export const useCandidates = (orderId: string, taskId: string) =>
   useQuery({
     queryKey: ["candidates", orderId, taskId],
     queryFn: () => clientApi.getCandidates(orderId, taskId),
+    enabled: Boolean(orderId && taskId),
   });
 
 export const useDelivery = (orderId: string) =>
@@ -144,21 +247,41 @@ export const useDelivery = (orderId: string) =>
   });
 
 export const useDiscussion = (taskId: string) =>
-  useQuery({ queryKey: ["discussion", taskId], queryFn: () => clientApi.getDiscussion(taskId) });
+  useQuery({
+    queryKey: ["discussion", taskId],
+    queryFn: () => clientApi.getDiscussion(taskId),
+    enabled: Boolean(taskId),
+  });
 
 export const useSetPreferences = (orderId: string, taskId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (rankedWorkerIds: string[]) =>
       clientApi.setPreferences(orderId, taskId, rankedWorkerIds),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["order", orderId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["order", orderId] });
+      qc.invalidateQueries({ queryKey: ["plan", orderId] });
+      qc.invalidateQueries({ queryKey: ["candidates", orderId, taskId] });
+    },
   });
 };
 
 // --- Worker journey --------------------------------------------------------
 
-export const useWorkerProfile = () =>
-  useQuery({ queryKey: ["worker-profile"], queryFn: workerApi.getProfile });
+export const useWorkerProfile = (options?: { enabled?: boolean }) =>
+  useQuery({
+    queryKey: ["worker-profile"],
+    queryFn: workerApi.getProfile,
+    enabled: options?.enabled ?? true,
+  });
+
+export const useSaveWorkerProfile = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: workerApi.saveProfile,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["worker-profile"] }),
+  });
+};
 
 export const useMyTasks = () =>
   useQuery({ queryKey: ["my-tasks"], queryFn: workerApi.getMyTasks });
@@ -197,9 +320,19 @@ export const useSubmit = (taskId: string) => {
   return useMutation({
     mutationFn: (payload: { notes: string; asset_urls: string[] }) =>
       workerApi.submit(taskId, payload),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["my-tasks"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my-tasks"] });
+      qc.invalidateQueries({ queryKey: ["task-qa", taskId] });
+    },
   });
 };
+
+export const useTaskQA = (taskId: string, enabled = true) =>
+  useQuery({
+    queryKey: ["task-qa", taskId],
+    queryFn: () => workerApi.getTaskQA(taskId),
+    enabled: Boolean(taskId) && enabled,
+  });
 
 export const useAcceptDelivery = (orderId: string) => {
   const qc = useQueryClient();

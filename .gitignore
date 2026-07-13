@@ -33,6 +33,11 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+backend/.cloudrun-env.json
+backend/.cloudrun-env.yaml
+backend/.cloudrun-deploy.yaml
+backend/.last-logs.txt
+
 
 # vercel
 .vercel

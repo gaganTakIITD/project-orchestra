@@ -1,0 +1,80 @@
+# Track C / B6 — CI + contract hygiene
+# Backend: Postgres service + pytest. Frontend: pnpm + tsc --noEmit.
+name: CI
+
+on:
+  push:
+    branches: [main, core]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend (pytest + contract)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        # Match docker-compose image family; tests do not require vector ops.
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: orchestra
+          POSTGRES_PASSWORD: orchestra
+          POSTGRES_DB: orchestra
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U orchestra -d orchestra"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://orchestra:orchestra@localhost:5432/orchestra
+      AUTH_MODE: demo
+      AUTO_SEED: "false"
+      AUTO_CREATE_ALL: "true"
+      APP_ENV: development
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend (+dev)
+        run: pip install -e ".[dev]"
+
+      - name: OpenAPI contract check
+        run: python ../scripts/check_openapi_contract.py
+
+      - name: Pytest
+        run: python -m pytest -v --tb=short
+
+  frontend:
+    name: frontend (tsc)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Repo ships both lockfiles; pnpm-lock.yaml is the deploy source of truth (Vercel).
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install frontend deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit

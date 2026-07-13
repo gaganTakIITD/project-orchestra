@@ -4,8 +4,8 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.fixtures.architect import build_plan_fixture, match_candidates_fixture
-from app.ai.task_packet_generator import generate_charter_and_packet
+from app.ai.gateway import generate_plan_proposal, generate_task_packet_proposal
+from app.ai.matcher import match_candidates
 from app.models.catalog import TaskType
 from app.models.fulfillment import (
     CharterRecord,
@@ -16,6 +16,7 @@ from app.models.fulfillment import (
     TaskPreferenceSet,
 )
 from app.models.commerce import OutcomeSpecRecord
+from app.models.platform import AiDecisionLog
 from app.orchestrator.events import EventWriter
 from app.orchestrator.spine import OrderSpine, TaskSpine
 from app.orchestrator.states import ActorType, TaskStatus
@@ -36,10 +37,41 @@ class FulfillmentService:
         if order.deadline is None:
             raise ValueError("Order deadline required to build fulfillment plan")
 
-        blueprint = build_plan_fixture(
+        mapped = list(spec.mapped_task_types or [])
+        proposal = generate_plan_proposal(
             order_id=order.id,
             order_deadline=order.deadline,
             revision_limit=order.revision_limit,
+            order_price=order.price,
+            spec={
+                "outcome_statement": spec.outcome_statement,
+                "mapped_task_types": mapped,
+                "workflow_summary": getattr(spec, "workflow_summary", None) or "",
+                "deliverables": spec.deliverables or [],
+                "acceptance_criteria": spec.acceptance_criteria or [],
+            },
+        )
+        blueprint = proposal.plan
+
+        self.session.add(
+            AiDecisionLog(
+                session_id=None,
+                agent_type="architect",
+                source=proposal.source,
+                model=proposal.model,
+                input_text=(spec.outcome_statement or "")[:2000],
+                output_draft={
+                    "order_id": str(order.id),
+                    "task_count": len(blueprint["tasks"]),
+                    "mapped_task_types": mapped,
+                    "task_slugs": [t["task_type_slug"] for t in blueprint["tasks"]],
+                    "critical_path_hours": blueprint.get("critical_path_hours"),
+                },
+                reply=None,
+                confidence=proposal.confidence,
+                latency_ms=proposal.latency_ms,
+                error=proposal.error,
+            )
         )
 
         plan = FulfillmentPlan(
@@ -79,7 +111,7 @@ class FulfillmentService:
                     task,
                     "dependencies_met",
                     actor_type=ActorType.SYSTEM,
-                    payload={"source": "architect_fixture"},
+                    payload={"source": "architect"},
                 )
 
         # Task Packet Generator — Charter + job card per task (from OutcomeSpec slice)
@@ -105,7 +137,11 @@ class FulfillmentService:
             aggregate_id=order.id,
             event_type="PlanApproved",
             actor_type=ActorType.AI,
-            payload={"task_count": len(blueprint["tasks"]), "spec_id": str(spec.id)},
+            payload={
+                "task_count": len(blueprint["tasks"]),
+                "spec_id": str(spec.id),
+                "architect_source": proposal.source,
+            },
         )
         await self.session.flush()
         return plan
@@ -118,7 +154,7 @@ class FulfillmentService:
         spec_dict: dict,
         dependency_titles: list[str],
     ) -> tuple[CharterRecord, TaskPacketRecord]:
-        charter_fields, packet_fields = generate_charter_and_packet(
+        proposal = generate_task_packet_proposal(
             order_id=order.id,
             task=task,
             spec=spec_dict,
@@ -127,6 +163,30 @@ class FulfillmentService:
             revision_limit=order.revision_limit,
             dependency_titles=dependency_titles,
         )
+        charter_fields = proposal.charter
+        packet_fields = proposal.packet
+
+        self.session.add(
+            AiDecisionLog(
+                session_id=None,
+                agent_type="task_packet_generator",
+                source=proposal.source,
+                model=proposal.model,
+                input_text=(task.title or "")[:2000],
+                output_draft={
+                    "task_id": str(task.id),
+                    "order_id": str(order.id),
+                    "brief": packet_fields.get("brief"),
+                    "checklist": packet_fields.get("checklist"),
+                    "charter_snapshot": charter_fields.get("snapshot"),
+                },
+                reply=packet_fields.get("brief"),
+                confidence=proposal.confidence,
+                latency_ms=proposal.latency_ms,
+                error=proposal.error,
+            )
+        )
+
         charter = CharterRecord(
             id=charter_fields["id"],
             order_id=charter_fields["order_id"],
@@ -188,8 +248,11 @@ class FulfillmentService:
             )
         )
 
-    def list_candidates(self, task_id: uuid.UUID) -> list[dict]:
-        return match_candidates_fixture(task_id=task_id)
+    async def list_candidates(self, task_id: uuid.UUID) -> list[dict]:
+        task = await self.session.get(FulfillmentTask, task_id)
+        if task is None:
+            return []
+        return await match_candidates(self.session, task=task)
 
     async def set_preferences(
         self,

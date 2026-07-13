@@ -93,6 +93,33 @@ def empty_draft() -> dict[str, Any]:
     return deepcopy(EMPTY_DRAFT)
 
 
+def apply_package_defaults(draft: dict[str, Any]) -> dict[str, Any]:
+    """Fill empty Launch Studio package fields when the outcome is already clear.
+
+    Gemini often extracts deliverables but leaves out_of_scope / workflow empty,
+    which blocks ready_for_quote. Mirror the fixture extractor: propose package
+    defaults once we have a usable outcome + deliverables.
+    """
+    from app.ai.architect import normalize_mapped_task_types
+
+    out = deepcopy(draft)
+    statement = str(out.get("outcome_statement") or "").strip()
+    deliverables = out.get("deliverables") or []
+    if len(statement) < 20 or not deliverables:
+        return out
+
+    for key, value in LAUNCH_STUDIO_DRAFT.items():
+        # Always pin catalog slugs for Launch Studio so Architect/Matcher stay in sync.
+        if key == "mapped_task_types":
+            out[key] = deepcopy(value)
+        elif not out.get(key):
+            out[key] = deepcopy(value)
+    if not out.get("workflow_summary") and out.get("mapped_task_types"):
+        out["workflow_summary"] = WORKFLOW_BY_TASK_TYPES
+    out["mapped_task_types"] = normalize_mapped_task_types(out.get("mapped_task_types"))
+    return out
+
+
 def assess_completeness(draft: dict[str, Any], conversation_text: str) -> tuple[int, list[str], bool]:
     """Return (pct, missing_fields, ready_for_quote)."""
     missing: list[str] = []
@@ -113,12 +140,14 @@ def assess_completeness(draft: dict[str, Any], conversation_text: str) -> tuple[
         k in text
         for k in ("startup", "company", "product", "health", "fintech", "saas", "healthtrack")
     )
+    # Draft already listing client inputs implies we know the engagement context.
     if not has_company and not draft.get("client_inputs_required"):
         missing.append("company_context")
 
     has_inputs = any(k in text for k in ("tagline", "reference", "logo file", "brand asset"))
     inputs = draft.get("client_inputs_required") or []
-    if not has_inputs and "tagline" not in inputs:
+    # Any non-empty client_inputs_required means the package knows what to collect.
+    if not has_inputs and not inputs:
         missing.append("client_inputs")
 
     if not draft.get("workflow_summary"):

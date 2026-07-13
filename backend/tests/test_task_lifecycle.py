@@ -59,8 +59,13 @@ async def _complete_task(api_client: AsyncClient, task_id: str) -> None:
     submit = await api_client.post(
         f"/api/v1/tasks/{task_id}/submit",
         json={
-            "notes": "Work product attached.",
-            "asset_urls": ["https://files.example/out.pdf"],
+            "notes": "Work product attached. lighthouse: 85",
+            "asset_urls": [
+                "https://files.example/logo.svg",
+                "https://files.example/logo.png",
+                "https://files.example/out.pdf",
+                "https://preview.example/live",
+            ],
         },
     )
     assert submit.status_code == 200, submit.text
@@ -111,6 +116,17 @@ async def test_accept_interest_ready_to_start_submit(api_client: AsyncClient):
         assert "InterestAccepted" in types
         assert "SubmissionReceived" in types
         assert "QualityPassed" in types
+
+        from app.models.platform import AiDecisionLog
+
+        qa_logs = (
+            await session.execute(
+                select(AiDecisionLog).where(AiDecisionLog.agent_type == "qa_judge")
+            )
+        ).scalars().all()
+        assert len(qa_logs) >= 1
+        assert qa_logs[-1].source == "fixture"
+        assert qa_logs[-1].output_draft["result"] == "pass"
 
 
 @pytest.mark.asyncio
@@ -165,3 +181,79 @@ async def test_full_dag_delivery_and_accept(api_client: AsyncClient):
     closed = await api_client.post(f"/api/v1/orders/{order_id}/accept-delivery")
     assert closed.status_code == 200, closed.text
     assert closed.json()["status"] == OrderStatus.CLOSED
+
+
+@pytest.mark.asyncio
+async def test_submit_qa_fail_moves_to_rework(api_client: AsyncClient, monkeypatch):
+    """Spine executes qa_fail when QA Judge proposes fail — no unlock."""
+    from app.ai.gateway import QAProposal
+
+    order_id, task_id = await _order_with_ready_task(api_client)
+
+    def _fail_qa(**_kwargs):
+        return QAProposal(
+            result="fail",
+            score=0.2,
+            confidence=0.95,
+            feedback="Fixture forced fail",
+            evidence=[
+                {
+                    "criterion": "Forced",
+                    "check_type": "deterministic",
+                    "passed": False,
+                    "detail": "test",
+                }
+            ],
+            action="approve",
+            source="fixture",
+        )
+
+    monkeypatch.setattr(
+        "app.services.task_lifecycle.generate_qa_proposal",
+        _fail_qa,
+    )
+
+    acc = await api_client.post(f"/api/v1/tasks/{task_id}/accept-interest")
+    assert acc.status_code == 200
+    ready = await api_client.post(f"/api/v1/tasks/{task_id}/ready-to-start")
+    assert ready.status_code == 200
+    submit = await api_client.post(
+        f"/api/v1/tasks/{task_id}/submit",
+        json={"notes": "bad", "asset_urls": ["https://files.example/out.pdf"]},
+    )
+    assert submit.status_code == 200
+    assert submit.json()["status"] == TaskStatus.REWORK
+
+    qa = await api_client.get(f"/api/v1/tasks/{task_id}/qa")
+    assert qa.status_code == 200, qa.text
+    body = qa.json()
+    assert body["task_id"] == task_id
+    assert body["result"] == "fail"
+    assert body["feedback"] == "Fixture forced fail"
+    assert body["score"] == 0.2
+    assert isinstance(body["evidence"], list)
+    assert len(body["evidence"]) >= 1
+    assert body["evidence"][0]["passed"] is False
+    assert body["reviewed_by"] == "ai"
+    assert body["submission_id"]
+
+    plan = (await api_client.get(f"/api/v1/orders/{order_id}/milestones")).json()
+    logo = next(t for t in plan["tasks"] if t["title"] == "Logo design")
+    assert logo["status"] == TaskStatus.BLOCKED
+
+
+@pytest.mark.asyncio
+async def test_submit_qa_pass_exposes_review(api_client: AsyncClient):
+    """Pass path: GET /tasks/{id}/qa returns the latest review."""
+    _order_id, task_id = await _order_with_ready_task(api_client)
+    await _complete_task(api_client, task_id)
+
+    qa = await api_client.get(f"/api/v1/tasks/{task_id}/qa")
+    assert qa.status_code == 200, qa.text
+    body = qa.json()
+    assert body["task_id"] == task_id
+    assert body["result"] == "pass"
+    assert body["feedback"]
+    assert body["reviewed_by"] == "ai"
+    assert body["submission_id"]
+    assert isinstance(body["evidence"], list)

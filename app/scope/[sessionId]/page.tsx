@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
@@ -10,18 +10,23 @@ import {
   useFinalizeChatSession,
   useSendChatMessage,
   useChatSession,
+  useUndoChatSession,
 } from "@/lib/hooks";
-import type { ChatSession } from "@/lib/types";
 
-export default function ScopePage({ params }: { params: { sessionId: string } }) {
+export default function ScopePage() {
   const router = useRouter();
+  const routeParams = useParams<{ sessionId: string }>();
+  const sessionId =
+    typeof routeParams.sessionId === "string" ? routeParams.sessionId : "";
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const { data: session, isLoading, isError } = useChatSession(params.sessionId);
+  // isPending (not only isLoading): RQ v5 isLoading is false while pending+idle on SSR
+  const { data: session, isPending, isError } = useChatSession(sessionId);
   const sendMessage = useSendChatMessage(session?.id ?? "");
   const finalize = useFinalizeChatSession();
+  const undo = useUndoChatSession();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -34,10 +39,19 @@ export default function ScopePage({ params }: { params: { sessionId: string } })
     const text = input.trim();
     setInput("");
     try {
-      const updated = await sendMessage.mutateAsync(text);
-      // Session state updated via query invalidation
+      await sendMessage.mutateAsync(text);
     } catch {
       setError("Message failed. Please try again.");
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!session?.can_undo || undo.isPending) return;
+    setError(null);
+    try {
+      await undo.mutateAsync(session.id);
+    } catch {
+      setError("Nothing to undo, or undo failed.");
     }
   };
 
@@ -54,7 +68,7 @@ export default function ScopePage({ params }: { params: { sessionId: string } })
   };
 
   // Loading state: "Resuming your scope chat…"
-  if (isLoading) {
+  if (!sessionId || isPending) {
     return (
       <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
         <Header />
@@ -167,6 +181,14 @@ export default function ScopePage({ params }: { params: { sessionId: string } })
                     className="h-10 px-6 bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
                   >
                     Send
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUndo}
+                    disabled={!session.can_undo || undo.isPending || sendMessage.isPending}
+                    className="h-10 px-4 border border-border text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-40"
+                  >
+                    {undo.isPending ? "Undoing…" : "Undo last change"}
                   </button>
                   <button
                     type="button"

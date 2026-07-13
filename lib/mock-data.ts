@@ -217,6 +217,8 @@ export const mockSpec: OutcomeSpec = {
   client_inputs_required: ["company_name", "tagline", "reference_sites"],
   mapped_task_types: ["brand_identity", "logo_design", "figma_ui_design", "landing_page_frontend", "deployment_devops"],
   risk_tier: "L1",
+  workflow_summary:
+    "Brand direction → Logo design → UI design in Figma → Build landing page → Deploy to live URL",
   version: 1,
   frozen_at: daysFromNow(-5),
 };
@@ -556,6 +558,17 @@ export const mockDiscussion: DiscussionThread = {
       attachments: [],
       scope_flagged: false,
       created_at: hoursFromNow(-3),
+    },
+    {
+      id: "msg_3",
+      thread_id: "thread_logo",
+      sender_id: mockClient.id,
+      sender_name: "Ananya Sharma",
+      body: "Also add a blog section to the landing page.",
+      message_type: "scope_change_request",
+      attachments: [],
+      scope_flagged: true,
+      created_at: hoursFromNow(-2),
     },
   ],
 };

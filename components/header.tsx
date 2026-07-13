@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { springConfig } from "@/lib/animations";
+import AuthNav from "@/components/auth-nav";
 
 const navLinks = [
   { href: "#how", label: "How it works" },
@@ -60,20 +61,23 @@ export default function Header() {
             ))}
           </nav>
 
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.1)" }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Link
-              href="/start"
-              className="hidden md:inline-flex items-center h-9 px-5 bg-secondary text-secondary-foreground rounded-full text-sm font-semibold hover:opacity-85 transition-opacity duration-300"
+          <div className="hidden md:flex items-center gap-4">
+            <AuthNav />
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+              whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(0,0,0,0.1)" }}
+              whileTap={{ scale: 0.95 }}
             >
-              Begin
-            </Link>
-          </motion.div>
+              <Link
+                href="/start"
+                className="inline-flex items-center h-9 px-5 bg-secondary text-secondary-foreground rounded-full text-sm font-semibold hover:opacity-85 transition-opacity duration-300"
+              >
+                Begin
+              </Link>
+            </motion.div>
+          </div>
 
           {/* Mobile toggle */}
           <button
@@ -113,6 +117,7 @@ export default function Header() {
                 >
                   Begin
                 </Link>
+                <AuthNav compact />
               </nav>
             </motion.div>
           )}

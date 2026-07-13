@@ -7,6 +7,8 @@ const isProtected = createRouteMatcher([
   "/proposal(.*)",
   "/scope(.*)",
   "/start(.*)",
+  "/account(.*)",
+  "/admin(.*)",
 ]);
 
 const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);

@@ -5,7 +5,18 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.catalog import OutcomeSku, Skill, TaskType, Tool
-from app.models.identity import DEMO_CLIENT_ID, DEMO_WORKER_ID, User, WorkerProfileRecord
+from app.models.identity import (
+    DEMO_CLIENT_ID,
+    DEMO_WORKER_AISHA_ID,
+    DEMO_WORKER_DEV_ID,
+    DEMO_WORKER_ID,
+    DEMO_WORKER_JAYA_ID,
+    DEMO_WORKER_KABIR_ID,
+    DEMO_WORKER_MEERA_ID,
+    DEMO_WORKER_NEEL_ID,
+    User,
+    WorkerProfileRecord,
+)
 
 # Stable UUIDs so re-seeding is idempotent across environments.
 SKU_IDS = {
@@ -196,6 +207,12 @@ async def seed_demo_worker(session: AsyncSession) -> None:
                         "slug": "logo_design",
                         "proficiency": "expert",
                     },
+                    {
+                        "task_type_id": "tt_figma",
+                        "name": "Figma UI Design",
+                        "slug": "figma_ui_design",
+                        "proficiency": "advanced",
+                    },
                 ],
                 portfolio=[
                     {
@@ -223,4 +240,231 @@ async def seed_demo_worker(session: AsyncSession) -> None:
                 },
             )
         )
-        await session.commit()
+    else:
+        slugs = {t.get("slug") for t in (profile.task_types or [])}
+        if "figma_ui_design" not in slugs:
+            profile.task_types = list(profile.task_types or []) + [
+                {
+                    "task_type_id": "tt_figma",
+                    "name": "Figma UI Design",
+                    "slug": "figma_ui_design",
+                    "proficiency": "advanced",
+                }
+            ]
+        profile.is_active = True
+
+    # Matcher pool — design + tech so every Launch Studio task can shortlist ≥3.
+    await _ensure_pool_worker(
+        session,
+        user_id=DEMO_WORKER_MEERA_ID,
+        email="meera@iitd.ac.in",
+        full_name="Meera Nair",
+        headline="Identity designer, motion-curious",
+        bio="Minimal brand systems and logo craft for early-stage products.",
+        community_type="design",
+        availability_status="available",
+        proficiency="advanced",
+        task_slugs=("brand_identity", "logo_design", "figma_ui_design"),
+        tasks_completed=14,
+        on_time_pct=94,
+        seller_level="rising",
+    )
+    await _ensure_pool_worker(
+        session,
+        user_id=DEMO_WORKER_KABIR_ID,
+        email="kabir@iitd.ac.in",
+        full_name="Kabir Anand",
+        headline="Designer & illustrator",
+        bio="Illustration-led identities with a warm, hand-crafted feel.",
+        community_type="design",
+        availability_status="busy",
+        proficiency="intermediate",
+        task_slugs=("brand_identity", "logo_design", "figma_ui_design"),
+        tasks_completed=9,
+        on_time_pct=90,
+        seller_level="rising",
+    )
+    await _ensure_pool_worker(
+        session,
+        user_id=DEMO_WORKER_AISHA_ID,
+        email="aisha@iitd.ac.in",
+        full_name="Aisha Khan",
+        headline="Product UI designer — Figma systems",
+        bio="Landing and dashboard UI in Figma with strong accessibility habits.",
+        community_type="design",
+        availability_status="available",
+        proficiency="expert",
+        task_slugs=("figma_ui_design", "brand_identity", "logo_design"),
+        tasks_completed=22,
+        on_time_pct=97,
+        seller_level="trusted",
+    )
+    await _ensure_pool_worker(
+        session,
+        user_id=DEMO_WORKER_DEV_ID,
+        email="arjun@iitd.ac.in",
+        full_name="Arjun Patel",
+        headline="Frontend engineer — Next.js & Tailwind",
+        bio="Ships fast, accessible landing pages with Lighthouse-friendly builds.",
+        community_type="tech",
+        availability_status="available",
+        proficiency="advanced",
+        task_slugs=("landing_page_frontend", "deployment_devops"),
+        tasks_completed=31,
+        on_time_pct=95,
+        seller_level="trusted",
+    )
+    await _ensure_pool_worker(
+        session,
+        user_id=DEMO_WORKER_JAYA_ID,
+        email="jaya@iitd.ac.in",
+        full_name="Jaya Reddy",
+        headline="Full-stack builder & deploy wrangler",
+        bio="Production deploys, CI, and polished marketing sites for campus startups.",
+        community_type="tech",
+        availability_status="available",
+        proficiency="advanced",
+        task_slugs=("landing_page_frontend", "deployment_devops", "figma_ui_design"),
+        tasks_completed=18,
+        on_time_pct=93,
+        seller_level="rising",
+    )
+    await _ensure_pool_worker(
+        session,
+        user_id=DEMO_WORKER_NEEL_ID,
+        email="neel@iitd.ac.in",
+        full_name="Neel Sharma",
+        headline="React engineer — performance & a11y",
+        bio="Landing pages that score well on Lighthouse and ship on Vercel.",
+        community_type="tech",
+        availability_status="busy",
+        proficiency="intermediate",
+        task_slugs=("landing_page_frontend", "deployment_devops"),
+        tasks_completed=12,
+        on_time_pct=91,
+        seller_level="rising",
+    )
+    await session.commit()
+
+
+_TASK_TYPE_LABELS = {
+    "brand_identity": ("tt_brand", "Brand Identity"),
+    "logo_design": ("tt_logo", "Logo Design"),
+    "figma_ui_design": ("tt_figma", "Figma UI Design"),
+    "landing_page_frontend": ("tt_landing", "Landing Page Frontend"),
+    "deployment_devops": ("tt_deploy", "Deployment / DevOps"),
+}
+
+
+async def _ensure_pool_worker(
+    session: AsyncSession,
+    *,
+    user_id,
+    email: str,
+    full_name: str,
+    headline: str,
+    bio: str,
+    community_type: str,
+    availability_status: str,
+    proficiency: str,
+    task_slugs: tuple[str, ...],
+    tasks_completed: int,
+    on_time_pct: float,
+    seller_level: str,
+) -> None:
+    user = await session.get(User, user_id)
+    if user is None:
+        session.add(
+            User(
+                id=user_id,
+                email=email,
+                full_name=full_name,
+                role="worker",
+                is_active=True,
+                email_verified=True,
+            )
+        )
+        await session.flush()
+
+    profile = await session.get(WorkerProfileRecord, user_id)
+    if profile is not None:
+        # Refresh task coverage on existing pool workers (idempotent deepen).
+        profile.task_types = [
+            {
+                "task_type_id": _TASK_TYPE_LABELS[slug][0],
+                "name": _TASK_TYPE_LABELS[slug][1],
+                "slug": slug,
+                "proficiency": proficiency,
+            }
+            for slug in task_slugs
+            if slug in _TASK_TYPE_LABELS
+        ]
+        profile.community_type = community_type
+        profile.is_active = True
+        if (profile.profile_completion_pct or 0) < 70:
+            profile.profile_completion_pct = 80
+        return
+
+    session.add(
+        WorkerProfileRecord(
+            user_id=user_id,
+            community_type=community_type,
+            headline=headline,
+            bio=bio,
+            availability_status=availability_status,
+            weekly_hours_available=12,
+            max_concurrent_tasks=2,
+            payout_min=1200,
+            payout_max=4500,
+            campus_verified=True,
+            is_active=True,
+            profile_completion_pct=80,
+            skills=[
+                {
+                    "skill_id": "skill_logo",
+                    "name": "Logo Design",
+                    "proficiency": proficiency,
+                },
+                {
+                    "skill_id": "skill_brand",
+                    "name": "Brand Identity",
+                    "proficiency": "intermediate",
+                },
+            ],
+            tools=[
+                {"tool_id": "tool_figma", "name": "Figma", "proficiency": "advanced"},
+                {"tool_id": "tool_illustrator", "name": "Illustrator", "proficiency": proficiency},
+            ],
+            task_types=[
+                {
+                    "task_type_id": _TASK_TYPE_LABELS[slug][0],
+                    "name": _TASK_TYPE_LABELS[slug][1],
+                    "slug": slug,
+                    "proficiency": proficiency,
+                }
+                for slug in task_slugs
+                if slug in _TASK_TYPE_LABELS
+            ],
+            portfolio=[
+                {
+                    "id": f"pf_{user_id.hex[:8]}",
+                    "worker_id": str(user_id),
+                    "title": f"{full_name.split()[0]} sample mark",
+                    "description": "Sample identity work",
+                    "tags": ["logo", "branding"],
+                    "tools_used": ["Figma"],
+                    "is_featured": True,
+                }
+            ],
+            stats={
+                "worker_id": str(user_id),
+                "tasks_completed": tasks_completed,
+                "on_time_pct": on_time_pct,
+                "avg_qa_score": 88,
+                "avg_rating": 4.5,
+                "response_time_hours": 4.0,
+                "seller_level": seller_level,
+                "last_active_at": None,
+            },
+        )
+    )

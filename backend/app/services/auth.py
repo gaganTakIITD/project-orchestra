@@ -123,6 +123,28 @@ async def _upsert_clerk_user(
     return user
 
 
+async def set_user_role(session: AsyncSession, user: User, role: str) -> User:
+    """Switch portal role (client ↔ worker). Admin cannot be set via API."""
+    if role not in ("client", "worker"):
+        raise ValueError(f"Invalid role: {role}")
+    if user.role == "admin":
+        raise PermissionError("Admin role cannot be changed via API")
+
+    user.role = role
+    if role == "worker":
+        profile = await session.get(WorkerProfileRecord, user.id)
+        if profile is None:
+            session.add(
+                WorkerProfileRecord(
+                    user_id=user.id,
+                    headline="",
+                    bio="",
+                )
+            )
+    await session.flush()
+    return user
+
+
 async def resolve_user(
     session: AsyncSession,
     request: Request,
@@ -165,3 +187,31 @@ async def get_current_user_for_me(
 ) -> User:
     prefer = "worker" if (x_orchestra_role or "").lower() == "worker" else "client"
     return await resolve_user(db, request, prefer_role=prefer)
+
+
+def _claims_are_admin(claims: dict[str, Any]) -> bool:
+    """True when Clerk public_metadata.role is admin or email is allowlisted."""
+    meta = claims.get("public_metadata") or claims.get("metadata") or {}
+    if isinstance(meta, dict) and str(meta.get("role", "")).lower() == "admin":
+        return True
+    email = _claim_email(claims)
+    if email and email.lower() in settings.admin_email_allowlist_set:
+        return True
+    return False
+
+
+async def get_current_admin(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Demo mode: allow (demo client). Clerk: require admin role or allowlist email."""
+    if settings.auth_mode != "clerk":
+        return await get_demo_client(db)
+
+    token = _bearer_token(request)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authorization Bearer required")
+    claims = _verify_clerk_token(token)
+    if not _claims_are_admin(claims):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return await _upsert_clerk_user(db, claims=claims, prefer_role="client")

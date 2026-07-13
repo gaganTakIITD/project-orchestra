@@ -1,6 +1,107 @@
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
+
+# Spec / design notes: workers need ≥70% completion to enter the matching pool.
+PROFILE_LIVE_THRESHOLD = 70
+
+
+class WorkerSkillIn(BaseModel):
+    skill_id: str
+    name: str
+    proficiency: str = "intermediate"
+    years_experience: int | None = None
+
+
+class WorkerToolIn(BaseModel):
+    tool_id: str
+    name: str
+    proficiency: str = "intermediate"
+
+
+class WorkerTaskTypeIn(BaseModel):
+    task_type_id: str
+    name: str
+    slug: str
+    proficiency: str = "intermediate"
+
+
+class PortfolioItemIn(BaseModel):
+    id: str
+    worker_id: str = ""
+    title: str
+    description: str | None = None
+    category: str | None = None
+    cover_image_url: str | None = None
+    project_url: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    tools_used: list[str] = Field(default_factory=list)
+    is_featured: bool = False
+
+
+class WorkerProfileUpsert(BaseModel):
+    """PATCH/POST body — mirrors lib/types.ts WorkerProfileSaveInput."""
+
+    full_name: str | None = None
+    community_type: str = "design"
+    headline: str = ""
+    bio: str = ""
+    availability_status: str = "available"
+    weekly_hours_available: int = 20
+    max_concurrent_tasks: int = 2
+    payout_min: float | None = None
+    payout_max: float | None = None
+    github_url: str | None = None
+    figma_url: str | None = None
+    behance_url: str | None = None
+    linkedin_url: str | None = None
+    skills: list[WorkerSkillIn] = Field(default_factory=list)
+    tools: list[WorkerToolIn] = Field(default_factory=list)
+    task_types: list[WorkerTaskTypeIn] = Field(default_factory=list)
+    portfolio: list[PortfolioItemIn] = Field(default_factory=list)
+    # Requested live flag — clamped server-side when completion < 70%.
+    is_active: bool = True
+
+
+def compute_profile_completion_pct(
+    *,
+    headline: str,
+    bio: str,
+    skills: list[Any],
+    tools: list[Any],
+    task_types: list[Any],
+    portfolio: list[Any],
+    availability_status: str | None,
+    payout_min: float | None,
+    payout_max: float | None,
+    github_url: str | None,
+    figma_url: str | None,
+    behance_url: str | None,
+    linkedin_url: str | None,
+) -> int:
+    """Weighted completion — basics / skills / task types / portfolio / availability."""
+    points = 0.0
+    has_headline = bool((headline or "").strip())
+    has_bio = bool((bio or "").strip())
+    if has_headline and has_bio:
+        points += 25
+    elif has_headline or has_bio:
+        points += 12
+
+    points += min(len(skills or []), 3) / 3 * 15
+    points += min(len(tools or []), 2) / 2 * 10
+    if task_types:
+        points += 15
+    if portfolio:
+        points += 20
+    if availability_status:
+        points += 5
+    if payout_min is not None or payout_max is not None:
+        points += 5
+    if any([github_url, figma_url, behance_url, linkedin_url]):
+        points += 5
+    return min(100, int(round(points)))
 
 
 class WorkerStatsOut(BaseModel):
