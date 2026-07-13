@@ -13,7 +13,7 @@ from app.schemas.fulfillment import (
 from app.schemas.qa import QAReviewOut
 from app.schemas.worker import CharterOut, TaskPacketOut
 from app.models.identity import User
-from app.services.auth import get_current_client, get_current_worker
+from app.services.auth import get_current_user_for_me, get_current_worker
 from app.services.discussion import DiscussionService
 from app.services.fulfillment import FulfillmentService
 from app.services.task_lifecycle import TaskLifecycleService
@@ -161,7 +161,9 @@ async def post_discussion_message(
     task_id: uuid.UUID,
     body: DiscussionMessageIn,
     db: AsyncSession = Depends(get_db),
-    sender: User = Depends(get_current_client),
+    # Role-agnostic: whoever is on the thread (client OR assigned worker) posts
+    # as themselves so discussion identity is attributed correctly.
+    sender: User = Depends(get_current_user_for_me),
 ) -> DiscussionThreadOut:
     fulfillment = FulfillmentService(db)
     task = await fulfillment.get_task_by_id(task_id)

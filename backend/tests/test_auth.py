@@ -19,6 +19,30 @@ from app.main import app
 from app.services import auth as auth_service
 
 
+def _setup_clerk_mode(monkeypatch):
+    """Switch settings to Clerk mode with a mock JWKS signing key. Returns
+    (private_key, issuer) for minting test tokens."""
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public_pem = private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    issuer = "https://example.clerk.accounts.dev"
+    monkeypatch.setattr(settings, "auth_mode", "clerk")
+    monkeypatch.setattr(settings, "clerk_jwks_url", f"{issuer}/.well-known/jwks.json")
+    monkeypatch.setattr(settings, "clerk_issuer", issuer)
+    monkeypatch.setattr(settings, "clerk_audience", None)
+    monkeypatch.setattr(settings, "admin_email_allowlist", "")
+    auth_service._jwks_clients.clear()
+
+    fake_client = MagicMock()
+    fake_signing_key = MagicMock()
+    fake_signing_key.key = public_pem
+    fake_client.get_signing_key_from_jwt.return_value = fake_signing_key
+    monkeypatch.setattr(auth_service, "_jwks_client", lambda: fake_client)
+    return private_key, issuer
+
+
 @pytest.fixture
 async def api_client():
     from app.db.base import Base
@@ -121,3 +145,41 @@ async def test_clerk_mode_requires_bearer(api_client: AsyncClient, monkeypatch):
     monkeypatch.setattr(settings, "clerk_jwks_url", "https://example.clerk.accounts.dev/.well-known/jwks.json")
     res = await api_client.get("/api/v1/auth/me")
     assert res.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_worker_route_requires_worker_role_clerk(api_client: AsyncClient, monkeypatch):
+    """RBAC: a fresh Clerk account defaults to client → worker APIs return 403."""
+    private_key, issuer = _setup_clerk_mode(monkeypatch)
+    token = jwt.encode(
+        {"sub": "user_plain_client", "email": "buyer@example.com", "iss": issuer},
+        private_key,
+        algorithm="RS256",
+    )
+    denied = await api_client.get(
+        "/api/v1/workers/profile",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert denied.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_auth_me_reflects_admin_role_clerk(api_client: AsyncClient, monkeypatch):
+    """/auth/me is the single source of truth: an admin claim surfaces role=admin."""
+    private_key, issuer = _setup_clerk_mode(monkeypatch)
+    token = jwt.encode(
+        {
+            "sub": "user_admin_me",
+            "email": "boss@example.com",
+            "iss": issuer,
+            "public_metadata": {"role": "admin"},
+        },
+        private_key,
+        algorithm="RS256",
+    )
+    res = await api_client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    assert res.json()["role"] == "admin"
