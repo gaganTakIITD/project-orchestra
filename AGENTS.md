@@ -55,3 +55,28 @@ curl localhost:8000/api/v1/health  # backend alive?
 cd backend && python -m pytest     # backend tests
 npx tsc --noEmit                   # frontend type check
 ```
+
+## Cursor Cloud specific instructions
+
+The startup update script only refreshes dependencies (`pnpm install` for the frontend, and a Python venv at `backend/.venv` with `pip install -e "./backend[dev]"`). Datastore, services, and env files are NOT started/created by it — do the following manually each session.
+
+**Postgres (required, native — not Docker here).** This VM runs PostgreSQL 16 + `pgvector` natively (the repo's `docker-compose.yml` is not used in Cloud). The cluster does not auto-start; start it once per session:
+```bash
+sudo pg_ctlcluster 16 main start
+```
+DB `orchestra` / role `orchestra` (password `orchestra`) and the `vector` extension already exist and match the default `DATABASE_URL`. If the DB is ever missing, recreate with: `sudo -u postgres psql -c "CREATE ROLE orchestra LOGIN PASSWORD 'orchestra';" ; sudo -u postgres createdb -O orchestra orchestra ; sudo -u postgres psql -d orchestra -c "CREATE EXTENSION IF NOT EXISTS vector;"`.
+
+**Backend (FastAPI/uvicorn).** Use the venv interpreter directly (no `activate` needed). The backend needs no `.env` — `app/config.py` defaults already point at the local DB, `AUTH_MODE=demo`, `AUTO_SEED=true`, `AUTO_CREATE_ALL=true` (tables + demo client/worker are created on boot). Gemini is optional (deterministic fixtures when `GEMINI_API_KEY` unset).
+```bash
+cd backend && .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+Tests + contract check (run from `backend/`, Postgres must be up): `.venv/bin/python -m pytest` and `.venv/bin/python ../scripts/check_openapi_contract.py`.
+
+**Frontend (Next.js 16, Turbopack).** To run the UI against the real API (not mocks), create `.env.local` at the repo root before `pnpm dev`:
+```
+NEXT_PUBLIC_USE_MOCKS=false
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
+```
+Without `.env.local` the app still runs but serves mock data. The CI/typecheck gate is `pnpm run typecheck` (passes); `pnpm run lint` runs but has pre-existing errors/warnings and is NOT a CI gate — do not treat those as regressions.
+
+**Known gotcha — demo mode + Clerk.** The app is designed to run without Clerk (demo mode, no `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`), but `lib/use-orchestra-auth.ts` calls Clerk's `useAuth()` *before* its `if (!clerkEnabled)` guard. With the pinned `@clerk/nextjs` 7.5.17 that throws outside a `<ClerkProvider>`, so every page 500s in demo mode. All other Clerk usages are correctly demo-guarded. To run the full UI locally, either set a real `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, or move the `if (!clerkEnabled) return {...}` guard above the `useAuth()` call in `lib/use-orchestra-auth.ts` (one line; `lib/` is Cursor's lane).
