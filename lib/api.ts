@@ -30,6 +30,10 @@ import {
   mockQAReview,
 } from "./mock-data";
 import {
+  computeProfileCompletionPct,
+  PROFILE_LIVE_THRESHOLD,
+} from "./profile-completion";
+import {
   getOrCreateMockSession,
   getMockQuote,
   getMockSpec,
@@ -354,25 +358,84 @@ export const workerApi = {
   getProfile: (): Promise<WorkerProfile> =>
     USE_MOCKS ? mock(mockWorkerMe) : apiFetch("/workers/profile"),
 
-  saveProfile: (payload: WorkerProfileSaveInput): Promise<WorkerProfile> =>
-    USE_MOCKS
-      ? mock({
-          ...mockWorkerMe,
-          ...payload,
-          user_id: mockWorkerMe.user_id,
-          campus_verified: mockWorkerMe.campus_verified,
-          profile_completion_pct: mockWorkerMe.profile_completion_pct,
-          stats: mockWorkerMe.stats,
-          full_name: payload.full_name ?? mockWorkerMe.full_name,
-          skills: payload.skills ?? mockWorkerMe.skills,
-          tools: payload.tools ?? mockWorkerMe.tools,
-          task_types: payload.task_types ?? mockWorkerMe.task_types,
-          portfolio: payload.portfolio ?? mockWorkerMe.portfolio,
-        } as WorkerProfile)
-      : apiFetch("/workers/profile", {
-          method: "PATCH",
-          body: JSON.stringify(payload),
-        }),
+  saveProfile: (payload: WorkerProfileSaveInput): Promise<WorkerProfile> => {
+    if (!USE_MOCKS) {
+      return apiFetch("/workers/profile", {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+    }
+    const merged = {
+      ...mockWorkerMe,
+      ...payload,
+      user_id: mockWorkerMe.user_id,
+      campus_verified: mockWorkerMe.campus_verified,
+      stats: mockWorkerMe.stats,
+      full_name: payload.full_name ?? mockWorkerMe.full_name,
+      community_type: payload.community_type ?? mockWorkerMe.community_type,
+      headline: payload.headline ?? mockWorkerMe.headline,
+      bio: payload.bio ?? mockWorkerMe.bio,
+      availability_status:
+        payload.availability_status ?? mockWorkerMe.availability_status,
+      weekly_hours_available:
+        payload.weekly_hours_available ?? mockWorkerMe.weekly_hours_available,
+      max_concurrent_tasks:
+        payload.max_concurrent_tasks ?? mockWorkerMe.max_concurrent_tasks,
+      payout_min:
+        payload.payout_min !== undefined
+          ? payload.payout_min
+          : mockWorkerMe.payout_min,
+      payout_max:
+        payload.payout_max !== undefined
+          ? payload.payout_max
+          : mockWorkerMe.payout_max,
+      github_url:
+        payload.github_url !== undefined
+          ? payload.github_url
+          : mockWorkerMe.github_url,
+      figma_url:
+        payload.figma_url !== undefined
+          ? payload.figma_url
+          : mockWorkerMe.figma_url,
+      behance_url:
+        payload.behance_url !== undefined
+          ? payload.behance_url
+          : mockWorkerMe.behance_url,
+      linkedin_url:
+        payload.linkedin_url !== undefined
+          ? payload.linkedin_url
+          : mockWorkerMe.linkedin_url,
+      skills: payload.skills ?? mockWorkerMe.skills,
+      tools: payload.tools ?? mockWorkerMe.tools,
+      task_types: payload.task_types ?? mockWorkerMe.task_types,
+      portfolio: payload.portfolio ?? mockWorkerMe.portfolio,
+    };
+    const pct = computeProfileCompletionPct({
+      full_name: merged.full_name,
+      headline: merged.headline,
+      bio: merged.bio,
+      community_type: merged.community_type,
+      skills: merged.skills,
+      tools: merged.tools,
+      task_types: merged.task_types,
+      portfolio: merged.portfolio,
+      github_url: merged.github_url || "",
+      figma_url: merged.figma_url || "",
+      behance_url: merged.behance_url || "",
+      linkedin_url: merged.linkedin_url || "",
+      availability_status: merged.availability_status,
+      weekly_hours_available: merged.weekly_hours_available,
+      max_concurrent_tasks: merged.max_concurrent_tasks,
+      payout_min: merged.payout_min ?? null,
+      payout_max: merged.payout_max ?? null,
+    });
+    Object.assign(mockWorkerMe, {
+      ...merged,
+      profile_completion_pct: pct,
+      is_active: Boolean(payload.is_active) && pct >= PROFILE_LIVE_THRESHOLD,
+    });
+    return mock({ ...mockWorkerMe });
+  },
 
   getMyTasks: (): Promise<FulfillmentPlan["tasks"]> =>
     USE_MOCKS ? mock(mockPlan.tasks) : apiFetch("/workers/me/tasks"),

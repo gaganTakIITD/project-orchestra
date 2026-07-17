@@ -122,9 +122,22 @@ export function LedgerStrip({
             : "Unfunded"
       }`}
     >
-      <p className="text-xs text-muted-foreground mb-2 tracking-wide uppercase">
-        Funds
-      </p>
+      <div className="flex items-baseline justify-between gap-2 mb-2">
+        <p className="text-xs text-muted-foreground tracking-wide uppercase">
+          Funds
+        </p>
+        <p className="text-[11px] text-muted-foreground">
+          {isTerminalRefund
+            ? "Refund path"
+            : activeIndex === 0
+              ? "Held after confirm"
+              : activeIndex === 1
+                ? "Reserved while work runs"
+                : activeIndex === 2
+                  ? "Released on accept"
+                  : "Not funded yet"}
+        </p>
+      </div>
       <ol className="flex items-center gap-0 w-full">
         {LEDGER_STRIP_STEPS.map((step, index) => {
           const reached = activeIndex >= 0 && index <= activeIndex;

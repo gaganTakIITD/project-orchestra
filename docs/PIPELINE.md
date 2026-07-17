@@ -137,6 +137,30 @@ Mobile apps, Redis multi-instance WS fan-out, full TDS productization, Meilisear
 
 ---
 
+## Worker onboarding UX — industry-grade profile capture
+
+- Owner: `cursor` (+ v0 polish later)
+- [x] Replace demo wizard (prefilled Rohan + fake bank) with empty/hydrate form
+- [x] Collect real contract fields: community, headline, task_types, availability, social links, payout range
+- [x] Taxonomy pickers via `useSkills` / `useTools` / `useTaskTypes` (no invented IDs)
+- [x] Per-step validation + live completion meter matching server formula (`lib/profile-completion.ts`)
+- [x] `/join` explains what is collected and why; no fake bank promises
+- [x] `/worker` inbox: live/not-live badge, profile CTA when &lt;70%, priority countdown
+- **Done when:** Worker can go from `/join` → complete ≥70% → receive invites with matchable task_types
+
+---
+
+## Client + delivery UX polish
+
+- Owner: `cursor`
+- [x] Order tracker → delivery console (primary CTA, deliverables first-class, collapsed plan)
+- [x] Proposal confirm: inline errors, funds story, stepper on `confirm`
+- [x] My outcomes: next-action cards, compact progress (no full stepper per row)
+- [x] Worker job card: stage banners, checklist-gated submit, discussion composer
+- **Done when:** Client can review & accept delivery without hunting; worker submit path is clear
+
+---
+
 ## SHIPPED (code chapters)
 
 - [x] Role-true Orchestra (P0 RBAC, 2026-07-13)
@@ -146,6 +170,7 @@ Mobile apps, Redis multi-instance WS fan-out, full TDS productization, Meilisear
 - [x] Next Chapter Sprints 2–8 (2026-07-13): Amendments → admin → reputation/media → email → payments sandbox → disputes/PM → RAG
 - [x] Planning docs, contract, Spine, S2 A–D, Clerk go-live, Cloud Run, WebSocket, CI, Scope Guard flag-only
 - [x] Role model "D + Hybrid", branch model, V0 handoff, Stage 1–2 UI
+- [x] Worker onboarding UX + client/delivery UX polish (2026-07-17)
 
 ### Founder-gated (not code)
 
