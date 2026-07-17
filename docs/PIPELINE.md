@@ -4,31 +4,93 @@
 >
 > **North star:** Production Outcome-as-a-Service — client **co-creates the OutcomeSpec in real time with Gemini** (chat + live spec panel), confirms quote, Spine executes plan/match/QA/delivery with live tracker updates. See `docs/SPEC_CO_CREATION.md`.
 >
-> **Current goal (set 2026-07-13): "Campus-ready Orchestra."** P0 role-true + P1 honest loop shipped. Harden the live demo, then Spec Release-3 market features (amendments → admin → reputation/media → email → payments last).
+> **Current goal (set 2026-07-17): Close the campus harden gate, then pilot.** Code for the campus-ready chapter is shipped. What remains is **founder ops + a few product decisions**, not feature breadth.
 
-**Legend:** `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
+**Legend:** `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked / needs founder
 
 **Owners:** `v0` = Vercel v0 on `main` · `cursor` = Cursor agents on `core` · `founder` = human decision
 
 ---
 
-## THE GOAL (this chapter) — Campus-ready Orchestra
+## Status snapshot (2026-07-17) — honest read
 
-The full `intent → delivered` loop works on the live API with honest invites, event-driven ledger states, real notifications, and durable priority timers. Next: make the campus pilot boringly reliable, then unlock Amendment / admin ops / reputation / email / payments in sequence.
+| Layer | Reality |
+|-------|---------|
+| **Product loop (code)** | Shipped end-to-end on live API: scope → quote → confirm → invite → work → deliver → accept |
+| **Market features (code)** | Amendments, admin verify/taxonomy, reputation/media, email/Sentry, Razorpay **sandbox**, disputes/PM tick, RAG — all `[x]` |
+| **Live stack** | Clerk + Cloud Run + Cloud SQL (`orchestra-pg`) + Vercel + Gemini secret — up (`/health` OK) |
+| **What's actually left** | **Founder-gated ops** to prove the loop on prod without engineers; then pilot. Almost no Cursor code work until harden is green. |
+| **Payments** | Stay `PAYMENTS_ENABLED=false` until harden passes — sandbox ledger only |
 
-**Done when (chapter):** founder runs outcomes on prod without engineering babysitting; scope changes go through Amendments; admin verifies workers; payments stay sandbox until harden is green.
+**Chapter done when:** founder runs outcomes on prod without engineering babysitting; scope changes go through Amendments; admin verifies workers; real money stays off until harden is green.
 
 ---
 
-## P0 — Harden the live campus loop
+## Proceed plan (do in this order)
 
-- Owner: `cursor` + `founder` + `v0`
-- [x] Dual-account smoke checklist documented in `docs/DEPLOY_API.md` (founder: run on prod)
-- [x] Cloud Scheduler instructions for `POST /api/v1/internal/timers/tick` in `docs/DEPLOY_API.md` (founder: create job)
+### Gate 0 — Founder decisions (undecided today)
+
+Resolve these so agents don't invent policy. Defaults in parentheses are the lean MVP choice if you want speed.
+
+| # | Decision | Options / default | Blocks |
+|---|----------|-------------------|--------|
+| D1 | **Delete `raysql`?** | Yes (recommended — unused expensive MySQL leftover) vs keep | Cost only; not product |
+| D2 | **Warranty window** after delivery | e.g. 7 / 14 / 30 days (**default: 14**) | Dispute UX copy + timer policy later |
+| D3 | **Revision limit defaults per SKU** | e.g. Launch Studio = 2 rounds (**default: 2**) | Quote/amendment expectations |
+| D4 | **Workers see preference rank?** | Hide (**default**) vs show | Matcher / preferences UI |
+| D5 | **Mutual start grain** | Per-milestone / per-task (**already leaning this**) vs per-order | Already implemented per-task — confirm freeze |
+| D6 | **When to flip real Razorpay** | Only after Gate 1 green (**hard rule**) | Money / legal |
+| D7 | **Pilot cohort** | Who are the first 5–10 clients + workers? | Concierge ops, not code |
+
+Design-notes leftovers (D2–D5) live in `Project_Orchestra_Design_Notes.md` §20 — still open, not blocking Gate 1.
+
+---
+
+### Gate 1 — Harden the live campus loop (P0 — **NOW**)
+
+Owner: `founder` (ops) · docs already written in `docs/DEPLOY_API.md`
+
+- [x] Dual-account smoke checklist documented
+- [x] Cloud Scheduler instructions for `POST /api/v1/internal/timers/tick` documented
 - [x] Notifications UI (badge + list) on `WorkspaceHeader`
-- [x] Browser smoke checklist in `docs/DEPLOY_API.md`
-- **Done when:** Non-engineer completes one outcome on prod with two accounts; admin sees `event_log`
-- **Founder remaining:** actually run the checklist on Vercel + create Scheduler job + delete `raysql`
+- [x] Browser smoke checklist documented
+- [!] **Founder: run dual-account smoke on prod** (client + worker + admin `event_log` + notifications + ledger strip)
+- [!] **Founder: create Cloud Scheduler job** for timer tick (priority windows won't fire on prod without this)
+- [!] **Founder: confirm + delete `raysql`** (cost cleanup — not Orchestra Postgres)
+
+**Done when:** Non-engineer completes one full outcome on prod with two Clerk accounts; admin sees `event_log`; timers tick via Scheduler.
+
+**Cursor role during Gate 1:** standby for bugs found in smoke only — no new features.
+
+---
+
+### Gate 2 — Campus pilot (ops, not sprints)
+
+After Gate 1 is green:
+
+1. Seed / verify real campus workers via `/admin` (`campus_verified`)
+2. Run 3–5 concierge outcomes with invited clients (founder as PM if needed)
+3. Log failure modes in `event_log` + a simple pilot notes doc
+4. Keep payments sandbox; use ledger strip for trust narrative only
+5. Fix only what breaks the loop (vertical slice > new SKUs)
+
+**Done when:** ≥3 real outcomes closed on prod; founder can babysit less each time.
+
+---
+
+### Gate 3 — Next product chapter (only after Gate 1)
+
+Do **not** start these until harden is green. Order matters:
+
+| Order | Work | Owner | Notes |
+|------|------|-------|-------|
+| 1 | Production payments enablement | `founder` + `cursor` | Flip `PAYMENTS_ENABLED` + Razorpay live keys; keep double-entry; no silent money |
+| 2 | Dispute UX polish + warranty timers | `cursor` + `v0` | Backend disputes exist; tighten after D2 |
+| 3 | Email deliverability + templates QA | `cursor` | Resend already wired — harden templates for invites/delivery |
+| 4 | Multi-SKU / catalog expansion | `founder` + `cursor` | Only if pilot demand is clear |
+| 5 | TDS / payout productization | `founder` + `cursor` | Deferred until real payouts |
+| 6 | Redis multi-instance WS fan-out | `cursor` | Only if multi-instance Cloud Run needed |
+| 7 | Meilisearch / mobile | — | Explicitly deferred |
 
 ---
 
@@ -44,7 +106,7 @@ The full `intent → delivered` loop works on the live API with honest invites, 
 
 - Client **never** sees worker failure states — `rework` reads as "In progress" (`state-labels.ts`).
 - Worker acts **only** on invited/assigned tasks; worker chat posts as worker.
-- Admin mutating actions unlocked starting Sprint 3 (verify + taxonomy); disputes later.
+- Admin mutating actions unlocked (verify + taxonomy); disputes later polish.
 - Admin role is **never** reachable via `PATCH /auth/role` — Clerk claim / allowlist only.
 
 ---
@@ -61,11 +123,13 @@ The full `intent → delivered` loop works on the live API with honest invites, 
 - **Notifications:** event-projected invite / priority / QA / delivery
 - **Ledger:** Held → Reserved → Released via confirm / mutual start / accept-delivery
 - **UX shell:** WorkspaceHeader, JourneyStepper, framed CTAs, `/orders` home, Resume scope
+- **Market sprints:** Amendments, admin ops, reputation/media, email/Sentry, payments sandbox, disputes/PM, RAG
 
 ### LEFT (this chapter)
 
-- Harden remaining P0 items (prod dual-account smoke, Cloud Scheduler)
-- Payments stay sandbox (`PAYMENTS_ENABLED=false`) until harden is green
+- Gate 1 founder ops (prod smoke, Cloud Scheduler, `raysql` delete)
+- Gate 0 product decisions D1–D7 (mostly policy; D5 already implemented)
+- Payments stay sandbox until Gate 1 green
 
 ### DEFERRED further
 
@@ -73,50 +137,32 @@ Mobile apps, Redis multi-instance WS fan-out, full TDS productization, Meilisear
 
 ---
 
-## P1 — Amendments
-
-- [x] Amendment contract + create from Scope Guard `scope_change_request`
-- [x] Approve / reject + charter/spec versioning + `event_log`
-- [x] UI: amendment card on discussion / tracker
-
----
-
-## P2 — Admin ops → reputation/media → email → payments → disputes/PM → RAG
-
-- [x] Admin worker verify + taxonomy CRUD; matcher verified-only
-- [x] `worker_stats` + signed media uploads
-- [x] Transactional email (Resend) + Sentry + AI quality view
-- [x] Razorpay sandbox + double-entry ledger (after harden stable)
-- [x] Disputes + PM control loop tick
-- [x] RAG `project_templates` + Spec Compiler retrieve
-
-**Payments rule:** Do not enable production Razorpay until P0 harden is green.
-
----
-
-## SHIPPED
+## SHIPPED (code chapters)
 
 - [x] Role-true Orchestra (P0 RBAC, 2026-07-13)
 - [x] Honest loop P1 (2026-07-13): no `_ensure_invited`; real notifications; event-driven ledger; durable timers
 - [x] UX wiring finish (Plan E, 2026-07-13)
-- [x] Alembic chain linear through `0016_project_templates` (amendments → worker_stats → ledger_entries → disputes → RAG)
-- [x] Next Chapter Sprints 2–8 (2026-07-13): Amendments, admin ops, reputation/media, email/Sentry, payments sandbox, disputes/PM tick, RAG
+- [x] Alembic chain linear through `0016_project_templates`
+- [x] Next Chapter Sprints 2–8 (2026-07-13): Amendments → admin → reputation/media → email → payments sandbox → disputes/PM → RAG
 - [x] Planning docs, contract, Spine, S2 A–D, Clerk go-live, Cloud Run, WebSocket, CI, Scope Guard flag-only
 - [x] Role model "D + Hybrid", branch model, V0 handoff, Stage 1–2 UI
 
 ### Founder-gated (not code)
 
+- [!] Run prod dual-account smoke (`docs/DEPLOY_API.md` — Campus dual-account smoke checklist)
+- [!] Create Cloud Scheduler job for `/api/v1/internal/timers/tick`
 - [!] Confirm then `gcloud sql instances delete raysql` (cost cleanup — see `docs/DEPLOY_API.md`)
+- [!] Optional hygiene: rotate Clerk keys if they were ever pasted in chat
 
 ---
 
 ## How to use this pipeline (all agents)
 
-1. **Pick from P0 first** — top item your lane owns.
+1. **Pick from Gate 1 first** — unless founder already marked it green.
 2. **Announce** — scope, files, done-when test.
 3. **Ship** — runnable (pytest / curl / browser).
 4. **Update this file** — tick boxes, move finished work to SHIPPED.
 5. **Blocked?** Mark `[!]` with one-line reason.
-6. **Scope creep?** Later sprints, not current P0.
+6. **Scope creep?** Gate 3 items wait; do not expand catalog or enable live payments early.
 
 **Escalate to founder when:** contract shapes change, money/legal logic appears, v0 and core lanes collide, or a stage checkpoint slips.
