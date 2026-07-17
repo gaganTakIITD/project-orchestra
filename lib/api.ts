@@ -268,6 +268,28 @@ export const clientApi = {
   getPlan: (orderId: string): Promise<FulfillmentPlan> =>
     USE_MOCKS ? mock(mockPlan) : apiFetch(`/orders/${orderId}/milestones`),
 
+  /** Progressive AI after fast confirm — polishes task briefs in the background. */
+  enrichPlan: (
+    orderId: string
+  ): Promise<{
+    order_id: string;
+    status: string;
+    tasks_total: number;
+    tasks_enriched: number;
+    tasks_failed: number;
+    message: string;
+  }> =>
+    USE_MOCKS
+      ? mock({
+          order_id: orderId,
+          status: "skipped",
+          tasks_total: 0,
+          tasks_enriched: 0,
+          tasks_failed: 0,
+          message: "Mocks — no enrich",
+        })
+      : apiFetch(`/orders/${orderId}/enrich-plan`, { method: "POST" }),
+
   getCandidates: (orderId: string, taskId: string): Promise<Candidate[]> =>
     USE_MOCKS
       ? mock(mockCandidates)

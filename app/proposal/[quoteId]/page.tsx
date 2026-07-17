@@ -31,6 +31,9 @@ export default function ProposalPage() {
   const quoteId =
     typeof routeParams.quoteId === "string" ? routeParams.quoteId : "";
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [confirmStep, setConfirmStep] = useState<
+    "idle" | "freezing" | "opening"
+  >("idle");
 
   const { data: quote, isLoading: quoteLoading } = useQuote(quoteId);
   const { data: spec, isLoading: specLoading } = useSpec(quote?.spec_id || "");
@@ -39,15 +42,19 @@ export default function ProposalPage() {
   const handleConfirm = async () => {
     if (!quote || acceptQuote.isPending) return;
     setConfirmError(null);
+    setConfirmStep("freezing");
     try {
       const result = await acceptQuote.mutateAsync(quote.id);
       try {
         sessionStorage.setItem("order_id", result.order_id);
+        sessionStorage.setItem(`enrich_plan:${result.order_id}`, "1");
       } catch {
         /* ignore */
       }
+      setConfirmStep("opening");
       router.push(`/orders/${result.order_id}`);
     } catch (err) {
+      setConfirmStep("idle");
       const detail =
         err instanceof ApiError && err.message
           ? err.message
@@ -229,18 +236,21 @@ export default function ProposalPage() {
                   disabled={acceptQuote.isPending}
                   className="w-full h-11 bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
                 >
-                  {acceptQuote.isPending
-                    ? "Creating your order…"
-                    : "Confirm & begin work"}
+                  {confirmStep === "freezing"
+                    ? "1/2 Freezing scope & creating order…"
+                    : confirmStep === "opening"
+                      ? "2/2 Opening your tracker…"
+                      : "Confirm & begin work"}
                 </button>
 
                 {confirmError ? (
                   <p className="text-xs text-destructive text-center" role="alert">
                     {confirmError}
                   </p>
-                ) : acceptQuote.isPending ? (
+                ) : confirmStep !== "idle" ? (
                   <p className="text-xs text-muted-foreground text-center">
-                    Freezing scope and building the task plan — usually a few seconds.
+                    Fast confirm first — AI will polish task briefs on the next
+                    screen.
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground text-center">

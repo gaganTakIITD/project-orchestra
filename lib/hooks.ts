@@ -220,6 +220,17 @@ export const usePlan = (orderId: string) =>
     enabled: Boolean(orderId),
   });
 
+/** Fire-and-polish after confirm — Vertex enrich without blocking accept. */
+export const useEnrichOrderPlan = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (orderId: string) => clientApi.enrichPlan(orderId),
+    onSuccess: (_data, orderId) => {
+      qc.invalidateQueries({ queryKey: ["plan", orderId] });
+      qc.invalidateQueries({ queryKey: ["order", orderId] });
+    },
+  });
+};
 export const useSpec = (specId: string) =>
   useQuery({
     queryKey: ["spec", specId],

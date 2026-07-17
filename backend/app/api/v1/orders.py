@@ -5,12 +5,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
+from app.models.commerce import OutcomeSpecRecord
 from app.models.fulfillment import OutcomeOrder
 from app.models.identity import User
 from app.schemas.commerce import OutcomeOrderOut
 from app.schemas.fulfillment import (
     CandidateOut,
     DeliveryBundleOut,
+    EnrichPlanOut,
     FulfillmentPlanOut,
     PreferenceSetOut,
     SetPreferencesIn,
@@ -65,6 +67,37 @@ async def get_order_milestones(
 
     tasks = await service.list_tasks_for_order(order_id)
     return FulfillmentPlanOut.from_orm_rows(plan, tasks)
+
+
+@router.post("/{order_id}/enrich-plan", response_model=EnrichPlanOut)
+async def enrich_order_plan(
+    order_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    client: User = Depends(get_current_client),
+) -> EnrichPlanOut:
+    """Progressive AI: polish fixture task briefs with Vertex after fast confirm.
+
+    Call from the order tracker after redirect — does not block Confirm & begin.
+    Idempotent: skips tasks already gemini-enriched.
+    """
+    order = await db.get(OutcomeOrder, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.client_id != client.id:
+        raise HTTPException(status_code=403, detail="Not your order")
+
+    spec = await db.get(OutcomeSpecRecord, order.spec_id)
+    if spec is None:
+        raise HTTPException(status_code=404, detail="Spec not found for order")
+
+    service = FulfillmentService(db)
+    try:
+        result = await service.enrich_plan_with_ai(order=order, spec=spec)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+    await db.commit()
+    return EnrichPlanOut(**result)
 
 
 @router.get("/{order_id}/tasks/{task_id}/candidates", response_model=list[CandidateOut])

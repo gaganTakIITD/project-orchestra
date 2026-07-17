@@ -3,6 +3,17 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
+class EnrichPlanOut(BaseModel):
+    """POST /orders/{id}/enrich-plan — progressive AI polish after fast confirm."""
+
+    order_id: str
+    status: str  # enriched | partial | skipped | unchanged
+    tasks_total: int
+    tasks_enriched: int
+    tasks_failed: int
+    message: str = ""
+
+
 class FulfillmentMilestoneOut(BaseModel):
     name: str
     task_ids: list[str]

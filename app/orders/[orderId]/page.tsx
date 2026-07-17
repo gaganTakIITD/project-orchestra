@@ -6,6 +6,7 @@ import {
   useApproveAmendment,
   useDelivery,
   useDiscussion,
+  useEnrichOrderPlan,
   useMe,
   useOrder,
   usePlan,
@@ -24,8 +25,8 @@ import {
   isOrderCancelled,
 } from "@/lib/journey";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 function isScopeFlaggedMessage(msg: {
   scope_flagged?: boolean;
@@ -54,6 +55,7 @@ function formatPrice(price: number) {
 
 export default function OrderTrackerPage() {
   const routeParams = useParams<{ orderId: string }>();
+  const searchParams = useSearchParams();
   const orderId =
     typeof routeParams.orderId === "string" ? routeParams.orderId : "";
   const [acceptError, setAcceptError] = useState<string | null>(null);
@@ -62,6 +64,8 @@ export default function OrderTrackerPage() {
   const [chatInput, setChatInput] = useState("");
   const [chatError, setChatError] = useState<string | null>(null);
   const [milestonesOpen, setMilestonesOpen] = useState(false);
+  const [enrichBanner, setEnrichBanner] = useState<string | null>(null);
+  const enrichStarted = useRef(false);
 
   const { data: order, isPending: orderLoading, isError: orderError } =
     useOrder(orderId);
@@ -69,7 +73,40 @@ export default function OrderTrackerPage() {
   const { data: delivery } = useDelivery(orderId);
   const { data: me } = useMe();
   const acceptDelivery = useAcceptDelivery(orderId);
+  const enrichPlan = useEnrichOrderPlan();
   useOrderLiveInvalidation(orderId || undefined);
+
+  // Progressive AI: after fast confirm, polish task briefs in parallel (background).
+  useEffect(() => {
+    if (!orderId || enrichStarted.current) return;
+    let shouldEnrich = searchParams.get("enrich") === "1";
+    try {
+      if (sessionStorage.getItem(`enrich_plan:${orderId}`) === "1") {
+        shouldEnrich = true;
+        sessionStorage.removeItem(`enrich_plan:${orderId}`);
+      }
+    } catch {
+      /* ignore */
+    }
+    if (!shouldEnrich) return;
+    enrichStarted.current = true;
+    setEnrichBanner("Polishing task briefs with AI…");
+    enrichPlan.mutate(orderId, {
+      onSuccess: (res) => {
+        if (res.tasks_enriched > 0) {
+          setEnrichBanner(
+            `AI updated ${res.tasks_enriched} task brief${res.tasks_enriched === 1 ? "" : "s"}.`
+          );
+        } else {
+          setEnrichBanner(res.message || "Plan ready.");
+        }
+        window.setTimeout(() => setEnrichBanner(null), 6000);
+      },
+      onError: () => {
+        setEnrichBanner(null);
+      },
+    });
+  }, [orderId, searchParams, enrichPlan]);
 
   const defaultChatTaskId = useMemo(() => {
     if (!plan?.tasks?.length) return "";
@@ -156,6 +193,11 @@ export default function OrderTrackerPage() {
         <div className="max-w-5xl mx-auto px-6 lg:px-8 py-12 lg:py-16">
           {/* Header */}
           <div className="mb-8">
+            {enrichBanner ? (
+              <div className="mb-4 rounded-sm border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground">
+                {enrichBanner}
+              </div>
+            ) : null}
             <div className="flex flex-wrap items-center gap-3 mb-3">
               <p className="text-xs font-mono tracking-widest uppercase text-primary">
                 Outcome

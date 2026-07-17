@@ -1,4 +1,5 @@
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -219,6 +220,194 @@ class FulfillmentService:
         self.session.add(packet)
         await self.session.flush()
         return charter, packet
+
+    async def enrich_plan_with_ai(
+        self,
+        *,
+        order: OutcomeOrder,
+        spec: OutcomeSpecRecord,
+    ) -> dict:
+        """Progressive UX: after fast confirm, polish task packets with Vertex.
+
+        Runs packet generation in parallel (bounded workers). Timeouts soft-fall
+        back to leaving the fixture brief in place. Skips tasks already gemini-
+        enriched. Safe to call repeatedly.
+        """
+        tasks = await self.list_tasks_for_order(order.id)
+        if not tasks:
+            return {
+                "order_id": str(order.id),
+                "status": "skipped",
+                "tasks_total": 0,
+                "tasks_enriched": 0,
+                "tasks_failed": 0,
+                "message": "No tasks to enrich",
+            }
+
+        title_by_id = {str(t.id): t.title for t in tasks}
+        spec_dict = {
+            "outcome_statement": spec.outcome_statement,
+            "deliverables": spec.deliverables or [],
+            "acceptance_criteria": spec.acceptance_criteria or [],
+            "out_of_scope": spec.out_of_scope or [],
+            "client_inputs_required": spec.client_inputs_required or [],
+        }
+
+        # Skip tasks that already have a successful gemini packet log.
+        already: set[uuid.UUID] = set()
+        logs = (
+            await self.session.execute(
+                select(AiDecisionLog).where(
+                    AiDecisionLog.agent_type == "task_packet_generator",
+                    AiDecisionLog.source == "gemini",
+                )
+            )
+        ).scalars().all()
+        for log in logs:
+            draft = log.output_draft or {}
+            tid = draft.get("task_id")
+            if tid:
+                try:
+                    already.add(uuid.UUID(str(tid)))
+                except ValueError:
+                    pass
+
+        to_enrich = [t for t in tasks if t.id not in already]
+        if not to_enrich:
+            return {
+                "order_id": str(order.id),
+                "status": "unchanged",
+                "tasks_total": len(tasks),
+                "tasks_enriched": 0,
+                "tasks_failed": 0,
+                "message": "Plan already AI-enriched",
+            }
+
+        if not settings.gemini_enabled:
+            return {
+                "order_id": str(order.id),
+                "status": "skipped",
+                "tasks_total": len(tasks),
+                "tasks_enriched": 0,
+                "tasks_failed": 0,
+                "message": "Vertex not configured — keeping fixture briefs",
+            }
+
+        def _run(task: FulfillmentTask):
+            dep_titles = [
+                title_by_id[d] for d in (task.depends_on or []) if d in title_by_id
+            ]
+            proposal = generate_task_packet_proposal(
+                order_id=order.id,
+                task=task,
+                spec=spec_dict,
+                order_price_share=float(task.payout_amount),
+                order_deadline=order.deadline,
+                revision_limit=order.revision_limit,
+                dependency_titles=dep_titles,
+                force_fixture=False,
+            )
+            return task.id, proposal
+
+        results: list[tuple[uuid.UUID, object]] = []
+        errors = 0
+        with ThreadPoolExecutor(max_workers=min(4, len(to_enrich))) as pool:
+            futs = {pool.submit(_run, t): t.id for t in to_enrich}
+            for fut in as_completed(futs):
+                try:
+                    results.append(fut.result())
+                except Exception:
+                    errors += 1
+
+        enriched = 0
+        for task_id, proposal in results:
+            task = next((t for t in tasks if t.id == task_id), None)
+            if task is None:
+                continue
+            packet_fields = proposal.packet
+            charter_fields = proposal.charter
+
+            self.session.add(
+                AiDecisionLog(
+                    session_id=None,
+                    agent_type="task_packet_generator",
+                    source=proposal.source,
+                    model=proposal.model,
+                    input_text=(task.title or "")[:2000],
+                    output_draft={
+                        "task_id": str(task.id),
+                        "order_id": str(order.id),
+                        "brief": packet_fields.get("brief"),
+                        "checklist": packet_fields.get("checklist"),
+                        "enrich": True,
+                    },
+                    reply=packet_fields.get("brief"),
+                    confidence=proposal.confidence,
+                    latency_ms=proposal.latency_ms,
+                    error=proposal.error,
+                )
+            )
+
+            if proposal.source != "gemini":
+                # Timeout/fallback — leave fixture packet; still logged.
+                if proposal.error:
+                    errors += 1
+                continue
+
+            packet = await self.get_packet_for_task(task.id)
+            if packet is not None:
+                packet.brief = packet_fields["brief"]
+                packet.checklist = packet_fields["checklist"]
+                packet.client_inputs = packet_fields["client_inputs"]
+                packet.version = int(packet.version or 1) + 1
+            charter = await self.get_charter_for_task(task.id)
+            if charter is not None and charter_fields.get("snapshot"):
+                charter.snapshot = charter_fields["snapshot"]
+                charter.version = int(charter.version or 1) + 1
+
+            # Light title/description polish from charter snapshot if present
+            snap = charter_fields.get("snapshot") or {}
+            if isinstance(snap, dict):
+                if snap.get("title"):
+                    task.title = str(snap["title"])[:255]
+                if snap.get("description"):
+                    task.description = str(snap["description"])[:4000]
+
+            enriched += 1
+
+        await self.events.emit(
+            aggregate_type="order",
+            aggregate_id=order.id,
+            event_type="PlanEnriched",
+            actor_type=ActorType.AI,
+            payload={
+                "tasks_enriched": enriched,
+                "tasks_failed": errors,
+                "tasks_total": len(tasks),
+            },
+        )
+        await self.session.flush()
+
+        status = "enriched"
+        if enriched == 0 and errors:
+            status = "partial"
+        elif enriched and errors:
+            status = "partial"
+        elif enriched == 0:
+            status = "unchanged"
+
+        return {
+            "order_id": str(order.id),
+            "status": status,
+            "tasks_total": len(tasks),
+            "tasks_enriched": enriched,
+            "tasks_failed": errors,
+            "message": (
+                f"Polished {enriched}/{len(to_enrich)} task briefs with Vertex"
+                if enriched
+                else "No task briefs updated (timeouts or already enriched)"
+            ),
+        }
 
     async def get_charter_for_task(self, task_id: uuid.UUID) -> CharterRecord | None:
         return await self.session.scalar(select(CharterRecord).where(CharterRecord.task_id == task_id))
