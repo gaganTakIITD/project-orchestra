@@ -1,9 +1,10 @@
-import { Metadata } from 'next';
-import OnboardingContent from './onboarding-content';
+import { Metadata } from "next";
+import OnboardingContent from "./onboarding-content";
 
 export const metadata: Metadata = {
-  title: 'Onboarding — Project Orchestra',
-  description: 'Complete your profile to start taking projects',
+  title: "Talent profile — Project Orchestra",
+  description:
+    "Build a matchable worker profile: identity, capabilities, proof of work, and capacity.",
 };
 
 export default function OnboardingPage() {

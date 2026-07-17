@@ -66,6 +66,20 @@ The full `intent → delivered` loop works on the live API with honest invites, 
 
 - Harden remaining P0 items (prod dual-account smoke, Cloud Scheduler)
 - Payments stay sandbox (`PAYMENTS_ENABLED=false`) until harden is green
+- **Worker profile UX:** industry-grade onboarding (identity → capabilities → proof → capacity)
+
+---
+
+## Worker onboarding UX — industry-grade profile capture
+
+- Owner: `cursor` (+ v0 polish later)
+- [x] Replace demo wizard (prefilled Rohan + fake bank) with empty/hydrate form
+- [x] Collect real contract fields: community, headline, task_types, availability, social links, payout range
+- [x] Taxonomy pickers via `useSkills` / `useTools` / `useTaskTypes` (no invented IDs)
+- [x] Per-step validation + live completion meter matching server formula (`lib/profile-completion.ts`)
+- [x] `/join` explains what is collected and why; no fake bank promises
+- [x] `/worker` inbox: live/not-live badge, profile CTA when &lt;70%, priority countdown
+- **Done when:** Worker can go from `/join` → complete ≥70% → receive invites with matchable task_types
 
 ### DEFERRED further
 

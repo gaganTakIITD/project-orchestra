@@ -28,6 +28,12 @@ export const useSkus = () =>
 export const useTaskTypes = () =>
   useQuery({ queryKey: ["task-types"], queryFn: catalogApi.listTaskTypes });
 
+export const useSkills = () =>
+  useQuery({ queryKey: ["skills"], queryFn: catalogApi.listSkills });
+
+export const useTools = () =>
+  useQuery({ queryKey: ["tools"], queryFn: catalogApi.listTools });
+
 // --- Auth ------------------------------------------------------------------
 
 export const useMe = (options?: { enabled?: boolean }) =>
