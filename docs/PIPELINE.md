@@ -124,6 +124,7 @@ Do **not** start these until harden is green. Order matters:
 - **Ledger:** Held → Reserved → Released via confirm / mutual start / accept-delivery
 - **UX shell:** WorkspaceHeader, JourneyStepper, framed CTAs, `/orders` home, Resume scope
 - **Market sprints:** Amendments, admin ops, reputation/media, email/Sentry, payments sandbox, disputes/PM, RAG
+- **Worker onboarding + delivery UX:** industry-grade profile capture; order tracker as delivery console
 
 ### LEFT (this chapter)
 
