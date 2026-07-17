@@ -1,6 +1,8 @@
 # Dual-project billing split (GenAI vs infra)
 
 > **Why:** `gen-lang-client` has **~95k GenAI free credits** (good for Gemini / Vertex). Infra there (Cloud SQL, Cloud Run, networking) still **bills cash**. **raystartup** has the **~30k infra free credits** — Cloud SQL / Cloud Run / Artifact Registry / networking hit those and show **₹0 subtotals**. Put AI usage on gen-lang-client; put Orchestra infra on raystartup.
+>
+> **AI auth rule:** **Do not use a raw Gemini / AI Studio API key** in prod. Call **Vertex AI Gemini** with the Cloud Run **service account** (ADC). No `GEMINI_API_KEY` secret on Cloud Run.
 
 ## Confirmed targets
 
@@ -10,6 +12,7 @@
 | **Infra project (30k free credits)** | `raystartup` |
 | **Infra Cloud SQL** | `raystartup:us-central1:orchestra-trial-pg` — instance **on the 30k-credit project** |
 | **Region** | `us-central1` |
+| **AI auth** | Vertex AI + Cloud Run SA (ADC) — **not** a pasted API key |
 
 ```bash
 export INFRA_PROJECT=raystartup
@@ -19,16 +22,96 @@ export SQL_INSTANCE=orchestra-trial-pg
 export SQL_CONNECTION=raystartup:us-central1:orchestra-trial-pg
 ```
 
+## End-to-end flow (target)
+
+```text
+Browser (Vercel)
+    │  Clerk JWT
+    ▼
+Cloud Run orchestra-api          ← project: raystartup (30k infra credits)
+    │  Postgres via connector
+    ▼
+Cloud SQL orchestra-trial-pg     ← raystartup:us-central1:orchestra-trial-pg
+
+Cloud Run (same revision)
+    │  Vertex Gemini call as runtime SA (ADC — no API key)
+    │  vertexai=True, project=gen-lang-client-0795401430
+    ▼
+Vertex AI / Gemini               ← bills gen-lang-client (95k GenAI credits)
+```
+
+| Step | What happens |
+|------|----------------|
+| 1 | User hits Vercel frontend |
+| 2 | API calls go to Cloud Run in **`raystartup`** |
+| 3 | API reads/writes **`orchestra-trial-pg`** (30k credits) |
+| 4 | Scope / quote / matcher / QA call **Vertex Gemini** using the Cloud Run service account |
+| 5 | Those AI calls are attributed to **`gen-lang-client`** so the **95k GenAI** pool applies |
+| 6 | No AI Studio key in Secret Manager; SA needs `roles/aiplatform.user` on the AI project |
+
+### Cross-project IAM (required for no-API-key)
+
+Cloud Run runs in `raystartup`, but Vertex must bill/use `gen-lang-client`:
+
+```bash
+# Runtime SA of Cloud Run in raystartup (example — use the real SA email)
+RUNTIME_SA="$(gcloud run services describe orchestra-api \
+  --region=$REGION --project=$INFRA_PROJECT \
+  --format='value(spec.template.spec.serviceAccountName)')"
+# If empty, default compute SA: PROJECT_NUMBER-compute@developer.gserviceaccount.com
+
+gcloud projects add-iam-policy-binding "$AI_PROJECT" \
+  --member="serviceAccount:${RUNTIME_SA}" \
+  --role="roles/aiplatform.user"
+```
+
+Enable Vertex on the AI project:
+
+```bash
+gcloud services enable aiplatform.googleapis.com --project="$AI_PROJECT"
+```
+
+App config (target — replace API-key path in code):
+
+```text
+GEMINI_AUTH=vertex          # not api_key
+VERTEX_PROJECT=gen-lang-client-0795401430
+VERTEX_LOCATION=us-central1
+# No GEMINI_API_KEY in production
+```
+
+Client shape (`google-genai`):
+
+```python
+from google import genai
+client = genai.Client(
+    vertexai=True,
+    project=settings.vertex_project,   # gen-lang-client-0795401430
+    location=settings.vertex_location, # us-central1
+)
+# Uses Application Default Credentials = Cloud Run service account
+```
+
+### Today vs target (honest)
+
+| | **Today (live)** | **Target (this split)** |
+|--|------------------|-------------------------|
+| API + DB | gen-lang-client (`orchestra-pg`) — **paying** | raystartup (`orchestra-trial-pg`) — **30k** |
+| Gemini auth | **`GEMINI_API_KEY`** via Secret Manager | **Vertex + SA (ADC)** — **no raw key** |
+| GenAI billing | gen-lang-client key usage | Vertex on gen-lang-client (**95k**) |
+
+Code still constructs `genai.Client(api_key=…)` in `backend/app/ai/gateway.py` / `scope_guard.py`. Cutover includes switching that to Vertex ADC and removing `GEMINI_API_KEY` from Cloud Run.
+
 ## Target ownership
 
 | Concern | GCP project | Why |
 |---------|-------------|-----|
-| **Gemini / Vertex / GenAI API calls** | `gen-lang-client-0795401430` | 95k GenAI credits |
+| **Gemini / Vertex / GenAI API calls** | `gen-lang-client-0795401430` | 95k GenAI credits via **Vertex + SA** (no API key) |
 | **Cloud SQL (`orchestra-trial-pg`)** | `raystartup` (30k credits) | Free infra credits → ₹0 |
 | **Cloud Run (`orchestra-api`)** | `raystartup` | Same |
 | **Artifact Registry, VPC connector, Cloud Build (API images)** | `raystartup` | Same |
-| **Secret Manager (DB URL, SECRET_KEY)** | `raystartup` | Lives with the API |
-| **`GEMINI_API_KEY` secret** | Stored in **raystartup** Secret Manager (value from AI Studio / gen-lang-client key) | Cloud Run reads local secret; **usage still bills gen-lang-client** if the key is from that project’s GenAI |
+| **Secret Manager (DB URL, SECRET_KEY only)** | `raystartup` | **Do not** store a Gemini API key |
+| **AI identity** | Cloud Run runtime SA → `roles/aiplatform.user` on gen-lang-client | ADC / Vertex |
 
 Until cutover is done, production still runs on `AI_PROJECT` (paying for SQL/Run there).
 
@@ -106,11 +189,10 @@ pg_restore -h 127.0.0.1 -p 5433 -U orchestra -d orchestra --clean --if-exists or
 
 **Pilot / empty OK:** skip dump; new Cloud Run with `AUTO_SEED=true` recreates catalog + 10 worker seed. You lose live orders/users unless you dump/restore or re-run Clerk-linked smoke.
 
-### 3. Secrets on raystartup
+### 3. Secrets on raystartup (DB + app only — **no Gemini API key**)
 
 ```bash
 # DATABASE_URL: postgresql+asyncpg://USER:PASS@/DBNAME  (connector fills host)
-# Use the real user/db on orchestra-trial-pg — do not invent passwords in git
 python -c "open('tmp','wb').write(b'postgresql+asyncpg://USER:PASS@/orchestra')"
 gcloud secrets create orchestra-database-url --data-file=tmp --project="$INFRA_PROJECT" 2>/dev/null \
   || gcloud secrets versions add orchestra-database-url --data-file=tmp --project="$INFRA_PROJECT"
@@ -121,12 +203,11 @@ gcloud secrets create orchestra-secret-key --data-file=tmp --project="$INFRA_PRO
   || gcloud secrets versions add orchestra-secret-key --data-file=tmp --project="$INFRA_PROJECT"
 rm tmp
 
-# GEMINI_API_KEY — same key that bills under gen-lang-client GenAI credits
-gcloud secrets create orchestra-gemini-api-key --data-file=gemini.key --project="$INFRA_PROJECT" 2>/dev/null \
-  || gcloud secrets versions add orchestra-gemini-api-key --data-file=gemini.key --project="$INFRA_PROJECT"
+# DO NOT create orchestra-gemini-api-key for production.
+# Use Vertex + Cloud Run SA instead (see "Cross-project IAM" above).
 ```
 
-Grant the **raystartup** Cloud Run runtime SA `roles/secretmanager.secretAccessor` on those three secrets.
+Grant the **raystartup** Cloud Run runtime SA `roles/secretmanager.secretAccessor` on **database-url** and **secret-key** only. Then grant that SA `roles/aiplatform.user` on `$AI_PROJECT`.
 
 ### 4. Artifact Registry + build + deploy Cloud Run on raystartup
 
@@ -201,16 +282,20 @@ gcloud run services delete orchestra-api --region="$REGION" --project="$AI_PROJE
 - `orchestra-api` (Cloud Run)
 - Artifact Registry `orchestra/api`
 - VPC connector `orchestra-vpc` (or whatever connector reaches the instance private IP)
-- Secrets for DB / app / Gemini key (key value can still be the GenAI-project key)
+- Secrets for DB / app only (**no** Gemini API key)
+- Cloud Run SA → `roles/aiplatform.user` on gen-lang-client
 - Cloud Scheduler for timer tick
 
 ## Repo status after this confirmation
 
-- [x] `INFRA_PROJECT=raystartup` + SQL connection locked in docs + `backend/cloudrun-service.yaml`
-- [ ] Founder: deploy Cloud Run in `raystartup` against `orchestra-trial-pg`
+- [x] `INFRA_PROJECT=raystartup` + SQL `orchestra-trial-pg` locked in docs + deploy YAML
+- [x] Policy: **no direct Gemini API key** — Vertex + SA (documented)
+- [ ] Code: switch `genai.Client(api_key=…)` → Vertex ADC (`GEMINI_AUTH=vertex`)
+- [ ] Founder: IAM + deploy Cloud Run in `raystartup` against `orchestra-trial-pg`
 - [ ] Founder: flip Vercel `NEXT_PUBLIC_API_BASE_URL`
 - [ ] Founder: delete `orchestra-pg` (+ optional old Cloud Run / `raysql`) on gen-lang-client
 - [ ] Agent: paste new Cloud Run URL into `docs/DEPLOY_API.md` Live table
+- [ ] Remove `GEMINI_API_KEY` / `orchestra-gemini-api-key` from Cloud Run after Vertex lands
 
 ## This Cloud Agent cannot execute the move
 
