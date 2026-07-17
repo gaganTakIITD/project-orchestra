@@ -36,7 +36,7 @@ Resolve these so agents don't invent policy. Defaults in parentheses are the lea
 | # | Decision | Options / default | Blocks |
 |---|----------|-------------------|--------|
 | D1 | **Delete `raysql`?** | Yes (recommended — unused expensive MySQL leftover) vs keep | Cost only; not product |
-| D8 | **Infra + AI billing split** | Orchestra Cloud Run + SQL + **standalone Gemini** on **raystartup**; gen-lang-client **only** for Agent Builder Search/Conversation (₹95.7k) | Stops cash burn on gen-lang-client for non-credit SKUs — `docs/GCP_BILLING_SPLIT.md` |
+| D8 | **Dual-account credit split** | Orchestra on **raystartup** (trial: Run/SQL/**Vertex Gemini**; never AI Studio). gen-lang-client = Agent Builder Search/Conversation only (₹95.7k) | `docs/GCP_BILLING_SPLIT.md` |
 | D2 | **Warranty window** after delivery | e.g. 7 / 14 / 30 days (**default: 14**) | Dispute UX copy + timer policy later |
 | D3 | **Revision limit defaults per SKU** | e.g. Launch Studio = 2 rounds (**default: 2**) | Quote/amendment expectations |
 | D4 | **Workers see preference rank?** | Hide (**default**) vs show | Matcher / preferences UI |
