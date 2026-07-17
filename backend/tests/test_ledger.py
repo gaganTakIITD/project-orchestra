@@ -12,7 +12,6 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
 from app.main import app
-from app.models.identity import DEMO_WORKER_ID
 from app.models.platform import EventLog
 from app.orchestrator.states import OrderStatus, TaskStatus
 from app.services.ledger import (
@@ -28,11 +27,17 @@ _PASSING_ASSETS = [
     "https://preview.example/live",
 ]
 
-_DEMO_RANKED = [
-    str(DEMO_WORKER_ID),
-    "usr_worker_meera",
-    "usr_worker_kabir",
-]
+
+async def _rank_from_candidates(
+    api_client: AsyncClient, order_id: str, task_id: str
+) -> list[str]:
+    cands = await api_client.get(
+        f"/api/v1/orders/{order_id}/tasks/{task_id}/candidates"
+    )
+    assert cands.status_code == 200, cands.text
+    ids = [c["worker_id"] for c in cands.json()]
+    assert ids, "expected live candidates"
+    return ids[: max(1, min(3, len(ids)))]
 
 
 @pytest.fixture
@@ -72,9 +77,10 @@ async def _create_order(api_client: AsyncClient) -> str:
 
 
 async def _complete_task(api_client: AsyncClient, order_id: str, task_id: str) -> None:
+    ranked = await _rank_from_candidates(api_client, order_id, task_id)
     pref = await api_client.post(
         f"/api/v1/orders/{order_id}/tasks/{task_id}/preferences",
-        json={"ranked_worker_ids": list(_DEMO_RANKED)},
+        json={"ranked_worker_ids": ranked},
     )
     assert pref.status_code == 200, pref.text
     assert (await api_client.post(f"/api/v1/tasks/{task_id}/accept-interest")).json()[
@@ -125,7 +131,11 @@ async def test_ledger_stays_held_through_assembling_team(api_client: AsyncClient
 
     pref = await api_client.post(
         f"/api/v1/orders/{order_id}/tasks/{ready['id']}/preferences",
-        json={"ranked_worker_ids": list(_DEMO_RANKED)},
+        json={
+            "ranked_worker_ids": await _rank_from_candidates(
+                api_client, order_id, ready["id"]
+            )
+        },
     )
     assert pref.status_code == 200, pref.text
 
@@ -143,7 +153,11 @@ async def test_ledger_reserved_on_mutual_start(api_client: AsyncClient):
 
     pref = await api_client.post(
         f"/api/v1/orders/{order_id}/tasks/{task_id}/preferences",
-        json={"ranked_worker_ids": list(_DEMO_RANKED)},
+        json={
+            "ranked_worker_ids": await _rank_from_candidates(
+                api_client, order_id, task_id
+            )
+        },
     )
     assert pref.status_code == 200, pref.text
     assert (await api_client.post(f"/api/v1/tasks/{task_id}/accept-interest")).json()[

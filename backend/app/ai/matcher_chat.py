@@ -14,6 +14,13 @@ from typing import Any
 MIN_RANKED = 3
 
 
+def required_ranked_count(candidate_count: int) -> int:
+    """Pilot-friendly floor: need min(3, pool) ranked workers, at least 1 when pool > 0."""
+    if candidate_count <= 0:
+        return 1
+    return max(1, min(MIN_RANKED, candidate_count))
+
+
 @dataclass
 class MatcherTurn:
     """Proposal for one preference-chat turn — not persisted state."""
@@ -119,13 +126,14 @@ def compile_matcher_turn(
     text = _normalize(user_message)
     ordered = list(candidates)
     next_version = version + 1
-    ready = len(ordered) >= MIN_RANKED
+    min_needed = required_ranked_count(len(ordered))
+    ready = len(ordered) >= min_needed
 
     # Confirm intent
     if re.search(r"\b(confirm|finalize|lock in|looks good|these (?:3|three)|submit)\b", text):
-        if len(ordered) < MIN_RANKED:
+        if len(ordered) < min_needed:
             reply = (
-                f"I only have {len(ordered)} candidate(s) ranked — need at least {MIN_RANKED} "
+                f"I only have {len(ordered)} candidate(s) ranked — need at least {min_needed} "
                 "before we can confirm. Ask me to explain the shortlist or wait for more matches."
             )
             return MatcherTurn(
@@ -135,7 +143,7 @@ def compile_matcher_turn(
                 version=version,
             )
         reply = (
-            f"Great — ranking locked for confirm:\n{_ranking_summary(ordered, limit=MIN_RANKED)}\n\n"
+            f"Great — ranking locked for confirm:\n{_ranking_summary(ordered, limit=min_needed)}\n\n"
             "Hit Confirm ranking when you're ready and I'll submit your PreferenceSet."
         )
         return MatcherTurn(
@@ -200,14 +208,14 @@ def compile_matcher_turn(
             f"Updated — {target['full_name']} is now #{new_rank}.\n{_ranking_summary(ordered)}\n\n"
             + (
                 "You have enough for a PreferenceSet. Say confirm when ready."
-                if len(ordered) >= MIN_RANKED
-                else f"Need {MIN_RANKED - len(ordered)} more before confirm."
+                if len(ordered) >= min_needed
+                else f"Need {min_needed - len(ordered)} more before confirm."
             )
         )
         return MatcherTurn(
             candidates=ordered,
             reply=reply,
-            ready_to_confirm=len(ordered) >= MIN_RANKED,
+            ready_to_confirm=len(ordered) >= min_needed,
             version=next_version,
         )
 
@@ -222,7 +230,7 @@ def compile_matcher_turn(
             return MatcherTurn(
                 candidates=ordered,
                 reply=reply,
-                ready_to_confirm=len(ordered) >= MIN_RANKED,
+                ready_to_confirm=len(ordered) >= min_needed,
                 version=next_version,
             )
 

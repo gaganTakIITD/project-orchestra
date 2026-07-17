@@ -153,7 +153,7 @@ API chat is live (`POST /chat/sessions` → 201; messages + SSE work; CORS allow
 
 **UI fix (2026-07-13):** `/proposal/[quoteId]` and `/orders/[orderId]` read Next 16 async `params` via `useParams` (same race class as `/scope`). Without this, finalize succeeded but the proposal page showed “Proposal not found”.
 
-**Talent + chat (2026-07-13 / updated 2026-07-17):** Seeded **10 workers** on Cloud Run — **5 original** campus (`@iitd.ac.in`, verified) + **5 fake** demo fillers (`@orchestra.demo`, unverified). Preferences page uses `useParams`; tracker wires `useDiscussion` / `usePostDiscussion` for per-task team chat.
+**Talent + chat (2026-07-17):** Prod matcher pool is **real registered workers only**. Boot with `AUTH_MODE=clerk` + `AUTO_SEED=true` runs `purge_seed_workers` — deactivates all seed-pool UUIDs that have no Clerk link (`external_auth_id IS NULL`). Pytest still seeds an active pool via `seed_demo_worker_pool`. Preferences page uses `useParams`; tracker wires `useDiscussion` / `usePostDiscussion` for per-task team chat (worker composer unlocks after Accept interest). Prefs min-rank = `min(3, live pool)` (floor 1).
 
 ## Founder-gated next (Phase 3–4 — do not invent credentials)
 
@@ -217,7 +217,7 @@ Local `.env.local` should keep `NEXT_PUBLIC_API_BASE_URL=http://localhost:3000` 
 Run on **prod** (Vercel + Cloud Run) with two Clerk accounts.
 
 1. **Client account** — `/account` → client → `/start` → scope chat → Get quote → confirm → `/orders/{id}`
-2. **Assemble team** — open preferences / matcher chat; rank ≥3 real workers → finalize preferences (task → `invited`)
+2. **Assemble team** — open preferences / matcher chat; rank `min(3, live pool)` real workers (floor 1) → finalize preferences (task → `invited`)
 3. **Worker account** — `/account` → worker → Inbox → Accept interest → Ready to start → Submit
 4. **Client** — accept delivery when order `delivered`
 5. **Admin** (claim/allowlist) — `/admin` → open order events (`event_log` trail)

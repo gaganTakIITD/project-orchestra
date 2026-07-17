@@ -65,13 +65,15 @@ Owner: `founder` (ops) · docs already written in `docs/DEPLOY_API.md`
 
 **Cursor role during Gate 1:** standby for bugs found in smoke only — no new features.
 
+**Smoke bugfix (2026-07-17):** Seeded workers purged from live matcher (`purge_seed_workers` on boot when `AUTH_MODE=clerk`); preferences require `min(3, pool)` ranked workers (floor 1); worker discussion gated until Accept interest; WS invalidation debounced; Gemini HTTP timeout wired.
+
 ---
 
 ### Gate 2 — Campus pilot (ops, not sprints)
 
 After Gate 1 is green:
 
-1. Seed / verify real campus workers via `/admin` (`campus_verified`)
+1. Verify **real** registered campus workers via `/admin` (`campus_verified`) — do **not** re-seed demo talent into the matcher
 2. Run 3–5 concierge outcomes with invited clients (founder as PM if needed)
 3. Log failure modes in `event_log` + a simple pilot notes doc
 4. Keep payments sandbox; use ledger strip for trust narrative only
@@ -108,9 +110,11 @@ Do **not** start these until harden is green. Order matters:
 **Lane rules (invariants):**
 
 - Client **never** sees worker failure states — `rework` reads as "In progress" (`state-labels.ts`).
-- Worker acts **only** on invited/assigned tasks; worker chat posts as worker.
+- Worker acts **only** on invited/assigned tasks; worker discussion opens after **Accept interest** (`assigned_worker_id`); chat posts as worker.
+- Preferences: rank `min(3, live_candidate_pool)` workers (floor **1** when the pool is tiny — pilot with few registered workers).
 - Admin mutating actions unlocked (verify + taxonomy); disputes later polish.
 - Admin role is **never** reachable via `PATCH /auth/role` — Clerk claim / allowlist only.
+- **Matcher pool = real registered workers only** — boot runs `purge_seed_workers` (deactivates unlinked seed UUIDs); pytest still uses `seed_demo_worker_pool`.
 
 ---
 

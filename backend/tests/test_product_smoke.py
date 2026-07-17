@@ -9,7 +9,6 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
-from app.models.identity import DEMO_WORKER_ID
 from app.orchestrator.states import OrderStatus, TaskStatus
 
 # Assets that satisfy Architect deterministic rules across the Launch Studio DAG.
@@ -43,17 +42,17 @@ async def api_client():
         yield client
 
 
-_DEMO_RANKED = [
-    str(DEMO_WORKER_ID),
-    "usr_worker_meera",
-    "usr_worker_kabir",
-]
-
-
 async def _set_preferences(api_client: AsyncClient, order_id: str, task_id: str) -> None:
+    cands = await api_client.get(
+        f"/api/v1/orders/{order_id}/tasks/{task_id}/candidates"
+    )
+    assert cands.status_code == 200, cands.text
+    ids = [c["worker_id"] for c in cands.json()]
+    assert ids, "expected live candidates"
+    need = max(1, min(3, len(ids)))
     pref = await api_client.post(
         f"/api/v1/orders/{order_id}/tasks/{task_id}/preferences",
-        json={"ranked_worker_ids": list(_DEMO_RANKED)},
+        json={"ranked_worker_ids": ids[:need]},
     )
     assert pref.status_code == 200, pref.text
 

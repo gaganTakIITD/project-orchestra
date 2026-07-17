@@ -11,8 +11,9 @@ export default function AccountPage() {
   const authReady = !clerkEnabled || (isReady && isSignedIn);
 
   const { data: user, isPending, isError } = useMe({ enabled: authReady });
+  // Profile row can exist while browsing as client — still show completion %.
   const { data: workerProfile } = useWorkerProfile({
-    enabled: authReady && user?.role === "worker",
+    enabled: authReady && !!user,
   });
 
   if (clerkEnabled && isReady && !isSignedIn) {

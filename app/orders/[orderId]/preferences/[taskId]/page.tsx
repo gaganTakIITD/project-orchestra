@@ -59,8 +59,13 @@ export default function WorkerPreferencesPage() {
   };
 
   const handleSubmit = async () => {
-    if (ranked.length < 3) {
-      setSubmitError("Select at least 3 workers before confirming.");
+    const minNeeded = Math.max(1, Math.min(3, candidates?.length ?? 0));
+    if (ranked.length < minNeeded) {
+      setSubmitError(
+        minNeeded === 1
+          ? "Select at least 1 worker before confirming."
+          : `Select at least ${minNeeded} workers before confirming.`
+      );
       return;
     }
 
@@ -138,8 +143,9 @@ export default function WorkerPreferencesPage() {
             <p className="text-lg font-semibold">No candidates available</p>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Matching needs live workers (≥70% profile, available/busy) whose
-              skills or task types fit this milestone. Seed campus talent via
-              admin verify, or have workers finish onboarding and go live.
+              skills or task types fit this milestone. Have workers finish
+              onboarding and go live — seeded demo talent is no longer in the
+              matcher pool.
             </p>
             <Link
               href={`/orders/${orderId}`}
@@ -155,6 +161,7 @@ export default function WorkerPreferencesPage() {
   }
 
   const unranked = candidates.filter((c) => !ranked.includes(c.worker_id));
+  const minNeeded = Math.max(1, Math.min(3, candidates.length));
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
@@ -166,8 +173,11 @@ export default function WorkerPreferencesPage() {
             </p>
             <h1 className="text-4xl font-bold mb-4">Choose your workers</h1>
             <p className="text-lg text-muted-foreground max-w-2xl">
-              Rank at least 3 workers in order of preference. We&apos;ll invite
-              them starting with your top choice.
+              Rank at least {minNeeded} worker{minNeeded === 1 ? "" : "s"} in
+              order of preference
+              {candidates.length < 3
+                ? " (small live pool — we invite from your ranking)."
+                : ". We'll invite them starting with your top choice."}
             </p>
           </div>
 
@@ -319,17 +329,17 @@ export default function WorkerPreferencesPage() {
                 <button
                   type="button"
                   onClick={() => void handleSubmit()}
-                  disabled={ranked.length < 3 || setPreferences.isPending}
+                  disabled={ranked.length < minNeeded || setPreferences.isPending}
                   className="w-full h-11 bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
                 >
                   {setPreferences.isPending
                     ? "Saving…"
-                    : ranked.length < 3
-                      ? `Need ${3 - ranked.length} more`
+                    : ranked.length < minNeeded
+                      ? `Need ${minNeeded - ranked.length} more`
                       : "Confirm ranking"}
                 </button>
                 <p className="text-xs text-muted-foreground mt-3 text-center">
-                  {ranked.length}/3 minimum selected
+                  {ranked.length}/{minNeeded} minimum selected
                 </p>
               </div>
             </div>

@@ -139,6 +139,7 @@ def test_make_gemini_client_uses_vertex_raystartup(monkeypatch):
     assert captured["vertexai"] is True
     assert captured["project"] == "raystartup"
     assert captured["location"] == "us-central1"
+    assert "http_options" in captured
 
 
 def test_make_gemini_client_rejects_non_vertex(monkeypatch):

@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.models.identity import User
 from app.schemas.fulfillment import FulfillmentTaskOut
 from app.schemas.worker import WorkerProfileOut, WorkerProfileUpsert
-from app.services.auth import get_current_worker
+from app.services.auth import get_current_worker, resolve_user
 from app.services.worker import WorkerService
 
 router = APIRouter(prefix="/workers", tags=["workers"])
@@ -13,20 +13,27 @@ router = APIRouter(prefix="/workers", tags=["workers"])
 
 @router.get("/profile", response_model=WorkerProfileOut)
 async def get_worker_profile(
+    request: Request,
     db: AsyncSession = Depends(get_db),
-    worker: User = Depends(get_current_worker),
 ) -> WorkerProfileOut:
+    """Return the caller's worker profile if it exists (any portal role).
+
+    Resolves identity with prefer_role=worker so demo mode returns the seeded
+    worker without a header; Clerk JWT identity is the same either way, so a
+    hybrid account can still read their profile from /account as client.
+    """
+    user = await resolve_user(db, request, prefer_role="worker")
     service = WorkerService(db)
-    result = await service.get_profile(worker.id)
+    result = await service.get_profile(user.id)
     if result is None:
         raise HTTPException(status_code=404, detail="Worker profile not found")
-    user, profile = result
+    owner, profile = result
     # Persist auto-created empty profiles from get_profile.
     await db.commit()
     from app.services.worker_stats import WorkerStatsService
 
-    tt_stats = await WorkerStatsService(db).list_for_worker(worker.id)
-    return WorkerProfileOut.from_orm_rows(user, profile, task_type_stats=tt_stats)
+    tt_stats = await WorkerStatsService(db).list_for_worker(owner.id)
+    return WorkerProfileOut.from_orm_rows(owner, profile, task_type_stats=tt_stats)
 
 
 @router.patch("/profile", response_model=WorkerProfileOut)

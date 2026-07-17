@@ -138,7 +138,7 @@ async def test_match_includes_live_profile_even_if_portal_role_is_client(db_sess
     )
     await db_session.flush()
 
-    candidates = await match_candidates(db_session, task_type_slug="logo_design")
+    candidates = await match_candidates(db_session, task_type_slug="logo_design", limit=20)
     ids = {c["worker_id"] for c in candidates}
     assert str(live_id) in ids
 

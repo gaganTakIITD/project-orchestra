@@ -70,13 +70,6 @@ async def api_client():
         yield client
 
 
-_DEMO_RANKED = [
-    str(DEMO_WORKER_ID),
-    "usr_worker_meera",
-    "usr_worker_kabir",
-]
-
-
 async def _order_with_ready_task(api_client: AsyncClient) -> tuple[str, str]:
     create = await api_client.post(
         "/api/v1/intents",
@@ -99,10 +92,21 @@ async def _set_preferences(
     ranked_worker_ids: list[str] | None = None,
     headers: dict | None = None,
 ) -> None:
+    hdrs = headers or {}
+    if ranked_worker_ids is None:
+        cands = await api_client.get(
+            f"/api/v1/orders/{order_id}/tasks/{task_id}/candidates",
+            headers=hdrs,
+        )
+        assert cands.status_code == 200, cands.text
+        ids = [c["worker_id"] for c in cands.json()]
+        assert ids, "expected live candidates for preferences"
+        need = max(1, min(3, len(ids)))
+        ranked_worker_ids = ids[:need]
     pref = await api_client.post(
         f"/api/v1/orders/{order_id}/tasks/{task_id}/preferences",
-        json={"ranked_worker_ids": ranked_worker_ids or list(_DEMO_RANKED)},
-        headers=headers or {},
+        json={"ranked_worker_ids": ranked_worker_ids},
+        headers=hdrs,
     )
     assert pref.status_code == 200, pref.text
 
@@ -207,6 +211,49 @@ async def test_discussion_thread(api_client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_worker_discussion_forbidden_until_accept(api_client: AsyncClient):
+    """Invited worker cannot open discussion until Accept interest assigns them."""
+    order_id, task_id = await _order_with_ready_task(api_client)
+    await _set_preferences(api_client, order_id, task_id)
+
+    worker_headers = {"X-Orchestra-Role": "worker"}
+    denied = await api_client.get(
+        f"/api/v1/tasks/{task_id}/discussion",
+        headers=worker_headers,
+    )
+    assert denied.status_code == 403
+
+    denied_post = await api_client.post(
+        f"/api/v1/tasks/{task_id}/discussion",
+        json={"body": "too early", "message_type": "clarification"},
+        headers=worker_headers,
+    )
+    assert denied_post.status_code == 403
+
+    acc = await api_client.post(
+        f"/api/v1/tasks/{task_id}/accept-interest",
+        headers=worker_headers,
+    )
+    assert acc.status_code == 200, acc.text
+
+    ok = await api_client.get(
+        f"/api/v1/tasks/{task_id}/discussion",
+        headers=worker_headers,
+    )
+    assert ok.status_code == 200
+
+    post = await api_client.post(
+        f"/api/v1/tasks/{task_id}/discussion",
+        json={"body": "Hello from assigned worker", "message_type": "clarification"},
+        headers=worker_headers,
+    )
+    assert post.status_code == 200, post.text
+    assert any(
+        m["body"].startswith("Hello from assigned") for m in post.json()["messages"]
+    )
+
+
+@pytest.mark.asyncio
 async def test_assigned_worker_discussion_attributed_as_worker_even_if_db_role_client(
     api_client: AsyncClient, monkeypatch
 ):
@@ -253,11 +300,90 @@ async def test_assigned_worker_discussion_attributed_as_worker_even_if_db_role_c
     worker_id = switch.json()["id"]
     assert worker_id != client_id
 
+    # Go live so Matcher includes this Clerk worker in candidates.
+    live = await api_client.post(
+        "/api/v1/workers/profile",
+        headers=worker_headers,
+        json={
+            "full_name": "Disc Worker",
+            "community_type": "design",
+            "headline": "Logo systems for campus startups and pilots",
+            "bio": "I design crisp brand marks and reusable identity kits for early products.",
+            "availability_status": "available",
+            "weekly_hours_available": 15,
+            "max_concurrent_tasks": 2,
+            "payout_min": 2000,
+            "payout_max": 5000,
+            "is_active": True,
+            "figma_url": "https://figma.com/@discworker",
+            "skills": [
+                {
+                    "skill_id": "skill_logo",
+                    "name": "Logo Design",
+                    "proficiency": "expert",
+                    "years_experience": 3,
+                },
+                {
+                    "skill_id": "skill_brand",
+                    "name": "Brand Identity",
+                    "proficiency": "advanced",
+                },
+                {"skill_id": "skill_figma", "name": "Figma", "proficiency": "advanced"},
+            ],
+            "tools": [
+                {"tool_id": "tool_figma", "name": "Figma", "proficiency": "expert"},
+                {"tool_id": "tool_ai", "name": "Illustrator", "proficiency": "advanced"},
+            ],
+            "task_types": [
+                {
+                    "task_type_id": "tt_logo",
+                    "name": "Logo Design",
+                    "slug": "logo_design",
+                    "proficiency": "expert",
+                },
+                {
+                    "task_type_id": "tt_brand",
+                    "name": "Brand Identity",
+                    "slug": "brand_identity",
+                    "proficiency": "advanced",
+                },
+            ],
+            "portfolio": [
+                {
+                    "id": "pf_disc",
+                    "title": "Sample mark",
+                    "description": "Campus brand system",
+                    "tags": ["logo"],
+                    "tools_used": ["Figma"],
+                    "is_featured": True,
+                }
+            ],
+        },
+    )
+    assert live.status_code == 200, live.text
+    assert live.json()["is_active"] is True
+
+    # Drop seeded talent so the live Clerk worker is in the candidate shortlist
+    # (default matcher limit=10 otherwise buries a new profile under 10 seeds).
+    from app.db.seed import purge_seed_workers
+    from app.db.session import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        await purge_seed_workers(session)
+
+    cands = await api_client.get(
+        f"/api/v1/orders/{order_id}/tasks/{task_id}/candidates",
+        headers=client_headers,
+    )
+    assert cands.status_code == 200, cands.text
+    cand_ids = [c["worker_id"] for c in cands.json()]
+    assert worker_id in cand_ids, cand_ids
+
     await _set_preferences(
         api_client,
         order_id,
         task_id,
-        ranked_worker_ids=[worker_id, "usr_worker_meera", "usr_worker_kabir"],
+        ranked_worker_ids=[worker_id],
         headers=client_headers,
     )
 

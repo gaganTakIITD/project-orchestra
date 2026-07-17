@@ -141,13 +141,35 @@ async def seed_demo_client(session: AsyncSession) -> None:
         await session.commit()
 
 
-async def seed_demo_worker(session: AsyncSession) -> None:
-    """Seed exactly 10 matcher profiles: 5 original campus + 5 fake demo fillers.
+async def purge_seed_workers(session: AsyncSession) -> None:
+    """Deactivate all seeded workers so they leave the live matcher pool.
+
+    Safety: only touch seed-pool UUIDs with no Clerk link (`external_auth_id IS NULL`).
+    Never deactivates a real registered account that collided onto a seed email/id.
+    """
+    for user_id in SEED_WORKER_POOL_IDS:
+        user = await session.get(User, user_id)
+        if user is None:
+            continue
+        if user.external_auth_id is not None:
+            continue
+        user.is_active = False
+        profile = await session.get(WorkerProfileRecord, user_id)
+        if profile is not None:
+            profile.is_active = False
+    await session.commit()
+
+
+async def seed_demo_worker_pool(session: AsyncSession) -> None:
+    """Create exactly 10 matcher profiles for pytest / local demo auth.
 
     Originals (campus_verified=True, @iitd.ac.in):
       Rohan, Meera, Kabir, Aisha, Arjun
     Fakes (campus_verified=False, @orchestra.demo):
       Jaya, Neel, Ria, Sam, Lex
+
+    Production boot must call ``purge_seed_workers`` instead — seeds stay out of
+    the live matcher pool.
     """
     user = await session.get(User, DEMO_WORKER_ID)
     if user is None:
@@ -574,3 +596,7 @@ async def _ensure_pool_worker(
             },
         )
     )
+
+
+# Backward-compatible alias — tests historically imported ``seed_demo_worker``.
+seed_demo_worker = seed_demo_worker_pool

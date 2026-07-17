@@ -88,7 +88,8 @@ class CandidateOut(BaseModel):
 
 
 class SetPreferencesIn(BaseModel):
-    ranked_worker_ids: list[str] = Field(min_length=3)
+    # Floor 1 for small pilot pools; service enforces min(3, candidate_count).
+    ranked_worker_ids: list[str] = Field(min_length=1)
 
 
 class PreferenceEntryOut(BaseModel):
