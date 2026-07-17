@@ -1,8 +1,8 @@
-# Deploy template for INFRA project raystartup (30k free credits).
+# Deploy template for INFRA project raystartup (GCP free trial).
 # Cloud SQL: raystartup:us-central1:orchestra-trial-pg
-# AI: Vertex Gemini via Cloud Run SA → project gen-lang-client (95k) — NO raw API key.
-# Cutover: docs/GCP_BILLING_SPLIT.md — deploy with:
-#   gcloud run services replace … --project=raystartup
+# Standalone Vertex Gemini: project raystartup (ADC) — NOT gen-lang-client.
+# gen-lang-client ₹95.7k credit = Agent Builder Search/Conversation ONLY.
+# See docs/GCP_BILLING_SPLIT.md
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
@@ -28,8 +28,7 @@ spec:
               cpu: "1"
               memory: 1Gi
           env:
-            # Secrets: DB + app only in raystartup Secret Manager.
-            # Do NOT bind GEMINI_API_KEY — use Vertex ADC (see GCP_BILLING_SPLIT.md).
+            # DB + app secrets only — no GEMINI_API_KEY.
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -43,7 +42,7 @@ spec:
             - name: GEMINI_AUTH
               value: vertex
             - name: VERTEX_PROJECT
-              value: gen-lang-client-0795401430
+              value: raystartup
             - name: VERTEX_LOCATION
               value: us-central1
             - name: CLOUD_SQL_INSTANCE

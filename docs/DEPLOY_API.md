@@ -1,14 +1,16 @@
 # Hosting the API (Cloud Run + Cloud SQL Postgres)
 
-## Billing split (required)
+## Billing split (strict)
 
 | Workload | Project | Reason |
 |----------|---------|--------|
-| **Gemini / GenAI** | `gen-lang-client-0795401430` via **Vertex + SA** | ~95k GenAI free credits — **no raw API key** |
-| **Cloud SQL, Cloud Run, Artifact Registry, VPC, Scheduler** | `raystartup` | ~30k infra free credits → ₹0 on those line items |
-| **Target SQL** | `raystartup:us-central1:orchestra-trial-pg` | Instance on the **30k-credit** project (reuse) |
+| **Cloud SQL, Cloud Run, AR, standalone Gemini (SDK / Model Garden)** | `raystartup` | Free trial → ₹0; ₹95.7k does **not** cover these |
+| **Vertex AI Agent Builder Search / Conversation only** | `gen-lang-client-0795401430` | **Only** SKUs covered by ₹95.7k GenAI App Builder credit |
+| **Target SQL** | `raystartup:us-central1:orchestra-trial-pg` | Infra home |
 
-Full cutover runbook: **`docs/GCP_BILLING_SPLIT.md`**. Until cutover completes, the Live table below is still on gen-lang-client (you pay for SQL/Run there). Deploy YAML already points at raystartup SQL.
+**Do not** put Orchestra Cloud Run/SQL or `generate_content` Gemini on gen-lang-client — you pay cash; the promotional credit will not apply.
+
+Full rules + cutover: **`docs/GCP_BILLING_SPLIT.md`**.
 
 ## Live (pre-cutover — gen-lang-client API still serving)
 
@@ -48,9 +50,9 @@ Committed deploy YAML must **not** contain DB passwords or `SECRET_KEY`. Live se
 | `SECRET_KEY` | `orchestra-secret-key` |
 | ~~`GEMINI_API_KEY`~~ | ~~`orchestra-gemini-api-key`~~ — **legacy; do not use for cutover** |
 
-**Target AI auth:** Vertex + Cloud Run SA (ADC) against project `gen-lang-client-0795401430` — **no raw API key**. See `docs/GCP_BILLING_SPLIT.md`.
+**Target AI auth:** Vertex + Cloud Run SA (ADC) against project **`raystartup`** — **no raw API key**. ₹95.7k on gen-lang-client is Agent Builder only — see `docs/GCP_BILLING_SPLIT.md`.
 
-Runtime SA (today on gen-lang-client: `979112189932-compute@…`; after cutover: raystartup runtime SA) needs `roles/secretmanager.secretAccessor` on DB/app secrets, and **`roles/aiplatform.user` on gen-lang-client** for Vertex.
+Runtime SA (raystartup) needs `roles/secretmanager.secretAccessor` on DB/app secrets and **`roles/aiplatform.user` on raystartup** for Vertex.
 
 Rotate (do not commit values):
 
@@ -141,15 +143,17 @@ API chat is live (`POST /chat/sessions` → 201; messages + SSE work; CORS allow
 
 ### Gemini / Vertex (Cloud Run) — **no direct API key**
 
-**Policy:** production AI on gen-lang-client via **Vertex + Cloud Run service account (ADC)**. Do **not** paste an AI Studio API key for the raystartup cutover.
+**Policy:** Orchestra standalone Gemini runs on **`raystartup`** via Vertex + Cloud Run SA (ADC). Do **not** paste an AI Studio API key.
 
-**Founder billing (gen-lang-client):** GenAI App Builder trial **₹95,700 @ 100% remaining**. Same project still shows paid **Cloud SQL / Cloud Run** (move to raystartup) plus small **Gemini API** + **Vertex AI** lines. Prefer Vertex-only so the trial credit can apply; infra must leave this project.
+**₹95.7k GenAI App Builder (gen-lang-client)** covers **only** Vertex AI Agent Builder **Search** and **Conversation**. It does **not** cover SDK / Model Garden Gemini, Cloud Run, or Cloud SQL. Do not route Orchestra `generate_content` to gen-lang-client expecting that credit.
 
-**Target env:** `GEMINI_AUTH=vertex`, `VERTEX_PROJECT=gen-lang-client-0795401430`, `VERTEX_LOCATION=us-central1`.
+**Target env:** `GEMINI_AUTH=vertex`, `VERTEX_PROJECT=raystartup`, `VERTEX_LOCATION=us-central1`.
 
-**IAM:** raystartup Cloud Run runtime SA → `roles/aiplatform.user` on `gen-lang-client-0795401430`.
+**IAM:** raystartup Cloud Run runtime SA → `roles/aiplatform.user` on **`raystartup`**.
 
-**Repo history:** deploy YAML once referenced secret `orchestra-gemini-api-key`; Python still uses `genai.Client(api_key=…)`. Live console may never have had a key — billing shows both Gemini API and Vertex SKUs. Switch code to Vertex ADC either way.### Clerk (Vercel + Cloud Run) — founder checklist
+Repo still has `genai.Client(api_key=…)` until Vertex ADC lands — tracked in `docs/GCP_BILLING_SPLIT.md`.
+
+### Clerk (Vercel + Cloud Run) — founder checklist
 
 **Cursor-complete:** `AUTH_MODE=demo|clerk` backend + `@clerk/nextjs` frontend + mock-JWKS pytest (`backend/tests/test_auth.py`). Committed `cloudrun-service.yaml` is a **deploy template only** (may still show `AUTH_MODE=demo`); it is **not** the live service config. Do **not** invent or commit Clerk secrets.
 
@@ -222,7 +226,7 @@ Local/dev: `POST http://localhost:8000/api/v1/internal/timers/tick` or set `TIME
 
 ### Founder cost cleanup
 
-1. **Billing split (primary):** point Cloud Run at **`raystartup:us-central1:orchestra-trial-pg`** and deploy API in project `raystartup`. Keep Gemini on **gen-lang-client**. Runbook: `docs/GCP_BILLING_SPLIT.md`.
+1. **Billing split (primary):** move Cloud Run + SQL + **standalone Gemini** to **`raystartup`**. Use gen-lang-client **only** for Agent Builder Search/Conversation (₹95.7k). Runbook: `docs/GCP_BILLING_SPLIT.md`.
 2. After cutover: delete `orchestra-pg` on gen-lang-client (stops paid Postgres there).
 3. Confirm then: `gcloud sql instances delete raysql --project=gen-lang-client-0795401430 --quiet` (leftover MySQL — not Orchestra).
 
