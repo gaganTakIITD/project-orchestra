@@ -19,7 +19,7 @@
 | **Product loop (code)** | Shipped end-to-end on live API: scope → quote → confirm → invite → work → deliver → accept |
 | **Market features (code)** | Amendments, admin verify/taxonomy, reputation/media, email/Sentry, Razorpay **sandbox**, disputes/PM tick, RAG — all `[x]` |
 | **Live stack** | Clerk + Cloud Run + Cloud SQL (`orchestra-trial-pg`) on **raystartup** + Vercel + Vertex — up (`/health` OK) |
-| **What's actually left** | **Founder-gated ops** (prod smoke, gen-lang-client teardown when IAM allows); then pilot |
+| **What's actually left** | **Founder-gated ops** (prod dual-account smoke); then pilot. SQL teardown on gen-lang-client done. |
 | **Billing** | raystartup trial → Run/SQL/Vertex Gemini; gen-lang-client ₹95.7k = Agent Builder only — `docs/GCP_BILLING_SPLIT.md` |
 | **Payments** | Stay `PAYMENTS_ENABLED=false` until harden passes — sandbox ledger only |
 
@@ -35,7 +35,7 @@ Resolve these so agents don't invent policy. Defaults in parentheses are the lea
 
 | # | Decision | Options / default | Blocks |
 |---|----------|-------------------|--------|
-| D1 | **Delete `raysql`?** | Yes (recommended — unused expensive MySQL leftover) vs keep | Cost only; not product |
+| D1 | **Delete `raysql`?** | **Done (2026-07-17)** — deleted with `orchestra-pg` | Cost cleanup done |
 | D8 | **Dual-account credit split** | Orchestra on **raystartup** (trial: Run/SQL/**Vertex Gemini**; never AI Studio). gen-lang-client = Agent Builder Search/Conversation only (₹95.7k) | `docs/GCP_BILLING_SPLIT.md` |
 | D2 | **Warranty window** after delivery | e.g. 7 / 14 / 30 days (**default: 14**) | Dispute UX copy + timer policy later |
 | D3 | **Revision limit defaults per SKU** | e.g. Launch Studio = 2 rounds (**default: 2**) | Quote/amendment expectations |
@@ -59,9 +59,9 @@ Owner: `founder` (ops) · docs already written in `docs/DEPLOY_API.md`
 - [x] **Billing cutover (2026-07-17):** API on raystartup — https://orchestra-api-444869825431.us-central1.run.app; Vercel bound; Vertex + Clerk live
 - [!] **Founder: run dual-account smoke on prod** (client + worker + admin `event_log` + notifications + ledger strip)
 - [x] **Founder: Cloud Scheduler** `orchestra-timer-tick` on raystartup (5 min)
-- [!] **Founder: delete gen-lang-client Orchestra infra** — blocked (no IAM on `gen-lang-client-0795401430` for `gagantak000@gmail.com`); owner must delete `orchestra-api`, `orchestra-pg`, confirm `raysql`
+- [x] **Founder: delete gen-lang-client SQL** — `orchestra-pg` + `raysql` **gone** (2026-07-17). Confirm old Cloud Run `orchestra-api` deleted too if it still exists.
 
-**Done when:** Non-engineer completes one full outcome on prod with two Clerk accounts; admin sees `event_log`; timers tick; **Orchestra bills on raystartup**; gen-lang-client has **no** Orchestra Cloud Run/SQL.
+**Done when:** Non-engineer completes one full outcome on prod with two Clerk accounts; admin sees `event_log`; timers tick; **Orchestra bills only on raystartup**.
 
 **Cursor role during Gate 1:** standby for bugs found in smoke only — no new features.
 
@@ -131,7 +131,7 @@ Do **not** start these until harden is green. Order matters:
 
 ### LEFT (this chapter)
 
-- Gate 1 founder ops (prod smoke, **gen-lang-client teardown when IAM allows**)
+- Gate 1 founder ops (prod dual-account smoke)
 - Gate 0 product decisions D1–D8 (mostly policy; D5 already implemented; **D8 billing split is cost-critical**)
 - Payments stay sandbox until Gate 1 green
 
@@ -181,7 +181,8 @@ Mobile apps, Redis multi-instance WS fan-out, full TDS productization, Meilisear
 - [!] Run prod dual-account smoke (`docs/DEPLOY_API.md` — Campus dual-account smoke checklist)
 - [x] Billing cutover to raystartup (`docs/GCP_BILLING_SPLIT.md`, live API `444869825431`)
 - [x] Cloud Scheduler `orchestra-timer-tick` on raystartup
-- [!] Delete gen-lang-client `orchestra-api` / `orchestra-pg` / `raysql` — **IAM blocked**; needs project owner
+- [x] Delete gen-lang-client `orchestra-pg` + `raysql` (2026-07-17)
+- [!] Confirm old Cloud Run `orchestra-api` on gen-lang-client is deleted (if still listed)
 - [!] Optional hygiene: rotate Clerk keys if they were ever pasted in chat
 
 ---

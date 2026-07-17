@@ -246,7 +246,8 @@ Leave gen-lang-client for **Agent Builder** work only.
 - [x] Code: Vertex ADC via `GEMINI_AUTH=vertex` / `VERTEX_PROJECT=raystartup`
 - [x] Deploy template: no `GEMINI_API_KEY`; Vertex env on raystartup
 - [x] **Cutover live (2026-07-17):** https://orchestra-api-444869825431.us-central1.run.app + Vercel bound
-- [!] **Teardown blocked:** delete gen-lang-client `orchestra-api` / `orchestra-pg` — IAM denied for `gagantak000@gmail.com`
+- [x] **SQL teardown:** gen-lang-client `orchestra-pg` + `raysql` deleted (2026-07-17)
+- [!] Confirm old Cloud Run `orchestra-api` on gen-lang-client deleted if still listed
 - [ ] Later (optional): Agent Builder features on gen-lang-client to use ₹95.7k
 
 ## Live production (post-cutover)

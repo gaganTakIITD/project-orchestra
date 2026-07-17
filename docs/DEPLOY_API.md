@@ -29,13 +29,13 @@ Full rules + cutover: **`docs/GCP_BILLING_SPLIT.md`**.
 | **Frontend** | https://project-orchestra-khaki.vercel.app |
 | **Vercel API bind** | `NEXT_PUBLIC_API_BASE_URL=https://orchestra-api-444869825431.us-central1.run.app/api/v1` (production + preview) |
 
-### Legacy (gen-lang-client — tear down when IAM allows)
+### Legacy (gen-lang-client — SQL teardown done 2026-07-17)
 
 | | |
 |--|--|
-| **Old API** | https://orchestra-api-979112189932.us-central1.run.app — **stop using** |
-| **Old SQL** | `gen-lang-client-0795401430:us-central1:orchestra-pg` — delete to stop billing |
-| **Blocked** | `gagantak000@gmail.com` has no IAM on `gen-lang-client-0795401430`; owner must delete `orchestra-api`, `orchestra-pg`, confirm `raysql` |
+| **Old SQL** | `orchestra-pg` + `raysql` — **deleted** |
+| **Old Cloud Run** | Confirm `orchestra-api` removed on `gen-lang-client-0795401430` if it still appears in console |
+| **gen-lang-client role** | Agent Builder Search/Conversation only (₹95.7k) — no Orchestra hosting |
 
 ## Why `raysql` kept failing
 
@@ -45,13 +45,9 @@ Full rules + cutover: **`docs/GCP_BILLING_SPLIT.md`**.
 
 Also avoid Cloud Run `/cloudsql/...` Unix sockets with asyncpg — they raise `NotADirectoryError` on gen2. Use the **Cloud SQL Python Connector + private IP + Serverless VPC Access**.
 
-## Cost note — `raysql` delete (founder confirm)
+## Cost note — `raysql` / `orchestra-pg`
 
-`raysql` is `db-perf-optimized-N-8` (Enterprise Plus MySQL) — expensive if unused. **Not deleted yet** (needs founder confirm). When ready:
-
-```bash
-gcloud sql instances delete raysql --project=gen-lang-client-0795401430 --quiet
-```
+Both deleted from gen-lang-client (2026-07-17). Orchestra Postgres is only `raystartup:us-central1:orchestra-trial-pg`.
 
 ## Secrets (Secret Manager)
 
@@ -258,7 +254,6 @@ Local/dev: `POST http://localhost:8000/api/v1/internal/timers/tick` or set `TIME
 ### Founder cost cleanup
 
 1. **Done:** Orchestra on **raystartup** (trial-eligible).
-2. **Blocked:** delete `orchestra-api` / `orchestra-pg` on **gen-lang-client** — needs IAM on that project (`gagantak000@gmail.com` denied).
-3. When access granted: `gcloud sql instances delete orchestra-pg --project=gen-lang-client-0795401430 --quiet` and `gcloud run services delete orchestra-api --region=us-central1 --project=gen-lang-client-0795401430 --quiet`.
-4. Confirm then delete `raysql` if still unused.
+2. **Done:** `orchestra-pg` + `raysql` deleted on gen-lang-client (2026-07-17).
+3. **Optional:** delete leftover Cloud Run `orchestra-api` on gen-lang-client if still present.
 
