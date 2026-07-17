@@ -4,7 +4,7 @@
 
 | Workload | Project | Reason |
 |----------|---------|--------|
-| **Gemini / GenAI** | `gen-lang-client-0795401430` | ~95k GenAI free credits |
+| **Gemini / GenAI** | `gen-lang-client-0795401430` via **Vertex + SA** | ~95k GenAI free credits — **no raw API key** |
 | **Cloud SQL, Cloud Run, Artifact Registry, VPC, Scheduler** | `raystartup` | ~30k infra free credits → ₹0 on those line items |
 | **Target SQL** | `raystartup:us-central1:orchestra-trial-pg` | Instance on the **30k-credit** project (reuse) |
 
@@ -139,20 +139,17 @@ API chat is live (`POST /chat/sessions` → 201; messages + SSE work; CORS allow
 
 ## Founder-gated next (Phase 3–4 — do not invent credentials)
 
-### Gemini (Cloud Run)
+### Gemini / Vertex (Cloud Run) — **no direct API key**
 
-**Status (2026-07-13):** Secret Manager secret `orchestra-gemini-api-key` is configured; Cloud Run `orchestra-api` binds env `GEMINI_API_KEY` via `secretKeyRef` (not plaintext). Runtime SA has `secretAccessor`.
+**Policy:** production AI on gen-lang-client via **Vertex + Cloud Run service account (ADC)**. Do **not** paste an AI Studio API key for the raystartup cutover.
 
-Rotate (do not commit values; on Windows avoid PowerShell `echo` — write bytes to a temp file):
+**Founder billing (gen-lang-client):** GenAI App Builder trial **₹95,700 @ 100% remaining**. Same project still shows paid **Cloud SQL / Cloud Run** (move to raystartup) plus small **Gemini API** + **Vertex AI** lines. Prefer Vertex-only so the trial credit can apply; infra must leave this project.
 
-```bash
-gcloud secrets versions add orchestra-gemini-api-key --data-file=tmp --project=gen-lang-client-0795401430
-gcloud run services update orchestra-api --region=us-central1 \
-  --update-secrets=GEMINI_API_KEY=orchestra-gemini-api-key:latest \
-  --project=gen-lang-client-0795401430
-```
+**Target env:** `GEMINI_AUTH=vertex`, `VERTEX_PROJECT=gen-lang-client-0795401430`, `VERTEX_LOCATION=us-central1`.
 
-### Clerk (Vercel + Cloud Run) — founder checklist
+**IAM:** raystartup Cloud Run runtime SA → `roles/aiplatform.user` on `gen-lang-client-0795401430`.
+
+**Repo history:** deploy YAML once referenced secret `orchestra-gemini-api-key`; Python still uses `genai.Client(api_key=…)`. Live console may never have had a key — billing shows both Gemini API and Vertex SKUs. Switch code to Vertex ADC either way.### Clerk (Vercel + Cloud Run) — founder checklist
 
 **Cursor-complete:** `AUTH_MODE=demo|clerk` backend + `@clerk/nextjs` frontend + mock-JWKS pytest (`backend/tests/test_auth.py`). Committed `cloudrun-service.yaml` is a **deploy template only** (may still show `AUTH_MODE=demo`); it is **not** the live service config. Do **not** invent or commit Clerk secrets.
 

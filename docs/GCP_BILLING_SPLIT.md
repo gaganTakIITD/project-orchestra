@@ -94,13 +94,28 @@ client = genai.Client(
 
 ### Today vs target (honest)
 
-| | **Today (live)** | **Target (this split)** |
-|--|------------------|-------------------------|
-| API + DB | gen-lang-client (`orchestra-pg`) — **paying** | raystartup (`orchestra-trial-pg`) — **30k** |
-| Gemini auth | **`GEMINI_API_KEY`** via Secret Manager | **Vertex + SA (ADC)** — **no raw key** |
-| GenAI billing | gen-lang-client key usage | Vertex on gen-lang-client (**95k**) |
+| | **Today (live on gen-lang-client)** | **Target** |
+|--|-------------------------------------|------------|
+| API + DB | `orchestra-pg` + Cloud Run — **paying** (SQL ₹127, Run residual ₹52 in Jul snapshot) | raystartup `orchestra-trial-pg` + Cloud Run — **30k infra** |
+| AI billing lines | **Both** appear: Gemini API (~₹42) + Vertex AI (~₹9) | Prefer **Vertex only** on gen-lang-client so GenAI App Builder credits can apply |
+| GenAI App Builder credit | **₹95,700 still 100% remaining** — not offsetting the paid Gemini/Vertex/SQL lines above | Route AI through Vertex SKUs that the trial credit covers; keep infra off this project |
+| Orchestra **repo** AI client | `genai.Client(api_key=…)` in `gateway.py` / `scope_guard.py` | `genai.Client(vertexai=True, project=gen-lang-client-…)` via Cloud Run SA |
 
-Code still constructs `genai.Client(api_key=…)` in `backend/app/ai/gateway.py` / `scope_guard.py`. Cutover includes switching that to Vertex ADC and removing `GEMINI_API_KEY` from Cloud Run.
+**Auth note (looked back):** The committed deploy template historically bound env `GEMINI_API_KEY` ← Secret Manager `orchestra-gemini-api-key`, and the Python client always used `api_key=`. That does **not** prove a key was pasted in the live console — live env can differ from git. Billing **does** show a **Gemini API** line (typical Generative Language / AI Studio path) **and** a smaller **Vertex AI** line on the same project. Target remains: **Vertex + SA only, no raw API key.**
+
+### gen-lang-client July billing snapshot (founder)
+
+| Service | Subtotal (≈) | Notes |
+|---------|--------------|--------|
+| Cloud SQL | ₹127 | **Move off** → raystartup |
+| Cloud Run | ₹52 after savings | **Move off** → raystartup |
+| Gemini API | ₹42 | AI — keep on this project; align to Vertex/credit SKU |
+| Artifact Registry | ₹17 | Move with Cloud Run |
+| Vertex AI | ₹9 | AI — keep; prefer this path |
+| Networking | ₹0 after savings | — |
+| **GenAI App Builder trial** | ₹95,700 remaining (100%) | Available — not consuming the infra lines above |
+
+Infra (SQL/Run/AR) should leave this project. AI stays here under the GenAI offer.
 
 ## Target ownership
 
