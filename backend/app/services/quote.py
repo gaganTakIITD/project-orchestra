@@ -63,7 +63,9 @@ class QuoteService:
         )
 
         fulfillment = FulfillmentService(self.session)
-        await fulfillment.build_plan(order=order, spec=spec)
+        # Confirm must return fast — Spec is already frozen; use fixture DAG/packets
+        # instead of N sequential Vertex calls that hang the proposal UI.
+        await fulfillment.build_plan(order=order, spec=spec, force_fixtures=True)
 
         await self.session.flush()
         return order

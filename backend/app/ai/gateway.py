@@ -266,11 +266,16 @@ def generate_plan_proposal(
     revision_limit: int,
     order_price: Decimal | float | None = None,
     spec: dict[str, Any] | None = None,
+    force_fixtures: bool = False,
 ) -> PlanProposal:
-    """Propose a fulfillment plan DAG (fixture or Gemini overlay + validate_dag)."""
+    """Propose a fulfillment plan DAG (fixture or Gemini overlay + validate_dag).
+
+    ``force_fixtures`` is used on quote accept so Confirm & begin work returns in
+    milliseconds (OutcomeSpec is already Gemini-quality; DAG skeleton is enough).
+    """
     spec = spec or {}
-    if not settings.gemini_enabled:
-        if settings.gemini_required:
+    if force_fixtures or not settings.gemini_enabled:
+        if not force_fixtures and settings.gemini_required:
             raise GeminiNotConfiguredError(
                 f"Vertex Gemini required for Architect — {_VERTEX_REQUIRED}"
             )
@@ -315,10 +320,11 @@ def generate_task_packet_proposal(
     order_deadline: datetime | None,
     revision_limit: int,
     dependency_titles: list[str] | None = None,
+    force_fixtures: bool = False,
 ) -> PacketProposal:
     """Propose Charter + TaskPacket fields (fixture or Gemini structured JSON)."""
-    if not settings.gemini_enabled:
-        if settings.gemini_required:
+    if force_fixtures or not settings.gemini_enabled:
+        if not force_fixtures and settings.gemini_required:
             raise GeminiNotConfiguredError(
                 f"Vertex Gemini required for Task Packet Generator — {_VERTEX_REQUIRED}"
             )

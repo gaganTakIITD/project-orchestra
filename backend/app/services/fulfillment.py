@@ -28,7 +28,13 @@ class FulfillmentService:
         self.session = session
         self.events = EventWriter(session)
 
-    async def build_plan(self, *, order: OutcomeOrder, spec: OutcomeSpecRecord) -> FulfillmentPlan:
+    async def build_plan(
+        self,
+        *,
+        order: OutcomeOrder,
+        spec: OutcomeSpecRecord,
+        force_fixtures: bool = False,
+    ) -> FulfillmentPlan:
         existing = await self.session.scalar(
             select(FulfillmentPlan.id).where(FulfillmentPlan.order_id == order.id)
         )
@@ -51,6 +57,7 @@ class FulfillmentService:
                 "deliverables": spec.deliverables or [],
                 "acceptance_criteria": spec.acceptance_criteria or [],
             },
+            force_fixtures=force_fixtures,
         )
         blueprint = proposal.plan
 
@@ -131,6 +138,7 @@ class FulfillmentService:
                 task=task,
                 spec_dict=spec_dict,
                 dependency_titles=dep_titles,
+                force_fixtures=force_fixtures,
             )
 
         await self.events.emit(
@@ -154,6 +162,7 @@ class FulfillmentService:
         task: FulfillmentTask,
         spec_dict: dict,
         dependency_titles: list[str],
+        force_fixtures: bool = False,
     ) -> tuple[CharterRecord, TaskPacketRecord]:
         proposal = generate_task_packet_proposal(
             order_id=order.id,
@@ -163,6 +172,7 @@ class FulfillmentService:
             order_deadline=order.deadline,
             revision_limit=order.revision_limit,
             dependency_titles=dependency_titles,
+            force_fixtures=force_fixtures,
         )
         charter_fields = proposal.charter
         packet_fields = proposal.packet
