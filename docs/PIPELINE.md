@@ -57,6 +57,7 @@ Owner: `founder` (ops) · docs already written in `docs/DEPLOY_API.md`
 - [x] Notifications UI (badge + list) on `WorkspaceHeader`
 - [x] Browser smoke checklist documented
 - [x] **Billing cutover (2026-07-17):** API on raystartup — https://orchestra-api-444869825431.us-central1.run.app; Vercel bound; Vertex + Clerk live
+- [~] **Retire seed demo workers in prod** — `AUTO_SEED` deactivates the 10 Rohan/…/Lex fillers so live Clerk profiles surface in assemble (`Cursor/retire-seed-workers-878c`). Redeploy API to apply. Matcher preferences (D4) still open.
 - [!] **Founder: run dual-account smoke on prod** (client + worker + admin `event_log` + notifications + ledger strip)
 - [x] **Founder: Cloud Scheduler** `orchestra-timer-tick` on raystartup (5 min)
 - [x] **Founder: delete gen-lang-client SQL** — `orchestra-pg` + `raysql` **gone** (2026-07-17). Confirm old Cloud Run `orchestra-api` deleted too if it still exists.

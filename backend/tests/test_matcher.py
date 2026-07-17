@@ -83,6 +83,33 @@ async def test_seed_keeps_ten_profiles_five_original_five_fake(db_session):
 
 
 @pytest.mark.asyncio
+async def test_production_seed_retires_demo_pool(db_session, monkeypatch):
+    """Prod AUTO_SEED must deactivate demos so real Clerk workers can surface."""
+    from app.config import settings
+    from app.db.seed import seed_demo_worker
+
+    monkeypatch.setattr(settings, "app_env", "production")
+    await seed_demo_worker(db_session)
+
+    result = await db_session.execute(
+        select(WorkerProfileRecord).where(
+            WorkerProfileRecord.user_id.in_(SEED_WORKER_POOL_IDS)
+        )
+    )
+    profiles = list(result.scalars().all())
+    assert len(profiles) == 10
+    for profile in profiles:
+        assert profile.is_active is False
+        assert profile.availability_status == "offline"
+
+    users = await db_session.execute(
+        select(User).where(User.id.in_(SEED_WORKER_POOL_IDS))
+    )
+    for user in users.scalars().all():
+        assert user.is_active is False
+
+
+@pytest.mark.asyncio
 async def test_match_includes_live_profile_even_if_portal_role_is_client(db_session):
     """Going live as worker then switching to client must not drop you from matching."""
     live_id = uuid.UUID("00000000-0000-4000-8000-0000000000aa")

@@ -4,6 +4,7 @@ from decimal import Decimal
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models.catalog import OutcomeSku, Skill, TaskType, Tool
 from app.models.identity import (
     DEMO_CLIENT_ID,
@@ -141,14 +142,56 @@ async def seed_demo_client(session: AsyncSession) -> None:
         await session.commit()
 
 
+async def retire_seed_worker_pool(session: AsyncSession) -> None:
+    """Deactivate seeded demo workers so they do not appear in assemble.
+
+    Used in production (and callable from tests). Idempotent.
+    """
+    for worker_id in SEED_WORKER_POOL_IDS:
+        user = await session.get(User, worker_id)
+        if user is not None:
+            user.is_active = False
+        profile = await session.get(WorkerProfileRecord, worker_id)
+        if profile is not None:
+            profile.is_active = False
+            profile.availability_status = "offline"
+
+    # Any other leftover demo emails in the seed UUID band
+    seeded_range = await session.execute(
+        select(User).where(
+            User.role == "worker",
+            or_(
+                User.email.like("%@iitd.ac.in"),
+                User.email.like("%@orchestra.demo"),
+            ),
+        )
+    )
+    for row in seeded_range.scalars().all():
+        if str(row.id).startswith("00000000-0000-4000-8000-00000000002"):
+            row.is_active = False
+            profile = await session.get(WorkerProfileRecord, row.id)
+            if profile is not None:
+                profile.is_active = False
+                profile.availability_status = "offline"
+
+    await session.commit()
+
+
 async def seed_demo_worker(session: AsyncSession) -> None:
-    """Seed exactly 10 matcher profiles: 5 original campus + 5 fake demo fillers.
+    """Seed exactly 10 matcher profiles for local/test — retire them in production.
 
     Originals (campus_verified=True, @iitd.ac.in):
       Rohan, Meera, Kabir, Aisha, Arjun
     Fakes (campus_verified=False, @orchestra.demo):
       Jaya, Neel, Ria, Sam, Lex
+
+    Production must not pad assemble with demos; real Clerk workers should surface.
+    Preferences / rank policy can be refined later (PIPELINE D4).
     """
+    if settings.is_production:
+        await retire_seed_worker_pool(session)
+        return
+
     user = await session.get(User, DEMO_WORKER_ID)
     if user is None:
         session.add(

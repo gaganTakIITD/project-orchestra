@@ -22,7 +22,8 @@ DEMO_WORKER_FAKE_RIA_ID = uuid.UUID("00000000-0000-4000-8000-000000000027")
 DEMO_WORKER_FAKE_SAM_ID = uuid.UUID("00000000-0000-4000-8000-000000000028")
 DEMO_WORKER_FAKE_LEX_ID = uuid.UUID("00000000-0000-4000-8000-000000000029")
 
-# Canonical seed pool — keep exactly these 10 profiles in matching demos.
+# Canonical seed pool for local/test matcher demos only.
+# Production retires these on AUTO_SEED so real Clerk workers surface in assemble.
 SEED_ORIGINAL_WORKER_IDS = (
     DEMO_WORKER_ID,
     DEMO_WORKER_MEERA_ID,
