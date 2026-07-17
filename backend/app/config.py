@@ -12,6 +12,7 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://orchestra:orchestra@localhost:5432/orchestra"
     )
     # Cloud Run + Cloud SQL Connector: PROJECT:REGION:INSTANCE
+    # Prod target: raystartup:us-central1:orchestra-trial-pg (free-trial eligible)
     cloud_sql_instance: str | None = None
     # "private" (VPC) or "public" — Cloud Run gen2 unix sockets break asyncpg
     cloud_sql_ip_type: str = "private"
@@ -30,6 +31,15 @@ class Settings(BaseSettings):
     auto_seed: bool = True
     auto_create_all: bool = True
 
+    # AI auth — credit schema (docs/GCP_BILLING_SPLIT.md):
+    #   off     → fixtures (local/dev default)
+    #   vertex  → Vertex AI on VERTEX_PROJECT (raystartup free trial)
+    # Never use Gemini Developer API / AI Studio API keys for Orchestra.
+    gemini_auth: str = "off"
+    vertex_project: str = "raystartup"
+    vertex_location: str = "us-central1"
+    # Deprecated / ignored — AI Studio keys are not trial-eligible. Kept so old
+    # env files do not crash pydantic; must not enable the client.
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-2.5-flash"
     gemini_timeout_seconds: float = 20.0
@@ -75,15 +85,26 @@ class Settings(BaseSettings):
 
     @property
     def gemini_enabled(self) -> bool:
-        return bool(self.gemini_api_key)
+        """True when Vertex AI on VERTEX_PROJECT is selected (not AI Studio keys)."""
+        auth = (self.gemini_auth or "off").strip().lower()
+        if auth != "vertex":
+            return False
+        return bool((self.vertex_project or "").strip())
 
     def ensure_gemini_configured(self) -> None:
-        """Fail loud when Gemini is required but GEMINI_API_KEY is missing."""
+        """Fail loud when Gemini is required but Vertex is not configured."""
+        if self.gemini_api_key and self.is_production:
+            raise RuntimeError(
+                "GEMINI_API_KEY / Gemini Developer API (AI Studio) is forbidden in "
+                "production. Use GEMINI_AUTH=vertex with VERTEX_PROJECT=raystartup "
+                "(raystartup free trial). See docs/GCP_BILLING_SPLIT.md."
+            )
         if self.gemini_required and not self.gemini_enabled:
             raise RuntimeError(
-                "GEMINI_API_KEY is required when APP_ENV=production or REQUIRE_GEMINI=true. "
-                "Set the key via Secret Manager on Cloud Run (see docs/DEPLOY_API.md). "
-                "Silent fixture fallback is disabled for Spec Compiler and Task Packet."
+                "Vertex Gemini required when APP_ENV=production or REQUIRE_GEMINI=true. "
+                "Set GEMINI_AUTH=vertex and VERTEX_PROJECT=raystartup. "
+                "Do not use GEMINI_API_KEY (AI Studio) — not free-trial eligible. "
+                "See docs/GCP_BILLING_SPLIT.md."
             )
 
     @property

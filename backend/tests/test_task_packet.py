@@ -57,7 +57,7 @@ def test_generate_charter_and_packet_slices_logo():
 def test_gateway_task_packet_proposal_matches_fixture(monkeypatch):
     import uuid
 
-    monkeypatch.setattr(settings, "gemini_api_key", None)
+    monkeypatch.setattr(settings, "gemini_auth", "off")
     monkeypatch.setattr(settings, "require_gemini", False)
     monkeypatch.setattr(settings, "app_env", "development")
 

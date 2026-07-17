@@ -46,8 +46,12 @@ export default function ProposalPage() {
         /* ignore */
       }
       router.push(`/orders/${result.order_id}`);
-    } catch {
-      setConfirmError("Could not confirm. Please try again.");
+    } catch (err) {
+      setConfirmError(
+        err instanceof Error
+          ? err.message
+          : "Could not confirm. Please try again."
+      );
     }
   };
 

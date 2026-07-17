@@ -1,16 +1,41 @@
 # Hosting the API (Cloud Run + Cloud SQL Postgres)
 
-## Live
+## Billing split (strict)
+
+| Workload | Project | Reason |
+|----------|---------|--------|
+| **Cloud SQL, Cloud Run, AR, Vertex AI Gemini (first-party)** | `raystartup` | Free trial ₹28,219 until 2026-10-12 — **eligible** |
+| **Gemini Developer API / AI Studio** | **Do not use** | Not trial-eligible on raystartup |
+| **Vertex AI Agent Builder Search / Conversation only** | `gen-lang-client-0795401430` | **Only** SKUs for ₹95.7k GenAI App Builder credit |
+| **Target SQL** | `raystartup:us-central1:orchestra-trial-pg` | Infra home |
+
+**Do not** put Orchestra Cloud Run/SQL or `generate_content` Gemini on gen-lang-client — you pay cash; the promotional credit will not apply.
+
+Full rules + cutover: **`docs/GCP_BILLING_SPLIT.md`**.
+
+## Live (raystartup — cutover complete 2026-07-17)
 
 | | |
 |--|--|
-| **API** | https://orchestra-api-979112189932.us-central1.run.app |
-| **Health** | https://orchestra-api-979112189932.us-central1.run.app/api/v1/health |
-| **Catalog** | https://orchestra-api-979112189932.us-central1.run.app/api/v1/catalog/skus |
-| **Cloud SQL** | `orchestra-pg` (POSTGRES_16) — **not** `raysql` |
-| **Connection** | `gen-lang-client-0795401430:us-central1:orchestra-pg` |
-| **Private IP** | `10.22.0.5` (via VPC connector `orchestra-vpc`) |
+| **GCP project** | `raystartup` (project number `444869825431`) |
+| **API** | https://orchestra-api-444869825431.us-central1.run.app |
+| **Health** | https://orchestra-api-444869825431.us-central1.run.app/api/v1/health |
+| **Catalog** | https://orchestra-api-444869825431.us-central1.run.app/api/v1/catalog/skus |
+| **Cloud SQL** | `raystartup:us-central1:orchestra-trial-pg` (private IP `10.97.0.3`, network `default`) |
+| **VPC connector** | `orchestra-vpc` — `default` / `10.8.0.0/28`, **READY** |
+| **Vertex AI** | `GEMINI_AUTH=vertex`, `VERTEX_PROJECT=raystartup` — **no** `GEMINI_API_KEY` |
+| **Auth** | `AUTH_MODE=clerk` + JWKS/issuer for `arriving-serval-22` |
+| **Scheduler** | `orchestra-timer-tick` every 5 min on `raystartup` |
 | **Frontend** | https://project-orchestra-khaki.vercel.app |
+| **Vercel API bind** | `NEXT_PUBLIC_API_BASE_URL=https://orchestra-api-444869825431.us-central1.run.app/api/v1` (production + preview) |
+
+### Legacy (gen-lang-client — SQL teardown done 2026-07-17)
+
+| | |
+|--|--|
+| **Old SQL** | `orchestra-pg` + `raysql` — **deleted** |
+| **Old Cloud Run** | Confirm `orchestra-api` removed on `gen-lang-client-0795401430` if it still appears in console |
+| **gen-lang-client role** | Agent Builder Search/Conversation only (₹95.7k) — no Orchestra hosting |
 
 ## Why `raysql` kept failing
 
@@ -20,13 +45,9 @@
 
 Also avoid Cloud Run `/cloudsql/...` Unix sockets with asyncpg — they raise `NotADirectoryError` on gen2. Use the **Cloud SQL Python Connector + private IP + Serverless VPC Access**.
 
-## Cost note — `raysql` delete (founder confirm)
+## Cost note — `raysql` / `orchestra-pg`
 
-`raysql` is `db-perf-optimized-N-8` (Enterprise Plus MySQL) — expensive if unused. **Not deleted yet** (needs founder confirm). When ready:
-
-```bash
-gcloud sql instances delete raysql --project=gen-lang-client-0795401430 --quiet
-```
+Both deleted from gen-lang-client (2026-07-17). Orchestra Postgres is only `raystartup:us-central1:orchestra-trial-pg`.
 
 ## Secrets (Secret Manager)
 
@@ -36,9 +57,12 @@ Committed deploy YAML must **not** contain DB passwords or `SECRET_KEY`. Live se
 |---------|-------------|
 | `DATABASE_URL` | `orchestra-database-url` |
 | `SECRET_KEY` | `orchestra-secret-key` |
-| `GEMINI_API_KEY` | `orchestra-gemini-api-key` |
 
-Runtime SA (`979112189932-compute@developer.gserviceaccount.com`) has `roles/secretmanager.secretAccessor` on these secrets.
+**AI (not secrets):** `GEMINI_AUTH=vertex`, `VERTEX_PROJECT=raystartup`, `VERTEX_LOCATION=us-central1` — **never** `GEMINI_API_KEY` / AI Studio.
+
+**Target AI auth:** Vertex + Cloud Run SA (ADC) against project **`raystartup`**. ₹95.7k on gen-lang-client is Agent Builder only — see `docs/GCP_BILLING_SPLIT.md`.
+
+Runtime SA (raystartup) needs `roles/secretmanager.secretAccessor` on DB/app secrets and **`roles/aiplatform.user` on raystartup** for Vertex.
 
 Rotate (do not commit values):
 
@@ -64,32 +88,41 @@ rm tmp
 cd backend
 # build
 TAG=v$(date +%Y%m%d%H%M%S)   # or PowerShell equivalent
-IMG=us-central1-docker.pkg.dev/gen-lang-client-0795401430/orchestra/api:$TAG
-gcloud builds submit --tag $IMG
+# After billing cutover — build + deploy in raystartup (see docs/GCP_BILLING_SPLIT.md)
+IMG=us-central1-docker.pkg.dev/raystartup/orchestra/api:$TAG
+gcloud builds submit --tag $IMG --project=raystartup
 
 # copy template → local deploy file, substitute image, then replace:
 # (PowerShell) (Get-Content cloudrun-service.yaml) -replace 'IMAGE_PLACEHOLDER',$IMG | Set-Content .cloudrun-deploy.yaml
-gcloud run services replace .cloudrun-deploy.yaml --region=us-central1 --project=gen-lang-client-0795401430
+gcloud run services replace .cloudrun-deploy.yaml --region=us-central1 --project=raystartup
+
+# Clerk (live uses env update — template may still show AUTH_MODE=demo):
+gcloud run services update orchestra-api --region=us-central1 --project=raystartup --update-env-vars=AUTH_MODE=clerk,CLERK_JWKS_URL=https://arriving-serval-22.clerk.accounts.dev/.well-known/jwks.json,CLERK_ISSUER=https://arriving-serval-22.clerk.accounts.dev
+
+# Public invoke (if 403):
+gcloud run services add-iam-policy-binding orchestra-api --region=us-central1 --project=raystartup --member=allUsers --role=roles/run.invoker
 ```
+
+Pre-cutover legacy API was on `gen-lang-client-0795401430` — delete after IAM access.
 
 `DATABASE_URL` / `SECRET_KEY` come from Secret Manager via `secretKeyRef` in the YAML. Do not paste them into committed files.
 
 ## Vercel frontend bind (Phase 1)
 
-**Status (2026-07-13):** set on Vercel project `project-orchestra` for **Production** and **Preview**:
+**Status (2026-07-17):** set on Vercel project `project-orchestra` for **Production** and **Preview**:
 
 ```
 NEXT_PUBLIC_USE_MOCKS=false
-NEXT_PUBLIC_API_BASE_URL=https://orchestra-api-979112189932.us-central1.run.app/api/v1
+NEXT_PUBLIC_API_BASE_URL=https://orchestra-api-444869825431.us-central1.run.app/api/v1
 ```
 
 `NEXT_PUBLIC_*` are baked in at **build** time — trigger a redeploy after env changes for Production to pick them up.
 
 **Config fix (2026-07-13):** Removed legacy `experimentalServices` from `vercel.json` (backend is on Cloud Run, not a Vercel service). File is now `{ "framework": "nextjs" }`.
 
-**Production redeploy (2026-07-13):** `npx vercel --prod` succeeded after syncing `pnpm-lock.yaml` for `@clerk/nextjs`. Live alias: https://project-orchestra-khaki.vercel.app
+**Production redeploy (2026-07-17):** Cutover to raystartup API; live alias: https://project-orchestra-khaki.vercel.app
 
-**Bind verification:** production JS bundles bake `NEXT_PUBLIC_API_BASE_URL` → Cloud Run (`979112189932`); CORS allows the Vercel origin; API `/catalog/skus` returns 3 SKUs. Homepage catalog is client-rendered — confirm 3 SKU cards in browser DevTools → Network → `catalog/skus`.
+**Bind verification:** production JS bundles bake `NEXT_PUBLIC_API_BASE_URL` → Cloud Run (`444869825431` / `raystartup`); CORS allows the Vercel origin; API `/catalog/skus` returns 3 SKUs.
 
 **Important:** always pass `--no-sensitive` for `NEXT_PUBLIC_*`. Sensitive-typed vars are unavailable at Next build time, so the client falls back to mocks / localhost. Re-set + redeploy if `vercel env pull` shows empty `""` for those keys.
 
@@ -100,8 +133,8 @@ npx vercel login
 npx vercel link --yes --project project-orchestra --scope mclmarkscalculator-3730s-projects
 npx vercel env add NEXT_PUBLIC_USE_MOCKS production --value "false" --yes --force --no-sensitive
 npx vercel env add NEXT_PUBLIC_USE_MOCKS preview --value "false" --yes --force --no-sensitive
-npx vercel env add NEXT_PUBLIC_API_BASE_URL production --value "https://orchestra-api-979112189932.us-central1.run.app/api/v1" --yes --force --no-sensitive
-npx vercel env add NEXT_PUBLIC_API_BASE_URL preview --value "https://orchestra-api-979112189932.us-central1.run.app/api/v1" --yes --force --no-sensitive
+npx vercel env add NEXT_PUBLIC_API_BASE_URL production --value "https://orchestra-api-444869825431.us-central1.run.app/api/v1" --yes --force --no-sensitive
+npx vercel env add NEXT_PUBLIC_API_BASE_URL preview --value "https://orchestra-api-444869825431.us-central1.run.app/api/v1" --yes --force --no-sensitive
 # then redeploy Production so Next bakes the vars in
 npx vercel --prod
 ```
@@ -120,22 +153,22 @@ API chat is live (`POST /chat/sessions` → 201; messages + SSE work; CORS allow
 
 **UI fix (2026-07-13):** `/proposal/[quoteId]` and `/orders/[orderId]` read Next 16 async `params` via `useParams` (same race class as `/scope`). Without this, finalize succeeded but the proposal page showed “Proposal not found”.
 
-**Talent + chat (2026-07-13 / updated 2026-07-17):** Seeded **10 workers** on Cloud Run — **5 original** campus (`@iitd.ac.in`, verified) + **5 fake** demo fillers (`@orchestra.demo`, unverified). Preferences page uses `useParams`; tracker wires `useDiscussion` / `usePostDiscussion` for per-task team chat.
+**Talent + chat (2026-07-17):** Prod matcher pool is **real registered workers only**. Boot with `AUTH_MODE=clerk` + `AUTO_SEED=true` runs `purge_seed_workers` — deactivates all seed-pool UUIDs that have no Clerk link (`external_auth_id IS NULL`). Pytest still seeds an active pool via `seed_demo_worker_pool`. Preferences page uses `useParams`; tracker wires `useDiscussion` / `usePostDiscussion` for per-task team chat (worker composer unlocks after Accept interest). Prefs min-rank = `min(3, live pool)` (floor 1).
 
 ## Founder-gated next (Phase 3–4 — do not invent credentials)
 
-### Gemini (Cloud Run)
+### Gemini / Vertex (Cloud Run) — **no direct API key**
 
-**Status (2026-07-13):** Secret Manager secret `orchestra-gemini-api-key` is configured; Cloud Run `orchestra-api` binds env `GEMINI_API_KEY` via `secretKeyRef` (not plaintext). Runtime SA has `secretAccessor`.
+**Policy:** Orchestra AI on **`raystartup`** via **Vertex AI** (first-party Gemini) + Cloud Run SA (ADC). **Never** Gemini Developer API / AI Studio keys — those are **not** covered by the raystartup free trial.
 
-Rotate (do not commit values; on Windows avoid PowerShell `echo` — write bytes to a temp file):
+**raystartup trial:** ₹28,219.33 until **2026-10-12** — covers Cloud Run/SQL **and** Vertex AI Gemini.  
+**₹95.7k on gen-lang-client:** Agent Builder Search/Conversation **only**.
 
-```bash
-gcloud secrets versions add orchestra-gemini-api-key --data-file=tmp --project=gen-lang-client-0795401430
-gcloud run services update orchestra-api --region=us-central1 \
-  --update-secrets=GEMINI_API_KEY=orchestra-gemini-api-key:latest \
-  --project=gen-lang-client-0795401430
-```
+**Target env:** `GEMINI_AUTH=vertex`, `VERTEX_PROJECT=raystartup`, `VERTEX_LOCATION=us-central1`.
+
+**IAM:** raystartup Cloud Run runtime SA → `roles/aiplatform.user` on **`raystartup`**.
+
+Repo still has `genai.Client(api_key=…)` until Vertex ADC lands — tracked in `docs/GCP_BILLING_SPLIT.md`.
 
 ### Clerk (Vercel + Cloud Run) — founder checklist
 
@@ -184,7 +217,7 @@ Local `.env.local` should keep `NEXT_PUBLIC_API_BASE_URL=http://localhost:3000` 
 Run on **prod** (Vercel + Cloud Run) with two Clerk accounts.
 
 1. **Client account** — `/account` → client → `/start` → scope chat → Get quote → confirm → `/orders/{id}`
-2. **Assemble team** — open preferences / matcher chat; rank ≥3 real workers → finalize preferences (task → `invited`)
+2. **Assemble team** — open preferences / matcher chat; rank `min(3, live pool)` real workers (floor 1) → finalize preferences (task → `invited`)
 3. **Worker account** — `/account` → worker → Inbox → Accept interest → Ready to start → Submit
 4. **Client** — accept delivery when order `delivered`
 5. **Admin** (claim/allowlist) — `/admin` → open order events (`event_log` trail)
@@ -203,12 +236,24 @@ gcloud scheduler jobs create http orchestra-timer-tick \
   --uri="https://YOUR_CLOUD_RUN_URL/api/v1/internal/timers/tick" \
   --http-method=POST \
   --oidc-service-account-email=YOUR_SA@PROJECT.iam.gserviceaccount.com \
-  --project=gen-lang-client-0795401430
+  --project=raystartup
 ```
 
 Local/dev: `POST http://localhost:8000/api/v1/internal/timers/tick` or set `TIMER_TICK_SECONDS=60`.
 
+### Cutover notes (2026-07-17 — completed on `deploy-raystartup`)
+
+| Issue | Fix applied |
+|-------|-------------|
+| VPC connector ERROR (subnet missing) | Deleted + recreated → READY on `default` / `10.8.0.0/28` |
+| Cloud SQL no private IP | Enabled PSA + private IP `10.97.0.3` on `default` |
+| Secrets missing | Created `orchestra-database-url` + `orchestra-secret-key` on `raystartup` |
+| Cloud Run 403 | `allUsers` → `roles/run.invoker` |
+| First private-IP deploy failed mid-SQL update | Brief public-IP deploy, then back to private — health OK |
+
 ### Founder cost cleanup
 
-Confirm then: `gcloud sql instances delete raysql --project=gen-lang-client-0795401430 --quiet` (leftover MySQL — not the Orchestra Postgres instance).
+1. **Done:** Orchestra on **raystartup** (trial-eligible).
+2. **Done:** `orchestra-pg` + `raysql` deleted on gen-lang-client (2026-07-17).
+3. **Optional:** delete leftover Cloud Run `orchestra-api` on gen-lang-client if still present.
 

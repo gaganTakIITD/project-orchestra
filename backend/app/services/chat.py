@@ -9,9 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.gateway import SpecTurn, compile_spec_turn
 from app.ai.matcher import match_candidates
 from app.ai.matcher_chat import (
-    MIN_RANKED,
     compile_matcher_turn,
     opening_matcher_message,
+    required_ranked_count,
 )
 from app.ai.pricing_reasoner import compile_pricing_turn, opening_pricing_message
 from app.ai.spec_extractor import (
@@ -90,7 +90,7 @@ class ChatService:
             raise ValueError(f"Task must be ready or invited to set preferences (is {task.status!r})")
 
         candidates = await match_candidates(self.session, task=task)
-        ready = len(candidates) >= MIN_RANKED
+        ready = len(candidates) >= required_ranked_count(len(candidates))
 
         chat = ChatSession(
             client_id=client.id,
@@ -522,8 +522,17 @@ class ChatService:
         else:
             ids = [c["worker_id"] for c in candidates]
 
-        if len(ids) < MIN_RANKED:
-            raise ValueError(f"Need at least {MIN_RANKED} ranked workers to confirm preferences")
+        min_needed = required_ranked_count(len(candidates))
+        if len(ids) < min_needed:
+            raise ValueError(
+                f"Need at least {min_needed} ranked worker(s) to confirm preferences "
+                f"(pool has {len(candidates)})"
+            )
+        candidate_ids = {c["worker_id"] for c in candidates}
+        if candidate_ids:
+            unknown = [wid for wid in ids if wid not in candidate_ids]
+            if unknown:
+                raise ValueError(f"Ranked workers not in candidate pool: {unknown}")
 
         order = await self.session.get(OutcomeOrder, chat.order_id)
         if order is None:

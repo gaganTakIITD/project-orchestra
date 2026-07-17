@@ -18,8 +18,9 @@
 |-------|---------|
 | **Product loop (code)** | Shipped end-to-end on live API: scope → quote → confirm → invite → work → deliver → accept |
 | **Market features (code)** | Amendments, admin verify/taxonomy, reputation/media, email/Sentry, Razorpay **sandbox**, disputes/PM tick, RAG — all `[x]` |
-| **Live stack** | Clerk + Cloud Run + Cloud SQL (`orchestra-pg`) + Vercel + Gemini secret — up (`/health` OK) |
-| **What's actually left** | **Founder-gated ops** to prove the loop on prod without engineers; then pilot. Almost no Cursor code work until harden is green. |
+| **Live stack** | Clerk + Cloud Run + Cloud SQL (`orchestra-trial-pg`) on **raystartup** + Vercel + Vertex — up (`/health` OK) |
+| **What's actually left** | **Founder-gated ops** (prod dual-account smoke); then pilot. SQL teardown on gen-lang-client done. |
+| **Billing** | raystartup trial → Run/SQL/Vertex Gemini; gen-lang-client ₹95.7k = Agent Builder only — `docs/GCP_BILLING_SPLIT.md` |
 | **Payments** | Stay `PAYMENTS_ENABLED=false` until harden passes — sandbox ledger only |
 
 **Chapter done when:** founder runs outcomes on prod without engineering babysitting; scope changes go through Amendments; admin verifies workers; real money stays off until harden is green.
@@ -34,7 +35,8 @@ Resolve these so agents don't invent policy. Defaults in parentheses are the lea
 
 | # | Decision | Options / default | Blocks |
 |---|----------|-------------------|--------|
-| D1 | **Delete `raysql`?** | Yes (recommended — unused expensive MySQL leftover) vs keep | Cost only; not product |
+| D1 | **Delete `raysql`?** | **Done (2026-07-17)** — deleted with `orchestra-pg` | Cost cleanup done |
+| D8 | **Dual-account credit split** | Orchestra on **raystartup** (trial: Run/SQL/**Vertex Gemini**; never AI Studio). gen-lang-client = Agent Builder Search/Conversation only (₹95.7k) | `docs/GCP_BILLING_SPLIT.md` |
 | D2 | **Warranty window** after delivery | e.g. 7 / 14 / 30 days (**default: 14**) | Dispute UX copy + timer policy later |
 | D3 | **Revision limit defaults per SKU** | e.g. Launch Studio = 2 rounds (**default: 2**) | Quote/amendment expectations |
 | D4 | **Workers see preference rank?** | Hide (**default**) vs show | Matcher / preferences UI |
@@ -54,13 +56,16 @@ Owner: `founder` (ops) · docs already written in `docs/DEPLOY_API.md`
 - [x] Cloud Scheduler instructions for `POST /api/v1/internal/timers/tick` documented
 - [x] Notifications UI (badge + list) on `WorkspaceHeader`
 - [x] Browser smoke checklist documented
+- [x] **Billing cutover (2026-07-17):** API on raystartup — https://orchestra-api-444869825431.us-central1.run.app; Vercel bound; Vertex + Clerk live
 - [!] **Founder: run dual-account smoke on prod** (client + worker + admin `event_log` + notifications + ledger strip)
-- [!] **Founder: create Cloud Scheduler job** for timer tick (priority windows won't fire on prod without this)
-- [!] **Founder: confirm + delete `raysql`** (cost cleanup — not Orchestra Postgres)
+- [x] **Founder: Cloud Scheduler** `orchestra-timer-tick` on raystartup (5 min)
+- [x] **Founder: delete gen-lang-client SQL** — `orchestra-pg` + `raysql` **gone** (2026-07-17). Confirm old Cloud Run `orchestra-api` deleted too if it still exists.
 
-**Done when:** Non-engineer completes one full outcome on prod with two Clerk accounts; admin sees `event_log`; timers tick via Scheduler.
+**Done when:** Non-engineer completes one full outcome on prod with two Clerk accounts; admin sees `event_log`; timers tick; **Orchestra bills only on raystartup**.
 
 **Cursor role during Gate 1:** standby for bugs found in smoke only — no new features.
+
+**Smoke bugfix (2026-07-17):** Seeded workers purged from live matcher (`purge_seed_workers` on boot when `AUTH_MODE=clerk`); preferences require `min(3, pool)` ranked workers (floor 1); worker discussion gated until Accept interest; WS invalidation debounced; Gemini HTTP timeout wired.
 
 ---
 
@@ -68,7 +73,7 @@ Owner: `founder` (ops) · docs already written in `docs/DEPLOY_API.md`
 
 After Gate 1 is green:
 
-1. Seed / verify real campus workers via `/admin` (`campus_verified`)
+1. Verify **real** registered campus workers via `/admin` (`campus_verified`) — do **not** re-seed demo talent into the matcher
 2. Run 3–5 concierge outcomes with invited clients (founder as PM if needed)
 3. Log failure modes in `event_log` + a simple pilot notes doc
 4. Keep payments sandbox; use ledger strip for trust narrative only
@@ -105,9 +110,11 @@ Do **not** start these until harden is green. Order matters:
 **Lane rules (invariants):**
 
 - Client **never** sees worker failure states — `rework` reads as "In progress" (`state-labels.ts`).
-- Worker acts **only** on invited/assigned tasks; worker chat posts as worker.
+- Worker acts **only** on invited/assigned tasks; worker discussion opens after **Accept interest** (`assigned_worker_id`); chat posts as worker.
+- Preferences: rank `min(3, live_candidate_pool)` workers (floor **1** when the pool is tiny — pilot with few registered workers).
 - Admin mutating actions unlocked (verify + taxonomy); disputes later polish.
 - Admin role is **never** reachable via `PATCH /auth/role` — Clerk claim / allowlist only.
+- **Matcher pool = real registered workers only** — boot runs `purge_seed_workers` (deactivates unlinked seed UUIDs); pytest still uses `seed_demo_worker_pool`.
 
 ---
 
@@ -128,8 +135,8 @@ Do **not** start these until harden is green. Order matters:
 
 ### LEFT (this chapter)
 
-- Gate 1 founder ops (prod smoke, Cloud Scheduler, `raysql` delete)
-- Gate 0 product decisions D1–D7 (mostly policy; D5 already implemented)
+- Gate 1 founder ops (prod dual-account smoke)
+- Gate 0 product decisions D1–D8 (mostly policy; D5 already implemented; **D8 billing split is cost-critical**)
 - Payments stay sandbox until Gate 1 green
 
 ### DEFERRED further
@@ -176,8 +183,10 @@ Mobile apps, Redis multi-instance WS fan-out, full TDS productization, Meilisear
 ### Founder-gated (not code)
 
 - [!] Run prod dual-account smoke (`docs/DEPLOY_API.md` — Campus dual-account smoke checklist)
-- [!] Create Cloud Scheduler job for `/api/v1/internal/timers/tick`
-- [!] Confirm then `gcloud sql instances delete raysql` (cost cleanup — see `docs/DEPLOY_API.md`)
+- [x] Billing cutover to raystartup (`docs/GCP_BILLING_SPLIT.md`, live API `444869825431`)
+- [x] Cloud Scheduler `orchestra-timer-tick` on raystartup
+- [x] Delete gen-lang-client `orchestra-pg` + `raysql` (2026-07-17)
+- [!] Confirm old Cloud Run `orchestra-api` on gen-lang-client is deleted (if still listed)
 - [!] Optional hygiene: rotate Clerk keys if they were ever pasted in chat
 
 ---

@@ -36,10 +36,8 @@ class WorkerService:
         user = await self.session.get(User, user_id)
         if user is None:
             return None
-        # Admin may inspect the worker lane; workers always get a profile row.
-        if user.role not in ("worker", "admin"):
-            return None
         profile = await self.session.get(WorkerProfileRecord, user_id)
+        # Auto-create empty row only when actively in the worker portal role.
         if profile is None and user.role == "worker":
             profile = WorkerProfileRecord(user_id=user.id, headline="", bio="")
             self.session.add(profile)

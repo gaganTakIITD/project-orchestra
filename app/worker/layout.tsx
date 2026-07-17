@@ -25,6 +25,7 @@ export default function WorkerLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!clerkEnabled || !authReady || !user) return;
+    // Already on worker/admin — skip the role round-trip (avoids portal pause).
     if (user.role === "worker" || user.role === "admin") {
       switchStarted.current = false;
       setSwitchError(null);
@@ -42,7 +43,7 @@ export default function WorkerLayout({ children }: { children: ReactNode }) {
         switchStarted.current = false;
         setSwitchError("Could not switch to the worker portal. Try again.");
       });
-  }, [clerkEnabled, authReady, user?.role, setRole.isPending]);
+  }, [clerkEnabled, authReady, user?.role, setRole.isPending, setRole]);
 
   const roleReady =
     !clerkEnabled ||

@@ -2,6 +2,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
+from app.models.identity import DEMO_WORKER_ID, DEMO_WORKER_KABIR_ID, DEMO_WORKER_MEERA_ID
 
 
 @pytest.fixture
@@ -141,9 +142,9 @@ async def test_set_preferences_on_ready_task(api_client: AsyncClient):
         f"/api/v1/orders/{order_id}/tasks/{ready_task['id']}/preferences",
         json={
             "ranked_worker_ids": [
-                "usr_worker_rohan",
-                "usr_worker_meera",
-                "usr_worker_kabir",
+                str(DEMO_WORKER_ID),
+                str(DEMO_WORKER_MEERA_ID),
+                str(DEMO_WORKER_KABIR_ID),
             ]
         },
     )

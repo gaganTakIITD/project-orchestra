@@ -45,8 +45,19 @@ export default function WorkerTaskDetail() {
   const { data: tasks, isLoading: tasksLoading } = useMyTasks();
   const { data: charter, isLoading: charterLoading } = useCharter(taskId);
   const { data: packet, isLoading: packetLoading } = useTaskPacket(taskId);
-  const { data: discussion, isPending: discussionPending } =
-    useDiscussion(taskId);
+
+  const task = useMemo(
+    () => tasks?.find((t) => t.id === taskId),
+    [tasks, taskId]
+  );
+  // Discussion is allowed only after Accept interest sets assigned_worker_id.
+  const canDiscuss = Boolean(task?.assigned_worker_id);
+  const {
+    data: discussion,
+    isPending: discussionPending,
+    isError: discussionIsError,
+    error: discussionQueryError,
+  } = useDiscussion(taskId, { enabled: Boolean(taskId) && canDiscuss });
   const postDiscussion = usePostDiscussion(taskId);
   const acceptInterest = useAcceptInterest(taskId);
   const readyToStart = useReadyToStart(taskId);
@@ -63,12 +74,7 @@ export default function WorkerTaskDetail() {
     {}
   );
 
-  const task = useMemo(
-    () => tasks?.find((t) => t.id === taskId),
-    [tasks, taskId]
-  );
   const { data: qaReview } = useTaskQA(taskId, task?.status === "rework");
-  const loading = tasksLoading || charterLoading || packetLoading;
 
   const requiredChecklist = packet?.checklist.filter((c) => c.required) ?? [];
   const requiredDone = requiredChecklist.every(
@@ -132,7 +138,7 @@ export default function WorkerTaskDetail() {
 
   const handleChat = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim() || postDiscussion.isPending) return;
+    if (!canDiscuss || !chatInput.trim() || postDiscussion.isPending) return;
     setChatError(null);
     const body = chatInput.trim();
     setChatInput("");
@@ -144,7 +150,7 @@ export default function WorkerTaskDetail() {
     }
   };
 
-  if (!taskId || loading) {
+  if (!taskId || tasksLoading) {
     return (
       <Shell>
         <p className="text-sm text-muted-foreground font-mono">Loading job card…</p>
@@ -216,6 +222,12 @@ export default function WorkerTaskDetail() {
             currentStageId={workerStage}
           />
         </div>
+      ) : null}
+
+      {charterLoading || packetLoading ? (
+        <p className="mb-4 text-sm text-muted-foreground font-mono">
+          Loading charter &amp; packet…
+        </p>
       ) : null}
 
       {/* Stage primary action */}
@@ -452,7 +464,7 @@ export default function WorkerTaskDetail() {
         </p>
       ) : null}
 
-      {/* Discussion with composer */}
+      {/* Discussion with composer — unlocked after Accept interest */}
       <section className="border border-border">
         <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-border">
           <p className="text-xs font-mono uppercase tracking-wider text-primary">
@@ -465,8 +477,18 @@ export default function WorkerTaskDetail() {
           ) : null}
         </div>
         <div className="px-5 py-4 space-y-3 max-h-64 overflow-y-auto">
-          {discussionPending ? (
+          {!canDiscuss ? (
+            <p className="text-sm text-muted-foreground">
+              Accept interest to message the client about this task.
+            </p>
+          ) : discussionPending ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : discussionIsError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {discussionQueryError instanceof Error
+                ? discussionQueryError.message
+                : "Could not load discussion."}
+            </p>
           ) : discussion?.messages?.length ? (
             discussion.messages.map((m) => {
               const flagged = isScopeFlaggedMessage(m);
@@ -501,14 +523,20 @@ export default function WorkerTaskDetail() {
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
             rows={2}
-            placeholder="Message the client about this task…"
-            className="w-full border border-border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:border-primary"
-            disabled={postDiscussion.isPending}
+            placeholder={
+              canDiscuss
+                ? "Message the client about this task…"
+                : "Accept interest to unlock chat"
+            }
+            className="w-full border border-border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:border-primary disabled:opacity-50"
+            disabled={!canDiscuss || postDiscussion.isPending}
           />
           <div className="flex items-center gap-3">
             <button
               type="submit"
-              disabled={!chatInput.trim() || postDiscussion.isPending}
+              disabled={
+                !canDiscuss || !chatInput.trim() || postDiscussion.isPending
+              }
               className="h-9 px-4 bg-secondary text-secondary-foreground text-sm font-semibold disabled:opacity-50"
             >
               {postDiscussion.isPending ? "Sending…" : "Send"}

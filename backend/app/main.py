@@ -7,7 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.config import settings
 from app.db.base import Base
-from app.db.seed import seed_catalog, seed_demo_client, seed_demo_worker
+from app.db.seed import (
+    purge_seed_workers,
+    seed_catalog,
+    seed_demo_client,
+    seed_demo_worker_pool,
+)
 from app.db.session import AsyncSessionLocal, engine
 from app.models import catalog, chat, commerce, fulfillment, identity, platform  # noqa: F401
 
@@ -57,7 +62,12 @@ async def lifespan(app: FastAPI):
         async with AsyncSessionLocal() as session:
             await seed_catalog(session)
             await seed_demo_client(session)
-            await seed_demo_worker(session)
+            if settings.auth_mode == "clerk":
+                # Prod: strip seeded talent from the live matcher pool.
+                await purge_seed_workers(session)
+            else:
+                # Local demo + pytest: keep active seed pool for matcher fixtures.
+                await seed_demo_worker_pool(session)
 
     stop = asyncio.Event()
     tick_task: asyncio.Task | None = None

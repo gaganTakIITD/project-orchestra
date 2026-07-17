@@ -269,11 +269,19 @@ export const useDelivery = (orderId: string) =>
     retry: false,
   });
 
-export const useDiscussion = (taskId: string) =>
+export const useDiscussion = (
+  taskId: string,
+  options?: { enabled?: boolean },
+) =>
   useQuery({
     queryKey: ["discussion", taskId],
     queryFn: () => clientApi.getDiscussion(taskId),
-    enabled: Boolean(taskId),
+    enabled: Boolean(taskId) && (options?.enabled ?? true),
+    retry: (count, err) => {
+      if (err instanceof ApiError && (err.status === 403 || err.status === 404))
+        return false;
+      return count < 2;
+    },
   });
 
 export const useSetPreferences = (orderId: string, taskId: string) => {

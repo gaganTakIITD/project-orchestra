@@ -5,11 +5,13 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { getAuthToken } from "./auth-token";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+
+const INVALIDATION_DEBOUNCE_MS = 400;
 
 export type LiveSpineEvent = {
   aggregate_type: string;
@@ -114,34 +116,59 @@ export function subscribeTaskLive(
 
 /**
  * Invalidates tracker query keys when the order live channel fires.
+ * Debounced + scoped — avoids refetch storms during active delivery.
  */
 export function useOrderLiveInvalidation(orderId: string | undefined) {
   const qc = useQueryClient();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!orderId) return;
-    return subscribeOrderLive(orderId, () => {
+
+    const flush = () => {
       void qc.invalidateQueries({ queryKey: ["order", orderId] });
       void qc.invalidateQueries({ queryKey: ["plan", orderId] });
       void qc.invalidateQueries({ queryKey: ["delivery", orderId] });
-      void qc.invalidateQueries({ queryKey: ["discussion"] });
+      // Discussion is task-scoped — do not blanket-invalidate ["discussion"].
       void qc.invalidateQueries({ queryKey: ["my-tasks"] });
+    };
+
+    const unsub = subscribeOrderLive(orderId, () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(flush, INVALIDATION_DEBOUNCE_MS);
     });
+
+    return () => {
+      unsub();
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [orderId, qc]);
 }
 
 /** Invalidates worker task query keys when the task live channel fires. */
 export function useTaskLiveInvalidation(taskId: string | undefined) {
   const qc = useQueryClient();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!taskId) return;
-    return subscribeTaskLive(taskId, () => {
+
+    const flush = () => {
       void qc.invalidateQueries({ queryKey: ["my-tasks"] });
       void qc.invalidateQueries({ queryKey: ["discussion", taskId] });
       void qc.invalidateQueries({ queryKey: ["charter", taskId] });
       void qc.invalidateQueries({ queryKey: ["task-packet", taskId] });
       void qc.invalidateQueries({ queryKey: ["task-qa", taskId] });
+    };
+
+    const unsub = subscribeTaskLive(taskId, () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(flush, INVALIDATION_DEBOUNCE_MS);
     });
+
+    return () => {
+      unsub();
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [taskId, qc]);
 }

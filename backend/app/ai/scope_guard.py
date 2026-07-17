@@ -100,10 +100,11 @@ def _from_fixture(message: str, charter_summary: str) -> ScopeGuardResult:
 
 
 def _gemini_classify(*, message: str, charter_summary: str) -> ScopeGuardResult:
-    from google import genai
     from google.genai import types
 
-    client = genai.Client(api_key=settings.gemini_api_key)
+    from app.ai.gemini_client import make_gemini_client
+
+    client = make_gemini_client()
     prompt = {
         "charter_summary": charter_summary,
         "message": message,

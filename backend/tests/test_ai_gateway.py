@@ -12,7 +12,7 @@ from app.config import settings
 
 
 def test_gateway_uses_fixture_without_key(monkeypatch):
-    monkeypatch.setattr(settings, "gemini_api_key", None)
+    monkeypatch.setattr(settings, "gemini_auth", "off")
     monkeypatch.setattr(settings, "require_gemini", False)
     monkeypatch.setattr(settings, "app_env", "development")
     turn = compile_spec_turn(
@@ -28,7 +28,7 @@ def test_gateway_uses_fixture_without_key(monkeypatch):
 
 
 def test_gateway_fixture_extracts_deliverables(monkeypatch):
-    monkeypatch.setattr(settings, "gemini_api_key", None)
+    monkeypatch.setattr(settings, "gemini_auth", "off")
     monkeypatch.setattr(settings, "require_gemini", False)
     monkeypatch.setattr(settings, "app_env", "development")
     turn = compile_spec_turn(
@@ -67,11 +67,17 @@ def test_draft_from_gemini_merges_previous_and_defaults():
 
 
 def test_gateway_degrades_when_gemini_call_fails(monkeypatch):
-    # A key is set but the SDK is unavailable / the call fails → fixture fallback
-    # with the error recorded, never a crash (non-prod only).
-    monkeypatch.setattr(settings, "gemini_api_key", "invalid-test-key")
+    # Vertex enabled but the SDK call fails → fixture fallback with error
+    # recorded, never a crash (non-prod only).
+    monkeypatch.setattr(settings, "gemini_auth", "vertex")
+    monkeypatch.setattr(settings, "vertex_project", "raystartup")
     monkeypatch.setattr(settings, "require_gemini", False)
     monkeypatch.setattr(settings, "app_env", "development")
+
+    def _boom():
+        raise RuntimeError("vertex unavailable")
+
+    monkeypatch.setattr("app.ai.gateway.make_gemini_client", _boom)
     turn = compile_spec_turn(
         draft=empty_draft(),
         user_message="brand and landing page",
@@ -83,7 +89,7 @@ def test_gateway_degrades_when_gemini_call_fails(monkeypatch):
 
 
 def test_gateway_fails_loud_when_gemini_required_without_key(monkeypatch):
-    monkeypatch.setattr(settings, "gemini_api_key", None)
+    monkeypatch.setattr(settings, "gemini_auth", "off")
     monkeypatch.setattr(settings, "require_gemini", True)
     monkeypatch.setattr(settings, "app_env", "development")
     with pytest.raises(GeminiNotConfiguredError):
@@ -95,17 +101,58 @@ def test_gateway_fails_loud_when_gemini_required_without_key(monkeypatch):
 
 
 def test_ensure_gemini_configured_in_production(monkeypatch):
+    monkeypatch.setattr(settings, "gemini_auth", "off")
     monkeypatch.setattr(settings, "gemini_api_key", None)
     monkeypatch.setattr(settings, "require_gemini", False)
     monkeypatch.setattr(settings, "app_env", "production")
-    with pytest.raises(RuntimeError, match="GEMINI_API_KEY"):
+    with pytest.raises(RuntimeError, match="Vertex Gemini required"):
         settings.ensure_gemini_configured()
 
+
+def test_ensure_gemini_rejects_ai_studio_key_in_production(monkeypatch):
+    monkeypatch.setattr(settings, "gemini_auth", "vertex")
+    monkeypatch.setattr(settings, "vertex_project", "raystartup")
+    monkeypatch.setattr(settings, "gemini_api_key", "ai-studio-key")
+    monkeypatch.setattr(settings, "app_env", "production")
+    with pytest.raises(RuntimeError, match="AI Studio"):
+        settings.ensure_gemini_configured()
+
+
+def test_make_gemini_client_uses_vertex_raystartup(monkeypatch):
+    import google.genai as genai_mod
+
+    from app.ai.gemini_client import make_gemini_client
+
+    captured: dict = {}
+
+    class _FakeClient:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr(settings, "gemini_auth", "vertex")
+    monkeypatch.setattr(settings, "vertex_project", "raystartup")
+    monkeypatch.setattr(settings, "vertex_location", "us-central1")
+    monkeypatch.setattr(genai_mod, "Client", _FakeClient)
+
+    client = make_gemini_client()
+    assert isinstance(client, _FakeClient)
+    assert captured["vertexai"] is True
+    assert captured["project"] == "raystartup"
+    assert captured["location"] == "us-central1"
+    assert "http_options" in captured
+
+
+def test_make_gemini_client_rejects_non_vertex(monkeypatch):
+    from app.ai.gemini_client import make_gemini_client
+
+    monkeypatch.setattr(settings, "gemini_auth", "off")
+    with pytest.raises(RuntimeError, match="Vertex Gemini"):
+        make_gemini_client()
 
 def test_task_packet_proposal_fixture_path(monkeypatch):
     import uuid
 
-    monkeypatch.setattr(settings, "gemini_api_key", None)
+    monkeypatch.setattr(settings, "gemini_auth", "off")
     monkeypatch.setattr(settings, "require_gemini", False)
     monkeypatch.setattr(settings, "app_env", "development")
 
@@ -146,7 +193,7 @@ def test_task_packet_proposal_fixture_path(monkeypatch):
 def test_task_packet_fails_loud_when_gemini_required(monkeypatch):
     import uuid
 
-    monkeypatch.setattr(settings, "gemini_api_key", None)
+    monkeypatch.setattr(settings, "gemini_auth", "off")
     monkeypatch.setattr(settings, "require_gemini", True)
 
     class _FakeTask:

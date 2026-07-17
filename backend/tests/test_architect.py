@@ -202,7 +202,7 @@ def test_normalize_human_labels_from_gemini():
 
 
 def test_gateway_fixture_path(monkeypatch):
-    monkeypatch.setattr(settings, "gemini_api_key", None)
+    monkeypatch.setattr(settings, "gemini_auth", "off")
     monkeypatch.setattr(settings, "require_gemini", False)
     monkeypatch.setattr(settings, "app_env", "development")
 
@@ -250,7 +250,7 @@ async def db_session():
 
 @pytest.mark.asyncio
 async def test_build_plan_uses_spec_types(db_session, monkeypatch):
-    monkeypatch.setattr(settings, "gemini_api_key", None)
+    monkeypatch.setattr(settings, "gemini_auth", "off")
     monkeypatch.setattr(settings, "require_gemini", False)
     monkeypatch.setattr(settings, "app_env", "development")
 

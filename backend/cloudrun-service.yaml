@@ -1,3 +1,8 @@
+# Deploy template: raystartup free trial (₹28,219 until 2026-10-12).
+# Eligible: Cloud Run, Cloud SQL, Artifact Registry, Vertex AI (first-party Gemini).
+# NOT eligible: Gemini Developer API / AI Studio keys — do not bind GEMINI_API_KEY.
+# gen-lang-client ₹95.7k = Agent Builder Search/Conversation ONLY.
+# See docs/GCP_BILLING_SPLIT.md
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
@@ -6,8 +11,8 @@ spec:
   template:
     metadata:
       annotations:
-        run.googleapis.com/cloudsql-instances: gen-lang-client-0795401430:us-central1:orchestra-pg
-        run.googleapis.com/vpc-access-connector: projects/gen-lang-client-0795401430/locations/us-central1/connectors/orchestra-vpc
+        run.googleapis.com/cloudsql-instances: raystartup:us-central1:orchestra-trial-pg
+        run.googleapis.com/vpc-access-connector: projects/raystartup/locations/us-central1/connectors/orchestra-vpc
         run.googleapis.com/vpc-access-egress: private-ranges-only
         run.googleapis.com/startup-cpu-boost: "true"
     spec:
@@ -23,7 +28,7 @@ spec:
               cpu: "1"
               memory: 1Gi
           env:
-            # Secrets: Secret Manager (see docs/DEPLOY_API.md). Never commit plaintext.
+            # DB + app secrets only — no GEMINI_API_KEY.
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -34,13 +39,14 @@ spec:
                 secretKeyRef:
                   name: orchestra-secret-key
                   key: latest
-            - name: GEMINI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: orchestra-gemini-api-key
-                  key: latest
+            - name: GEMINI_AUTH
+              value: vertex
+            - name: VERTEX_PROJECT
+              value: raystartup
+            - name: VERTEX_LOCATION
+              value: us-central1
             - name: CLOUD_SQL_INSTANCE
-              value: gen-lang-client-0795401430:us-central1:orchestra-pg
+              value: raystartup:us-central1:orchestra-trial-pg
             - name: CLOUD_SQL_IP_TYPE
               value: private
             - name: CORS_ORIGINS

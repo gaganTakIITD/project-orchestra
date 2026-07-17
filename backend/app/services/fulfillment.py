@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.gateway import generate_plan_proposal, generate_task_packet_proposal
 from app.ai.matcher import match_candidates
+from app.ai.matcher_chat import required_ranked_count
 from app.models.catalog import TaskType
 from app.models.fulfillment import (
     CharterRecord,
@@ -27,7 +28,13 @@ class FulfillmentService:
         self.session = session
         self.events = EventWriter(session)
 
-    async def build_plan(self, *, order: OutcomeOrder, spec: OutcomeSpecRecord) -> FulfillmentPlan:
+    async def build_plan(
+        self,
+        *,
+        order: OutcomeOrder,
+        spec: OutcomeSpecRecord,
+        force_fixtures: bool = False,
+    ) -> FulfillmentPlan:
         existing = await self.session.scalar(
             select(FulfillmentPlan.id).where(FulfillmentPlan.order_id == order.id)
         )
@@ -50,6 +57,7 @@ class FulfillmentService:
                 "deliverables": spec.deliverables or [],
                 "acceptance_criteria": spec.acceptance_criteria or [],
             },
+            force_fixtures=force_fixtures,
         )
         blueprint = proposal.plan
 
@@ -130,6 +138,7 @@ class FulfillmentService:
                 task=task,
                 spec_dict=spec_dict,
                 dependency_titles=dep_titles,
+                force_fixtures=force_fixtures,
             )
 
         await self.events.emit(
@@ -153,6 +162,7 @@ class FulfillmentService:
         task: FulfillmentTask,
         spec_dict: dict,
         dependency_titles: list[str],
+        force_fixtures: bool = False,
     ) -> tuple[CharterRecord, TaskPacketRecord]:
         proposal = generate_task_packet_proposal(
             order_id=order.id,
@@ -162,6 +172,7 @@ class FulfillmentService:
             order_deadline=order.deadline,
             revision_limit=order.revision_limit,
             dependency_titles=dependency_titles,
+            force_fixtures=force_fixtures,
         )
         charter_fields = proposal.charter
         packet_fields = proposal.packet
@@ -264,6 +275,20 @@ class FulfillmentService:
     ) -> TaskPreferenceSet:
         if task.status not in (TaskStatus.READY, TaskStatus.INVITED):
             raise ValueError(f"Cannot set preferences when task is {task.status!r}")
+
+        candidates = await self.list_candidates(task.id)
+        candidate_ids = {c["worker_id"] for c in candidates}
+        min_needed = required_ranked_count(len(candidates))
+        if len(ranked_worker_ids) < min_needed:
+            raise ValueError(
+                f"Need at least {min_needed} ranked worker(s) "
+                f"(live pool has {len(candidates)} candidate(s))"
+            )
+        if not candidate_ids:
+            raise ValueError("No live candidates available for this task")
+        unknown = [wid for wid in ranked_worker_ids if wid not in candidate_ids]
+        if unknown:
+            raise ValueError(f"Ranked workers not in candidate pool: {unknown}")
 
         entries = [{"worker_id": wid, "rank": i + 1} for i, wid in enumerate(ranked_worker_ids)]
         pref = TaskPreferenceSet(

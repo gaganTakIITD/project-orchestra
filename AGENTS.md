@@ -66,7 +66,7 @@ sudo pg_ctlcluster 16 main start
 ```
 DB `orchestra` / role `orchestra` (password `orchestra`) and the `vector` extension already exist and match the default `DATABASE_URL`. If the DB is ever missing, recreate with: `sudo -u postgres psql -c "CREATE ROLE orchestra LOGIN PASSWORD 'orchestra';" ; sudo -u postgres createdb -O orchestra orchestra ; sudo -u postgres psql -d orchestra -c "CREATE EXTENSION IF NOT EXISTS vector;"`.
 
-**Backend (FastAPI/uvicorn).** Use the venv interpreter directly (no `activate` needed). The backend needs no `.env` — `app/config.py` defaults already point at the local DB, `AUTH_MODE=demo`, `AUTO_SEED=true`, `AUTO_CREATE_ALL=true` (tables + demo client/worker are created on boot). Gemini is optional (deterministic fixtures when `GEMINI_API_KEY` unset).
+**Backend (FastAPI/uvicorn).** Use the venv interpreter directly (no `activate` needed). The backend needs no `.env` — `app/config.py` defaults already point at the local DB, `AUTH_MODE=demo`, `AUTO_SEED=true`, `AUTO_CREATE_ALL=true` (tables + demo client/worker are created on boot). Gemini is optional (deterministic fixtures when `GEMINI_AUTH=off`). Production uses Vertex on `raystartup` (`GEMINI_AUTH=vertex`) — never AI Studio API keys; see `docs/GCP_BILLING_SPLIT.md`.
 ```bash
 cd backend && .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```

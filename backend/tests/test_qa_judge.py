@@ -63,7 +63,7 @@ def test_files_include_format_fail():
 
 
 def test_fixture_soft_passes_human_required(monkeypatch):
-    monkeypatch.setattr(settings, "gemini_api_key", None)
+    monkeypatch.setattr(settings, "gemini_auth", "off")
     monkeypatch.setattr(settings, "require_gemini", False)
     monkeypatch.setattr(settings, "app_env", "development")
 
@@ -90,7 +90,7 @@ def test_fixture_soft_passes_human_required(monkeypatch):
 
 
 def test_gateway_qa_fails_on_missing_formats(monkeypatch):
-    monkeypatch.setattr(settings, "gemini_api_key", None)
+    monkeypatch.setattr(settings, "gemini_auth", "off")
     monkeypatch.setattr(settings, "require_gemini", False)
     monkeypatch.setattr(settings, "app_env", "development")
 
@@ -116,7 +116,7 @@ def test_gateway_qa_fails_on_missing_formats(monkeypatch):
 
 
 def test_gateway_qa_requires_gemini_when_configured(monkeypatch):
-    monkeypatch.setattr(settings, "gemini_api_key", None)
+    monkeypatch.setattr(settings, "gemini_auth", "off")
     monkeypatch.setattr(settings, "require_gemini", True)
     monkeypatch.setattr(settings, "app_env", "development")
 
