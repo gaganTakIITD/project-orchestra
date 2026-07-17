@@ -18,8 +18,9 @@
 |-------|---------|
 | **Product loop (code)** | Shipped end-to-end on live API: scope → quote → confirm → invite → work → deliver → accept |
 | **Market features (code)** | Amendments, admin verify/taxonomy, reputation/media, email/Sentry, Razorpay **sandbox**, disputes/PM tick, RAG — all `[x]` |
-| **Live stack** | Clerk + Cloud Run + Cloud SQL (`orchestra-pg`) + Vercel + Gemini secret — up (`/health` OK) |
-| **What's actually left** | **Founder-gated ops** to prove the loop on prod without engineers; then pilot. Almost no Cursor code work until harden is green. |
+| **Live stack** | Clerk + Cloud Run + Cloud SQL (`orchestra-pg`) + Vercel + Gemini secret — up (`/health` OK) — **still on gen-lang-client until billing cutover** |
+| **What's actually left** | **Founder-gated ops** (incl. **move SQL/Run → raystartup**); then pilot. Almost no Cursor code work until harden is green. |
+| **Billing** | GenAI → `gen-lang-client` (95k credits); Cloud SQL / Cloud Run → **raystartup** — see `docs/GCP_BILLING_SPLIT.md` |
 | **Payments** | Stay `PAYMENTS_ENABLED=false` until harden passes — sandbox ledger only |
 
 **Chapter done when:** founder runs outcomes on prod without engineering babysitting; scope changes go through Amendments; admin verifies workers; real money stays off until harden is green.
@@ -35,6 +36,7 @@ Resolve these so agents don't invent policy. Defaults in parentheses are the lea
 | # | Decision | Options / default | Blocks |
 |---|----------|-------------------|--------|
 | D1 | **Delete `raysql`?** | Yes (recommended — unused expensive MySQL leftover) vs keep | Cost only; not product |
+| D8 | **Infra billing split** | Move Cloud SQL + Cloud Run to **raystartup**; keep Gemini on **gen-lang-client** (**do this**) | Stops paying SQL/Run on GenAI project — `docs/GCP_BILLING_SPLIT.md` |
 | D2 | **Warranty window** after delivery | e.g. 7 / 14 / 30 days (**default: 14**) | Dispute UX copy + timer policy later |
 | D3 | **Revision limit defaults per SKU** | e.g. Launch Studio = 2 rounds (**default: 2**) | Quote/amendment expectations |
 | D4 | **Workers see preference rank?** | Hide (**default**) vs show | Matcher / preferences UI |
@@ -57,8 +59,9 @@ Owner: `founder` (ops) · docs already written in `docs/DEPLOY_API.md`
 - [!] **Founder: run dual-account smoke on prod** (client + worker + admin `event_log` + notifications + ledger strip)
 - [!] **Founder: create Cloud Scheduler job** for timer tick (priority windows won't fire on prod without this)
 - [!] **Founder: confirm + delete `raysql`** (cost cleanup — not Orchestra Postgres)
+- [!] **Founder: billing cutover** — set `INFRA_PROJECT` (raystartup), migrate `orchestra-pg` + `orchestra-api` per `docs/GCP_BILLING_SPLIT.md`, point Vercel at new API URL, then delete `orchestra-pg` (and old Cloud Run) on gen-lang-client so SQL/Run stop billing there. Keep Gemini on gen-lang-client.
 
-**Done when:** Non-engineer completes one full outcome on prod with two Clerk accounts; admin sees `event_log`; timers tick via Scheduler.
+**Done when:** Non-engineer completes one full outcome on prod with two Clerk accounts; admin sees `event_log`; timers tick via Scheduler; **infra bills on raystartup (₹0 line items), GenAI on gen-lang-client**.
 
 **Cursor role during Gate 1:** standby for bugs found in smoke only — no new features.
 
@@ -128,8 +131,8 @@ Do **not** start these until harden is green. Order matters:
 
 ### LEFT (this chapter)
 
-- Gate 1 founder ops (prod smoke, Cloud Scheduler, `raysql` delete)
-- Gate 0 product decisions D1–D7 (mostly policy; D5 already implemented)
+- Gate 1 founder ops (prod smoke, Cloud Scheduler, `raysql` delete, **raystartup infra cutover**)
+- Gate 0 product decisions D1–D8 (mostly policy; D5 already implemented; **D8 billing split is cost-critical**)
 - Payments stay sandbox until Gate 1 green
 
 ### DEFERRED further
@@ -178,6 +181,7 @@ Mobile apps, Redis multi-instance WS fan-out, full TDS productization, Meilisear
 - [!] Run prod dual-account smoke (`docs/DEPLOY_API.md` — Campus dual-account smoke checklist)
 - [!] Create Cloud Scheduler job for `/api/v1/internal/timers/tick`
 - [!] Confirm then `gcloud sql instances delete raysql` (cost cleanup — see `docs/DEPLOY_API.md`)
+- [!] Move Cloud SQL + Cloud Run to raystartup; keep Gemini on gen-lang-client (`docs/GCP_BILLING_SPLIT.md`)
 - [!] Optional hygiene: rotate Clerk keys if they were ever pasted in chat
 
 ---

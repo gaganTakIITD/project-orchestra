@@ -1,6 +1,15 @@
 # Hosting the API (Cloud Run + Cloud SQL Postgres)
 
-## Live
+## Billing split (required)
+
+| Workload | Project | Reason |
+|----------|---------|--------|
+| **Gemini / GenAI** | `gen-lang-client-0795401430` | ~95k GenAI free credits |
+| **Cloud SQL, Cloud Run, Artifact Registry, VPC, Scheduler** | **raystartup** (`INFRA_PROJECT`) | Infra savings → ₹0 on those line items |
+
+Full cutover runbook: **`docs/GCP_BILLING_SPLIT.md`**. Until cutover completes, the Live table below is still on gen-lang-client (you pay for SQL/Run there).
+
+## Live (pre-cutover — gen-lang-client)
 
 | | |
 |--|--|
@@ -11,6 +20,7 @@
 | **Connection** | `gen-lang-client-0795401430:us-central1:orchestra-pg` |
 | **Private IP** | `10.22.0.5` (via VPC connector `orchestra-vpc`) |
 | **Frontend** | https://project-orchestra-khaki.vercel.app |
+| **Post-cutover** | Replace API URL + connection name with raystartup values; keep Gemini key usage on gen-lang-client credits |
 
 ## Why `raysql` kept failing
 
@@ -210,5 +220,7 @@ Local/dev: `POST http://localhost:8000/api/v1/internal/timers/tick` or set `TIME
 
 ### Founder cost cleanup
 
-Confirm then: `gcloud sql instances delete raysql --project=gen-lang-client-0795401430 --quiet` (leftover MySQL — not the Orchestra Postgres instance).
+1. **Billing split (primary):** move Cloud SQL + Cloud Run to **raystartup** so those line items hit infra credits (₹0). Keep Gemini on **gen-lang-client**. Runbook: `docs/GCP_BILLING_SPLIT.md`.
+2. After cutover: delete `orchestra-pg` on gen-lang-client (stops paid Postgres there).
+3. Confirm then: `gcloud sql instances delete raysql --project=gen-lang-client-0795401430 --quiet` (leftover MySQL — not the Orchestra Postgres instance).
 
