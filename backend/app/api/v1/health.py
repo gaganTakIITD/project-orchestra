@@ -12,8 +12,9 @@ async def health() -> HealthOut:
         raise HTTPException(
             status_code=503,
             detail=(
-                "GEMINI_API_KEY required when APP_ENV=production or REQUIRE_GEMINI=true. "
-                "See docs/DEPLOY_API.md (Secret Manager)."
+                "Vertex Gemini required when APP_ENV=production or REQUIRE_GEMINI=true. "
+                "Set GEMINI_AUTH=vertex and VERTEX_PROJECT=raystartup. "
+                "Do not use GEMINI_API_KEY (AI Studio). See docs/GCP_BILLING_SPLIT.md."
             ),
         )
     return HealthOut(status="ok", service="orchestra-api", env=settings.app_env)

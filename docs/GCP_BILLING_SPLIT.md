@@ -242,9 +242,9 @@ Leave gen-lang-client for **Agent Builder** work only.
 
 ## Repo status
 
-- [x] Credit rules documented (₹95.7k = Agent Builder Search/Conversation **only**)
-- [x] Orchestra host + standalone Gemini → **raystartup**
-- [ ] Code: `genai.Client(api_key=…)` → Vertex ADC with `VERTEX_PROJECT=raystartup`
+- [x] Credit rules documented (both accounts)
+- [x] Code: `genai.Client(api_key=…)` → Vertex ADC via `GEMINI_AUTH=vertex` / `VERTEX_PROJECT=raystartup`
+- [x] Deploy template: no `GEMINI_API_KEY`; Vertex env on raystartup
 - [ ] Founder: deploy + Vercel flip + delete paid SQL/Run on gen-lang-client
 - [ ] Later (optional): Agent Builder features on gen-lang-client to use ₹95.7k
 

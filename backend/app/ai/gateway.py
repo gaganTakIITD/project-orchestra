@@ -3,8 +3,11 @@
 Founder rule: **AI never mutates state.** This module only *proposes* structured
 JSON. The Spine validates and persists. In development, missing/failed Gemini
 calls degrade to fixtures. When `gemini_required` (production / REQUIRE_GEMINI),
-missing keys and call failures fail loud — no silent fixture for Spec Compiler,
-Architect, Task Packet, or QA Judge.
+missing Vertex config and call failures fail loud — no silent fixture for Spec
+Compiler, Architect, Task Packet, or QA Judge.
+
+Credit schema: Vertex AI on ``VERTEX_PROJECT=raystartup`` via ADC — never AI Studio
+API keys (see ``docs/GCP_BILLING_SPLIT.md``).
 """
 
 from __future__ import annotations
@@ -27,8 +30,15 @@ from app.ai.architect import (
     normalize_mapped_task_types,
     validate_dag,
 )
+from app.ai.gemini_client import make_gemini_client
 from app.ai.task_packet_generator import generate_charter_and_packet as fixture_charter_and_packet
 from app.config import settings
+
+_VERTEX_REQUIRED = (
+    "GEMINI_AUTH=vertex and VERTEX_PROJECT=raystartup required "
+    "(APP_ENV=production or REQUIRE_GEMINI=true). "
+    "Do not use GEMINI_API_KEY / AI Studio — see docs/GCP_BILLING_SPLIT.md"
+)
 
 SYSTEM_INSTRUCTION = """You are Orchestra's Spec Compiler.
 
@@ -233,8 +243,7 @@ def compile_spec_turn(
     if not settings.gemini_enabled:
         if settings.gemini_required:
             raise GeminiNotConfiguredError(
-                "GEMINI_API_KEY required for Spec Compiler "
-                "(APP_ENV=production or REQUIRE_GEMINI=true)"
+                f"Vertex Gemini required for Spec Compiler — {_VERTEX_REQUIRED}"
             )
         return _fixture_turn(draft, user_message)
 
@@ -263,8 +272,7 @@ def generate_plan_proposal(
     if not settings.gemini_enabled:
         if settings.gemini_required:
             raise GeminiNotConfiguredError(
-                "GEMINI_API_KEY required for Architect "
-                "(APP_ENV=production or REQUIRE_GEMINI=true)"
+                f"Vertex Gemini required for Architect — {_VERTEX_REQUIRED}"
             )
         return _fixture_plan(
             order_id=order_id,
@@ -312,8 +320,7 @@ def generate_task_packet_proposal(
     if not settings.gemini_enabled:
         if settings.gemini_required:
             raise GeminiNotConfiguredError(
-                "GEMINI_API_KEY required for Task Packet Generator "
-                "(APP_ENV=production or REQUIRE_GEMINI=true)"
+                f"Vertex Gemini required for Task Packet Generator — {_VERTEX_REQUIRED}"
             )
         return _fixture_packet(
             order_id=order_id,
@@ -388,8 +395,7 @@ def generate_qa_proposal(
     if not settings.gemini_enabled:
         if settings.gemini_required:
             raise GeminiNotConfiguredError(
-                "GEMINI_API_KEY required for QA Judge "
-                "(APP_ENV=production or REQUIRE_GEMINI=true)"
+                f"Vertex Gemini required for QA Judge — {_VERTEX_REQUIRED}"
             )
         return _fixture_qa(evidence=evidence, notes=notes, asset_urls=asset_urls)
 
@@ -489,7 +495,6 @@ def _gemini_plan(
     order_price: Decimal | float | None,
     spec: dict[str, Any],
 ) -> PlanProposal:
-    from google import genai
     from google.genai import types
 
     base = _fixture_plan(
@@ -502,7 +507,7 @@ def _gemini_plan(
     plan = dict(base.plan)
     tasks = [dict(t) for t in plan["tasks"]]
 
-    client = genai.Client(api_key=settings.gemini_api_key)
+    client = make_gemini_client()
     prompt = {
         "outcome_spec": {
             "outcome_statement": spec.get("outcome_statement"),
@@ -605,11 +610,10 @@ def _gemini_turn(
     user_message: str,
     history: list[dict[str, str]],
 ) -> SpecTurn:
-    # Imported lazily so the package is optional until a key is configured.
-    from google import genai
+    # Imported lazily so google-genai is optional until Vertex is configured.
     from google.genai import types
 
-    client = genai.Client(api_key=settings.gemini_api_key)
+    client = make_gemini_client()
 
     contents: list[Any] = []
     for msg in history:
@@ -670,7 +674,6 @@ def _gemini_packet(
     revision_limit: int,
     dependency_titles: list[str] | None,
 ) -> PacketProposal:
-    from google import genai
     from google.genai import types
 
     # Start from fixture skeleton (IDs, price, deadline, deliverable slice) then
@@ -685,7 +688,7 @@ def _gemini_packet(
         dependency_titles=dependency_titles,
     )
 
-    client = genai.Client(api_key=settings.gemini_api_key)
+    client = make_gemini_client()
     prompt = {
         "task": {
             "title": getattr(task, "title", ""),
@@ -769,7 +772,6 @@ def _gemini_qa(
     asset_urls: list[str],
     outcome_statement: str,
 ) -> QAProposal:
-    from google import genai
     from google.genai import types
 
     deferred = [
@@ -788,7 +790,7 @@ def _gemini_qa(
     if not deferred:
         return _fixture_qa(evidence=evidence, notes=notes, asset_urls=asset_urls)
 
-    client = genai.Client(api_key=settings.gemini_api_key)
+    client = make_gemini_client()
     prompt = {
         "outcome_statement": outcome_statement,
         "task": {

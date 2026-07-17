@@ -49,9 +49,10 @@ Committed deploy YAML must **not** contain DB passwords or `SECRET_KEY`. Live se
 |---------|-------------|
 | `DATABASE_URL` | `orchestra-database-url` |
 | `SECRET_KEY` | `orchestra-secret-key` |
-| ~~`GEMINI_API_KEY`~~ | ~~`orchestra-gemini-api-key`~~ — **legacy; do not use for cutover** |
 
-**Target AI auth:** Vertex + Cloud Run SA (ADC) against project **`raystartup`** — **no raw API key**. ₹95.7k on gen-lang-client is Agent Builder only — see `docs/GCP_BILLING_SPLIT.md`.
+**AI (not secrets):** `GEMINI_AUTH=vertex`, `VERTEX_PROJECT=raystartup`, `VERTEX_LOCATION=us-central1` — **never** `GEMINI_API_KEY` / AI Studio.
+
+**Target AI auth:** Vertex + Cloud Run SA (ADC) against project **`raystartup`**. ₹95.7k on gen-lang-client is Agent Builder only — see `docs/GCP_BILLING_SPLIT.md`.
 
 Runtime SA (raystartup) needs `roles/secretmanager.secretAccessor` on DB/app secrets and **`roles/aiplatform.user` on raystartup** for Vertex.
 

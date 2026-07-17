@@ -61,7 +61,7 @@ def test_fixture_instead_of_and_expansions():
 
 
 def test_classify_uses_fixture_without_gemini(monkeypatch):
-    monkeypatch.setattr(settings, "gemini_api_key", None)
+    monkeypatch.setattr(settings, "gemini_auth", "off")
     monkeypatch.setattr(settings, "require_gemini", False)
     monkeypatch.setattr(settings, "app_env", "development")
 
@@ -73,7 +73,7 @@ def test_classify_uses_fixture_without_gemini(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_post_also_add_blog_sets_scope_flagged(api_client: AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "gemini_api_key", None)
+    monkeypatch.setattr(settings, "gemini_auth", "off")
     monkeypatch.setattr(settings, "require_gemini", False)
     monkeypatch.setattr(settings, "app_env", "development")
 
@@ -106,7 +106,7 @@ async def test_post_also_add_blog_sets_scope_flagged(api_client: AsyncClient, mo
 
 @pytest.mark.asyncio
 async def test_post_clarification_not_flagged(api_client: AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "gemini_api_key", None)
+    monkeypatch.setattr(settings, "gemini_auth", "off")
     monkeypatch.setattr(settings, "require_gemini", False)
     monkeypatch.setattr(settings, "app_env", "development")
 
