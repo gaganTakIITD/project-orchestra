@@ -59,7 +59,7 @@ Owner: `founder` (ops) · docs already written in `docs/DEPLOY_API.md`
 - [!] **Founder: run dual-account smoke on prod** (client + worker + admin `event_log` + notifications + ledger strip)
 - [!] **Founder: create Cloud Scheduler job** for timer tick (priority windows won't fire on prod without this)
 - [!] **Founder: confirm + delete `raysql`** (cost cleanup — not Orchestra Postgres)
-- [!] **Founder: billing cutover** — deploy `orchestra-api` + Vertex Gemini on **`raystartup`** / `orchestra-trial-pg`; point Vercel at new URL; delete Orchestra SQL/Run on gen-lang-client. Use gen-lang-client **only** for Agent Builder Search/Conversation (₹95.7k). See `docs/GCP_BILLING_SPLIT.md`.
+- [!] **Founder: billing cutover** — deploy `orchestra-api` + Vertex Gemini on **`raystartup`** / `orchestra-trial-pg` (code already uses `GEMINI_AUTH=vertex`); point Vercel at new URL; delete Orchestra SQL/Run on gen-lang-client. Agent Builder only on gen-lang-client. See `docs/GCP_BILLING_SPLIT.md`.
 
 **Done when:** Dual-account smoke on prod; timers tick; **Orchestra bills on raystartup (₹0 trial)**; gen-lang-client has **no** Orchestra Cloud Run/SQL/SDK Gemini.
 
