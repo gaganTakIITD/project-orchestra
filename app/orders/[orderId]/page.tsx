@@ -25,7 +25,7 @@ import {
   isOrderCancelled,
 } from "@/lib/journey";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 function isScopeFlaggedMessage(msg: {
@@ -55,7 +55,6 @@ function formatPrice(price: number) {
 
 export default function OrderTrackerPage() {
   const routeParams = useParams<{ orderId: string }>();
-  const searchParams = useSearchParams();
   const orderId =
     typeof routeParams.orderId === "string" ? routeParams.orderId : "";
   const [acceptError, setAcceptError] = useState<string | null>(null);
@@ -79,7 +78,7 @@ export default function OrderTrackerPage() {
   // Progressive AI: after fast confirm, polish task briefs in parallel (background).
   useEffect(() => {
     if (!orderId || enrichStarted.current) return;
-    let shouldEnrich = searchParams.get("enrich") === "1";
+    let shouldEnrich = false;
     try {
       if (sessionStorage.getItem(`enrich_plan:${orderId}`) === "1") {
         shouldEnrich = true;
@@ -106,7 +105,7 @@ export default function OrderTrackerPage() {
         setEnrichBanner(null);
       },
     });
-  }, [orderId, searchParams, enrichPlan]);
+  }, [orderId, enrichPlan]);
 
   const defaultChatTaskId = useMemo(() => {
     if (!plan?.tasks?.length) return "";
