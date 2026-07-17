@@ -42,10 +42,14 @@ class Settings(BaseSettings):
     # env files do not crash pydantic; must not enable the client.
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-2.5-flash"
-    gemini_timeout_seconds: float = 20.0
-    # When true (or APP_ENV=production), Spec Compiler + Task Packet must use Gemini —
+    gemini_timeout_seconds: float = 15.0
+    # When true (or APP_ENV=production), Spec Compiler must use Gemini —
     # no silent fixture fallback. Set REQUIRE_GEMINI=true to force locally.
     require_gemini: bool = False
+    # Quote accept → build_plan. Default off: fixture DAG + packets (fast confirm).
+    # Spec Compiler still uses Vertex. Set CONFIRM_AI_ENRICH=true for Vertex
+    # Architect + per-task packets on confirm (slow: many sequential/parallel calls).
+    confirm_ai_enrich: bool = False
 
     # Priority window before promote_backup (Technical Spec §6.3)
     priority_window_hours: float = 24.0

@@ -3,32 +3,114 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ApiError, authApi } from "@/lib/api";
+import { getAuthToken } from "@/lib/auth-token";
 import { useMyScopes, useStartScopeSession } from "@/lib/hooks";
 import { useOrchestraAuth } from "@/lib/use-orchestra-auth";
+
+async function waitForAuthToken(maxAttempts = 20, delayMs = 100): Promise<string | null> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const token = await getAuthToken();
+    if (token) return token;
+    await new Promise((r) => setTimeout(r, delayMs));
+  }
+  return null;
+}
+
+/** Scope chat requires client portal; switch worker → client automatically. */
+async function ensureClientPortal(): Promise<void> {
+  const me = await authApi.me();
+  if (me.role === "client" || me.role === "admin") return;
+  if (me.role === "worker") {
+    await authApi.setRole("client");
+    return;
+  }
+  throw new ApiError(403, `Unexpected role '${me.role}'. Open Account and choose client.`);
+}
+
+function formatStartError(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 401) {
+      return "Sign-in token missing. Refresh, or sign out and sign in again.";
+    }
+    if (err.status === 403 && /worker|portal|role|Admin/i.test(err.message)) {
+      return (
+        err.message ||
+        "You're in the worker portal. Switch to client on Account, then try again."
+      );
+    }
+    return err.message || "Could not start scope chat. Please refresh.";
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return "Could not start scope chat. Please refresh.";
+}
 
 /**
  * /start bootstrap — offers "Resume scope" when drafts exist, otherwise creates
  * a scope session and redirects to /scope/[id].
- * Waits for Clerk auth before calling the API (avoids 401 race on first paint).
+ * Ensures Clerk JWT + client portal role before calling chat APIs (fixes 403).
  */
 export default function ScopeChatSurface() {
   const router = useRouter();
   const { isReady, isSignedIn, clerkEnabled } = useOrchestraAuth();
   const [error, setError] = useState<string | null>(null);
   const [startFresh, setStartFresh] = useState(false);
+  const [clientReady, setClientReady] = useState(false);
   const startSession = useStartScopeSession();
   const authReady = isReady && (!clerkEnabled || isSignedIn);
-  const { data: scopes = [], isPending: scopesPending } = useMyScopes({
-    enabled: authReady,
-  });
+  const portalGateRef = useRef(false);
   const startedRef = useRef(false);
 
-  const activeDrafts = scopes.filter((s) => s.status === "active");
-  const showResume = authReady && !scopesPending && activeDrafts.length > 0 && !startFresh;
+  const {
+    data: scopes = [],
+    isPending: scopesPending,
+    isError: scopesError,
+    error: scopesQueryError,
+  } = useMyScopes({
+    enabled: authReady && clientReady,
+  });
 
+  const activeDrafts = scopes.filter((s) => s.status === "active");
+  const showResume =
+    authReady &&
+    clientReady &&
+    !scopesPending &&
+    !scopesError &&
+    activeDrafts.length > 0 &&
+    !startFresh;
+
+  // Gate: token + client role before any chat API calls.
   useEffect(() => {
     if (!authReady) return;
+    if (clientReady || portalGateRef.current) return;
+    portalGateRef.current = true;
+
+    void (async () => {
+      try {
+        if (clerkEnabled) {
+          const token = await waitForAuthToken();
+          if (!token) {
+            portalGateRef.current = false;
+            setError("Sign-in token missing. Refresh, or sign out and sign in again.");
+            return;
+          }
+        }
+        await ensureClientPortal();
+        setClientReady(true);
+      } catch (err) {
+        portalGateRef.current = false;
+        setError(formatStartError(err));
+      }
+    })();
+  }, [authReady, clientReady, clerkEnabled]);
+
+  useEffect(() => {
+    if (!authReady || !clientReady) return;
     if (scopesPending) return;
+    if (scopesError) {
+      setError(formatStartError(scopesQueryError));
+      return;
+    }
     if (showResume) return;
     if (startedRef.current) return;
     startedRef.current = true;
@@ -37,12 +119,21 @@ export default function ScopeChatSurface() {
       onSuccess: (s) => {
         router.push(`/scope/${s.id}`);
       },
-      onError: () => {
+      onError: (err) => {
         startedRef.current = false;
-        setError("Could not start scope chat. Please refresh.");
+        setError(formatStartError(err));
       },
     });
-  }, [authReady, scopesPending, showResume, router, startSession]);
+  }, [
+    authReady,
+    clientReady,
+    scopesPending,
+    scopesError,
+    scopesQueryError,
+    showResume,
+    router,
+    startSession,
+  ]);
 
   if (clerkEnabled && isReady && !isSignedIn) {
     return (
@@ -56,13 +147,28 @@ export default function ScopeChatSurface() {
   }
 
   if (error) {
-    return <div className="text-sm text-destructive">{error}</div>;
+    return (
+      <div className="space-y-3 text-sm">
+        <p className="text-destructive">{error}</p>
+        <p className="text-muted-foreground">
+          Tip: open{" "}
+          <Link href="/account" className="text-primary font-semibold hover:underline">
+            Account
+          </Link>{" "}
+          and enter as <strong>client</strong>, then return to{" "}
+          <Link href="/start" className="text-primary font-semibold hover:underline">
+            /start
+          </Link>
+          .
+        </p>
+      </div>
+    );
   }
 
-  if (!authReady || scopesPending) {
+  if (!authReady || !clientReady || scopesPending) {
     return (
       <div className="flex items-center justify-center min-h-[24rem] text-sm text-muted-foreground">
-        Checking for open drafts…
+        {!clientReady ? "Preparing client portal…" : "Checking for open drafts…"}
       </div>
     );
   }

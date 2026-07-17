@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.gateway import generate_plan_proposal, generate_task_packet_proposal
 from app.ai.matcher import match_candidates
+from app.config import settings
 from app.models.catalog import TaskType
 from app.models.fulfillment import (
     CharterRecord,
@@ -38,6 +39,10 @@ class FulfillmentService:
             raise ValueError("Order deadline required to build fulfillment plan")
 
         mapped = list(spec.mapped_task_types or [])
+        # Default: fixture plan (CONFIRM_AI_ENRICH=false). Spec Compiler already
+        # used Vertex; running Architect + N task-packet calls here made Confirm
+        # hang for minutes on Cloud Run.
+        force_fixture = not settings.confirm_ai_enrich
         proposal = generate_plan_proposal(
             order_id=order.id,
             order_deadline=order.deadline,
@@ -50,6 +55,7 @@ class FulfillmentService:
                 "deliverables": spec.deliverables or [],
                 "acceptance_criteria": spec.acceptance_criteria or [],
             },
+            force_fixture=force_fixture,
         )
         blueprint = proposal.plan
 
@@ -162,6 +168,7 @@ class FulfillmentService:
             order_deadline=order.deadline,
             revision_limit=order.revision_limit,
             dependency_titles=dependency_titles,
+            force_fixture=not settings.confirm_ai_enrich,
         )
         charter_fields = proposal.charter
         packet_fields = proposal.packet

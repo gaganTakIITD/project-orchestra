@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { ApiError } from "@/lib/api";
 import { useQuote, useSpec, useAcceptQuote } from "@/lib/hooks";
 import Footer from "@/components/footer";
 import JourneyStepper from "@/components/journey-stepper";
@@ -46,8 +47,12 @@ export default function ProposalPage() {
         /* ignore */
       }
       router.push(`/orders/${result.order_id}`);
-    } catch {
-      setConfirmError("Could not confirm. Please try again.");
+    } catch (err) {
+      const detail =
+        err instanceof ApiError && err.message
+          ? err.message
+          : "Could not confirm. Please try again.";
+      setConfirmError(detail);
     }
   };
 
@@ -225,13 +230,17 @@ export default function ProposalPage() {
                   className="w-full h-11 bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
                 >
                   {acceptQuote.isPending
-                    ? "Confirming & creating order…"
+                    ? "Creating your order…"
                     : "Confirm & begin work"}
                 </button>
 
                 {confirmError ? (
                   <p className="text-xs text-destructive text-center" role="alert">
                     {confirmError}
+                  </p>
+                ) : acceptQuote.isPending ? (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Freezing scope and building the task plan — usually a few seconds.
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground text-center">

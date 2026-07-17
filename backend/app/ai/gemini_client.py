@@ -34,9 +34,14 @@ def make_gemini_client() -> Any:
         raise RuntimeError(_NOT_CONFIGURED)
 
     from google import genai
+    from google.genai import types
+
+    # Timeout in ms — confirm used to hang for minutes without this.
+    timeout_ms = max(1_000, int(float(settings.gemini_timeout_seconds) * 1000))
 
     return genai.Client(
         vertexai=True,
         project=settings.vertex_project.strip(),
         location=(settings.vertex_location or "us-central1").strip(),
+        http_options=types.HttpOptions(timeout=timeout_ms),
     )

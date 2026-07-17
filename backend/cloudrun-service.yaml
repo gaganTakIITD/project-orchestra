@@ -59,3 +59,6 @@ spec:
               value: "false"
             - name: APP_ENV
               value: production
+            # Fast confirm: fixture Architect + packets. Spec chat still uses Vertex.
+            - name: CONFIRM_AI_ENRICH
+              value: "false"

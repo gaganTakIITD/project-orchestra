@@ -259,6 +259,12 @@ def compile_spec_turn(
         return turn
 
 
+def _is_ai_timeout(exc: BaseException) -> bool:
+    name = type(exc).__name__.lower()
+    msg = str(exc).lower()
+    return "timeout" in name or "timeout" in msg or "deadline" in msg
+
+
 def generate_plan_proposal(
     *,
     order_id: uuid.UUID,
@@ -266,11 +272,12 @@ def generate_plan_proposal(
     revision_limit: int,
     order_price: Decimal | float | None = None,
     spec: dict[str, Any] | None = None,
+    force_fixture: bool = False,
 ) -> PlanProposal:
     """Propose a fulfillment plan DAG (fixture or Gemini overlay + validate_dag)."""
     spec = spec or {}
-    if not settings.gemini_enabled:
-        if settings.gemini_required:
+    if force_fixture or not settings.gemini_enabled:
+        if not force_fixture and settings.gemini_required:
             raise GeminiNotConfiguredError(
                 f"Vertex Gemini required for Architect — {_VERTEX_REQUIRED}"
             )
@@ -291,7 +298,8 @@ def generate_plan_proposal(
             spec=spec,
         )
     except Exception as exc:
-        if settings.gemini_required:
+        # Timeouts soft-fall back so Confirm & begin is not stuck for minutes.
+        if settings.gemini_required and not _is_ai_timeout(exc):
             raise GeminiCallError(
                 f"Architect Gemini call failed: {type(exc).__name__}: {exc}"
             ) from exc
@@ -315,10 +323,11 @@ def generate_task_packet_proposal(
     order_deadline: datetime | None,
     revision_limit: int,
     dependency_titles: list[str] | None = None,
+    force_fixture: bool = False,
 ) -> PacketProposal:
     """Propose Charter + TaskPacket fields (fixture or Gemini structured JSON)."""
-    if not settings.gemini_enabled:
-        if settings.gemini_required:
+    if force_fixture or not settings.gemini_enabled:
+        if not force_fixture and settings.gemini_required:
             raise GeminiNotConfiguredError(
                 f"Vertex Gemini required for Task Packet Generator — {_VERTEX_REQUIRED}"
             )
@@ -343,7 +352,7 @@ def generate_task_packet_proposal(
             dependency_titles=dependency_titles,
         )
     except Exception as exc:
-        if settings.gemini_required:
+        if settings.gemini_required and not _is_ai_timeout(exc):
             raise GeminiCallError(
                 f"Task Packet Gemini call failed: {type(exc).__name__}: {exc}"
             ) from exc
