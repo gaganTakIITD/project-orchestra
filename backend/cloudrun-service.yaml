@@ -1,7 +1,7 @@
-# Deploy template. Target after billing split: INFRA_PROJECT = raystartup
-# (Cloud SQL + Cloud Run). Keep Gemini API key usage on gen-lang-client credits.
-# See docs/GCP_BILLING_SPLIT.md — replace gen-lang-client-* connection names
-# with $INFRA_PROJECT:us-central1:orchestra-pg when cutting over.
+# Deploy template for INFRA project raystartup (Cloud SQL + Cloud Run).
+# Gemini API key usage still bills gen-lang-client GenAI credits.
+# Cutover: docs/GCP_BILLING_SPLIT.md — deploy with:
+#   gcloud run services replace … --project=raystartup
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
@@ -10,11 +10,8 @@ spec:
   template:
     metadata:
       annotations:
-        # PRE-CUTOVER (paying SQL/Run on gen-lang-client). After cutover:
-        #   $INFRA_PROJECT:us-central1:orchestra-pg
-        #   projects/$INFRA_PROJECT/locations/us-central1/connectors/orchestra-vpc
-        run.googleapis.com/cloudsql-instances: gen-lang-client-0795401430:us-central1:orchestra-pg
-        run.googleapis.com/vpc-access-connector: projects/gen-lang-client-0795401430/locations/us-central1/connectors/orchestra-vpc
+        run.googleapis.com/cloudsql-instances: raystartup:us-central1:orchestra-trial-pg
+        run.googleapis.com/vpc-access-connector: projects/raystartup/locations/us-central1/connectors/orchestra-vpc
         run.googleapis.com/vpc-access-egress: private-ranges-only
         run.googleapis.com/startup-cpu-boost: "true"
     spec:
@@ -30,7 +27,8 @@ spec:
               cpu: "1"
               memory: 1Gi
           env:
-            # Secrets: Secret Manager (see docs/DEPLOY_API.md). Never commit plaintext.
+            # Secrets: Secret Manager in project raystartup (see docs/DEPLOY_API.md).
+            # Never commit plaintext.
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -47,8 +45,7 @@ spec:
                   name: orchestra-gemini-api-key
                   key: latest
             - name: CLOUD_SQL_INSTANCE
-              # After cutover: $INFRA_PROJECT:us-central1:orchestra-pg
-              value: gen-lang-client-0795401430:us-central1:orchestra-pg
+              value: raystartup:us-central1:orchestra-trial-pg
             - name: CLOUD_SQL_IP_TYPE
               value: private
             - name: CORS_ORIGINS

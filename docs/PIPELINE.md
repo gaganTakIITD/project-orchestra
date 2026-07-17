@@ -36,7 +36,7 @@ Resolve these so agents don't invent policy. Defaults in parentheses are the lea
 | # | Decision | Options / default | Blocks |
 |---|----------|-------------------|--------|
 | D1 | **Delete `raysql`?** | Yes (recommended — unused expensive MySQL leftover) vs keep | Cost only; not product |
-| D8 | **Infra billing split** | Move Cloud SQL + Cloud Run to **raystartup**; keep Gemini on **gen-lang-client** (**do this**) | Stops paying SQL/Run on GenAI project — `docs/GCP_BILLING_SPLIT.md` |
+| D8 | **Infra billing split** | SQL = `raystartup:us-central1:orchestra-trial-pg`; deploy Cloud Run in **raystartup**; keep Gemini on **gen-lang-client** (**do this**) | Stops paying SQL/Run on GenAI project — `docs/GCP_BILLING_SPLIT.md` |
 | D2 | **Warranty window** after delivery | e.g. 7 / 14 / 30 days (**default: 14**) | Dispute UX copy + timer policy later |
 | D3 | **Revision limit defaults per SKU** | e.g. Launch Studio = 2 rounds (**default: 2**) | Quote/amendment expectations |
 | D4 | **Workers see preference rank?** | Hide (**default**) vs show | Matcher / preferences UI |
@@ -59,7 +59,7 @@ Owner: `founder` (ops) · docs already written in `docs/DEPLOY_API.md`
 - [!] **Founder: run dual-account smoke on prod** (client + worker + admin `event_log` + notifications + ledger strip)
 - [!] **Founder: create Cloud Scheduler job** for timer tick (priority windows won't fire on prod without this)
 - [!] **Founder: confirm + delete `raysql`** (cost cleanup — not Orchestra Postgres)
-- [!] **Founder: billing cutover** — set `INFRA_PROJECT` (raystartup), migrate `orchestra-pg` + `orchestra-api` per `docs/GCP_BILLING_SPLIT.md`, point Vercel at new API URL, then delete `orchestra-pg` (and old Cloud Run) on gen-lang-client so SQL/Run stop billing there. Keep Gemini on gen-lang-client.
+- [!] **Founder: billing cutover** — infra SQL is `raystartup:us-central1:orchestra-trial-pg`. Deploy `orchestra-api` in project `raystartup` per `docs/GCP_BILLING_SPLIT.md`, point Vercel at new API URL, then delete `orchestra-pg` (and old Cloud Run) on gen-lang-client. Keep Gemini on gen-lang-client.
 
 **Done when:** Non-engineer completes one full outcome on prod with two Clerk accounts; admin sees `event_log`; timers tick via Scheduler; **infra bills on raystartup (₹0 line items), GenAI on gen-lang-client**.
 

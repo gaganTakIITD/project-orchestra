@@ -5,22 +5,22 @@
 | Workload | Project | Reason |
 |----------|---------|--------|
 | **Gemini / GenAI** | `gen-lang-client-0795401430` | ~95k GenAI free credits |
-| **Cloud SQL, Cloud Run, Artifact Registry, VPC, Scheduler** | **raystartup** (`INFRA_PROJECT`) | Infra savings → ₹0 on those line items |
+| **Cloud SQL, Cloud Run, Artifact Registry, VPC, Scheduler** | `raystartup` | Infra savings → ₹0 on those line items |
+| **Target SQL** | `raystartup:us-central1:orchestra-trial-pg` | Confirmed infra instance |
 
-Full cutover runbook: **`docs/GCP_BILLING_SPLIT.md`**. Until cutover completes, the Live table below is still on gen-lang-client (you pay for SQL/Run there).
+Full cutover runbook: **`docs/GCP_BILLING_SPLIT.md`**. Until cutover completes, the Live table below is still on gen-lang-client (you pay for SQL/Run there). Deploy YAML already points at raystartup SQL.
 
-## Live (pre-cutover — gen-lang-client)
+## Live (pre-cutover — gen-lang-client API still serving)
 
 | | |
 |--|--|
-| **API** | https://orchestra-api-979112189932.us-central1.run.app |
+| **API (current)** | https://orchestra-api-979112189932.us-central1.run.app |
 | **Health** | https://orchestra-api-979112189932.us-central1.run.app/api/v1/health |
 | **Catalog** | https://orchestra-api-979112189932.us-central1.run.app/api/v1/catalog/skus |
-| **Cloud SQL** | `orchestra-pg` (POSTGRES_16) — **not** `raysql` |
-| **Connection** | `gen-lang-client-0795401430:us-central1:orchestra-pg` |
-| **Private IP** | `10.22.0.5` (via VPC connector `orchestra-vpc`) |
+| **Cloud SQL (current / paid)** | `gen-lang-client-0795401430:us-central1:orchestra-pg` |
+| **Cloud SQL (target / ₹0 infra)** | `raystartup:us-central1:orchestra-trial-pg` |
 | **Frontend** | https://project-orchestra-khaki.vercel.app |
-| **Post-cutover** | Replace API URL + connection name with raystartup values; keep Gemini key usage on gen-lang-client credits |
+| **Post-cutover** | New Cloud Run URL in `raystartup` + Vercel `NEXT_PUBLIC_API_BASE_URL`; then delete gen-lang-client `orchestra-pg` |
 
 ## Why `raysql` kept failing
 
@@ -74,12 +74,16 @@ rm tmp
 cd backend
 # build
 TAG=v$(date +%Y%m%d%H%M%S)   # or PowerShell equivalent
-IMG=us-central1-docker.pkg.dev/gen-lang-client-0795401430/orchestra/api:$TAG
-gcloud builds submit --tag $IMG
+# After billing cutover — build + deploy in raystartup (see docs/GCP_BILLING_SPLIT.md)
+IMG=us-central1-docker.pkg.dev/raystartup/orchestra/api:$TAG
+gcloud builds submit --tag $IMG --project=raystartup
 
 # copy template → local deploy file, substitute image, then replace:
 # (PowerShell) (Get-Content cloudrun-service.yaml) -replace 'IMAGE_PLACEHOLDER',$IMG | Set-Content .cloudrun-deploy.yaml
-gcloud run services replace .cloudrun-deploy.yaml --region=us-central1 --project=gen-lang-client-0795401430
+gcloud run services replace .cloudrun-deploy.yaml --region=us-central1 --project=raystartup
+```
+
+Pre-cutover (legacy, still serving today): use `--project=gen-lang-client-0795401430` and the old Artifact Registry path — only until raystartup Cloud Run is live.
 ```
 
 `DATABASE_URL` / `SECRET_KEY` come from Secret Manager via `secretKeyRef` in the YAML. Do not paste them into committed files.
@@ -220,7 +224,7 @@ Local/dev: `POST http://localhost:8000/api/v1/internal/timers/tick` or set `TIME
 
 ### Founder cost cleanup
 
-1. **Billing split (primary):** move Cloud SQL + Cloud Run to **raystartup** so those line items hit infra credits (₹0). Keep Gemini on **gen-lang-client**. Runbook: `docs/GCP_BILLING_SPLIT.md`.
+1. **Billing split (primary):** point Cloud Run at **`raystartup:us-central1:orchestra-trial-pg`** and deploy API in project `raystartup`. Keep Gemini on **gen-lang-client**. Runbook: `docs/GCP_BILLING_SPLIT.md`.
 2. After cutover: delete `orchestra-pg` on gen-lang-client (stops paid Postgres there).
-3. Confirm then: `gcloud sql instances delete raysql --project=gen-lang-client-0795401430 --quiet` (leftover MySQL — not the Orchestra Postgres instance).
+3. Confirm then: `gcloud sql instances delete raysql --project=gen-lang-client-0795401430 --quiet` (leftover MySQL — not Orchestra).
 
