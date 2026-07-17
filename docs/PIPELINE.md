@@ -81,6 +81,17 @@ The full `intent → delivered` loop works on the live API with honest invites, 
 - [x] `/worker` inbox: live/not-live badge, profile CTA when &lt;70%, priority countdown
 - **Done when:** Worker can go from `/join` → complete ≥70% → receive invites with matchable task_types
 
+---
+
+## Client + delivery UX polish
+
+- Owner: `cursor`
+- [x] Order tracker → delivery console (primary CTA, deliverables first-class, collapsed plan)
+- [x] Proposal confirm: inline errors, funds story, stepper on `confirm`
+- [x] My outcomes: next-action cards, compact progress (no full stepper per row)
+- [x] Worker job card: stage banners, checklist-gated submit, discussion composer
+- **Done when:** Client can review & accept delivery without hunting; worker submit path is clear
+
 ### DEFERRED further
 
 Mobile apps, Redis multi-instance WS fan-out, full TDS productization, Meilisearch, multi-vertical SKUs.
