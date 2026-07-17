@@ -21,6 +21,8 @@ async def get_worker_profile(
     if result is None:
         raise HTTPException(status_code=404, detail="Worker profile not found")
     user, profile = result
+    # Persist auto-created empty profiles from get_profile.
+    await db.commit()
     from app.services.worker_stats import WorkerStatsService
 
     tt_stats = await WorkerStatsService(db).list_for_worker(worker.id)

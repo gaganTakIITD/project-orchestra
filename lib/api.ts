@@ -112,7 +112,24 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     headers,
   });
   if (!res.ok) {
-    throw new ApiError(res.status, `${init?.method ?? "GET"} ${path} failed`);
+    let detail = `${init?.method ?? "GET"} ${path} failed`;
+    try {
+      const body = (await res.json()) as { detail?: unknown };
+      if (typeof body.detail === "string" && body.detail.trim()) {
+        detail = body.detail;
+      } else if (Array.isArray(body.detail) && body.detail.length) {
+        detail = body.detail
+          .map((d) =>
+            typeof d === "object" && d && "msg" in d
+              ? String((d as { msg: unknown }).msg)
+              : JSON.stringify(d)
+          )
+          .join("; ");
+      }
+    } catch {
+      /* keep default */
+    }
+    throw new ApiError(res.status, detail);
   }
   return (await res.json()) as T;
 }
