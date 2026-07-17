@@ -3,13 +3,38 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ApiError } from "@/lib/api";
+import { getAuthToken } from "@/lib/auth-token";
 import { useMyScopes, useStartScopeSession } from "@/lib/hooks";
 import { useOrchestraAuth } from "@/lib/use-orchestra-auth";
+
+async function waitForAuthToken(maxAttempts = 20, delayMs = 100): Promise<string | null> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const token = await getAuthToken();
+    if (token) return token;
+    await new Promise((r) => setTimeout(r, delayMs));
+  }
+  return null;
+}
+
+function formatStartError(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 401) {
+      return "Sign-in token missing. Refresh, or sign out and sign in again.";
+    }
+    if (err.status === 403 && /worker|portal|role/i.test(err.message)) {
+      return "You're in the worker portal. Switch to client on Account, then try again.";
+    }
+    return err.message || "Could not start scope chat. Please refresh.";
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return "Could not start scope chat. Please refresh.";
+}
 
 /**
  * /start bootstrap — offers "Resume scope" when drafts exist, otherwise creates
  * a scope session and redirects to /scope/[id].
- * Waits for Clerk auth before calling the API (avoids 401 race on first paint).
+ * Waits for Clerk JWT (not just isSignedIn) before calling the API.
  */
 export default function ScopeChatSurface() {
   const router = useRouter();
@@ -18,31 +43,60 @@ export default function ScopeChatSurface() {
   const [startFresh, setStartFresh] = useState(false);
   const startSession = useStartScopeSession();
   const authReady = isReady && (!clerkEnabled || isSignedIn);
-  const { data: scopes = [], isPending: scopesPending } = useMyScopes({
+  const {
+    data: scopes = [],
+    isPending: scopesPending,
+    isError: scopesError,
+    error: scopesQueryError,
+  } = useMyScopes({
     enabled: authReady,
   });
   const startedRef = useRef(false);
 
   const activeDrafts = scopes.filter((s) => s.status === "active");
-  const showResume = authReady && !scopesPending && activeDrafts.length > 0 && !startFresh;
+  const showResume = authReady && !scopesPending && !scopesError && activeDrafts.length > 0 && !startFresh;
 
   useEffect(() => {
     if (!authReady) return;
     if (scopesPending) return;
+    if (scopesError) {
+      setError(formatStartError(scopesQueryError));
+      return;
+    }
     if (showResume) return;
     if (startedRef.current) return;
     startedRef.current = true;
 
-    startSession.mutate(undefined, {
-      onSuccess: (s) => {
-        router.push(`/scope/${s.id}`);
-      },
-      onError: () => {
-        startedRef.current = false;
-        setError("Could not start scope chat. Please refresh.");
-      },
-    });
-  }, [authReady, scopesPending, showResume, router, startSession]);
+    void (async () => {
+      if (clerkEnabled) {
+        const token = await waitForAuthToken();
+        if (!token) {
+          startedRef.current = false;
+          setError("Sign-in token missing. Refresh, or sign out and sign in again.");
+          return;
+        }
+      }
+
+      startSession.mutate(undefined, {
+        onSuccess: (s) => {
+          router.push(`/scope/${s.id}`);
+        },
+        onError: (err) => {
+          startedRef.current = false;
+          setError(formatStartError(err));
+        },
+      });
+    })();
+  }, [
+    authReady,
+    scopesPending,
+    scopesError,
+    scopesQueryError,
+    showResume,
+    router,
+    startSession,
+    clerkEnabled,
+  ]);
 
   if (clerkEnabled && isReady && !isSignedIn) {
     return (
@@ -56,7 +110,22 @@ export default function ScopeChatSurface() {
   }
 
   if (error) {
-    return <div className="text-sm text-destructive">{error}</div>;
+    return (
+      <div className="space-y-3 text-sm">
+        <p className="text-destructive">{error}</p>
+        <p className="text-muted-foreground">
+          Tip: open{" "}
+          <Link href="/account" className="text-primary font-semibold hover:underline">
+            Account
+          </Link>{" "}
+          and enter as <strong>client</strong>, then return to{" "}
+          <Link href="/start" className="text-primary font-semibold hover:underline">
+            /start
+          </Link>
+          .
+        </p>
+      </div>
+    );
   }
 
   if (!authReady || scopesPending) {
