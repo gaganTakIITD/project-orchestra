@@ -5,8 +5,8 @@
 | Workload | Project | Reason |
 |----------|---------|--------|
 | **Gemini / GenAI** | `gen-lang-client-0795401430` | ~95k GenAI free credits |
-| **Cloud SQL, Cloud Run, Artifact Registry, VPC, Scheduler** | `raystartup` | Infra savings → ₹0 on those line items |
-| **Target SQL** | `raystartup:us-central1:orchestra-trial-pg` | Confirmed infra instance |
+| **Cloud SQL, Cloud Run, Artifact Registry, VPC, Scheduler** | `raystartup` | ~30k infra free credits → ₹0 on those line items |
+| **Target SQL** | `raystartup:us-central1:orchestra-trial-pg` | Instance on the **30k-credit** project (reuse) |
 
 Full cutover runbook: **`docs/GCP_BILLING_SPLIT.md`**. Until cutover completes, the Live table below is still on gen-lang-client (you pay for SQL/Run there). Deploy YAML already points at raystartup SQL.
 
@@ -84,7 +84,6 @@ gcloud run services replace .cloudrun-deploy.yaml --region=us-central1 --project
 ```
 
 Pre-cutover (legacy, still serving today): use `--project=gen-lang-client-0795401430` and the old Artifact Registry path — only until raystartup Cloud Run is live.
-```
 
 `DATABASE_URL` / `SECRET_KEY` come from Secret Manager via `secretKeyRef` in the YAML. Do not paste them into committed files.
 

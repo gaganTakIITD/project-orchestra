@@ -1,5 +1,6 @@
-# Deploy template for INFRA project raystartup (Cloud SQL + Cloud Run).
-# Gemini API key usage still bills gen-lang-client GenAI credits.
+# Deploy template for INFRA project raystartup (30k free credits).
+# Cloud SQL: raystartup:us-central1:orchestra-trial-pg
+# Gemini API key usage still bills gen-lang-client GenAI (95k) credits.
 # Cutover: docs/GCP_BILLING_SPLIT.md — deploy with:
 #   gcloud run services replace … --project=raystartup
 apiVersion: serving.knative.dev/v1

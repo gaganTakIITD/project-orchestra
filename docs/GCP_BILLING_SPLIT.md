@@ -1,14 +1,14 @@
 # Dual-project billing split (GenAI vs infra)
 
-> **Why:** `gen-lang-client` has **~95k GenAI free credits** (good for Gemini / Vertex). Infra there (Cloud SQL, Cloud Run, networking) still **bills cash**. The **raystartup** GCP project covers Cloud SQL / Cloud Run / Artifact Registry / networking with savings → **₹0 subtotals**. Put AI usage on gen-lang-client; put Orchestra infra on raystartup.
+> **Why:** `gen-lang-client` has **~95k GenAI free credits** (good for Gemini / Vertex). Infra there (Cloud SQL, Cloud Run, networking) still **bills cash**. **raystartup** has the **~30k infra free credits** — Cloud SQL / Cloud Run / Artifact Registry / networking hit those and show **₹0 subtotals**. Put AI usage on gen-lang-client; put Orchestra infra on raystartup.
 
 ## Confirmed targets
 
 | Concern | Value |
 |---------|--------|
-| **AI project** | `gen-lang-client-0795401430` |
-| **Infra project** | `raystartup` |
-| **Infra Cloud SQL** | `raystartup:us-central1:orchestra-trial-pg` |
+| **AI project (95k GenAI credits)** | `gen-lang-client-0795401430` |
+| **Infra project (30k free credits)** | `raystartup` |
+| **Infra Cloud SQL** | `raystartup:us-central1:orchestra-trial-pg` — instance **on the 30k-credit project** |
 | **Region** | `us-central1` |
 
 ```bash
@@ -24,7 +24,7 @@ export SQL_CONNECTION=raystartup:us-central1:orchestra-trial-pg
 | Concern | GCP project | Why |
 |---------|-------------|-----|
 | **Gemini / Vertex / GenAI API calls** | `gen-lang-client-0795401430` | 95k GenAI credits |
-| **Cloud SQL (`orchestra-trial-pg`)** | `raystartup` | Infra credits → ₹0 |
+| **Cloud SQL (`orchestra-trial-pg`)** | `raystartup` (30k credits) | Free infra credits → ₹0 |
 | **Cloud Run (`orchestra-api`)** | `raystartup` | Same |
 | **Artifact Registry, VPC connector, Cloud Build (API images)** | `raystartup` | Same |
 | **Secret Manager (DB URL, SECRET_KEY)** | `raystartup` | Lives with the API |

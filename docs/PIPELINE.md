@@ -20,7 +20,7 @@
 | **Market features (code)** | Amendments, admin verify/taxonomy, reputation/media, email/Sentry, Razorpay **sandbox**, disputes/PM tick, RAG — all `[x]` |
 | **Live stack** | Clerk + Cloud Run + Cloud SQL (`orchestra-pg`) + Vercel + Gemini secret — up (`/health` OK) — **still on gen-lang-client until billing cutover** |
 | **What's actually left** | **Founder-gated ops** (incl. **move SQL/Run → raystartup**); then pilot. Almost no Cursor code work until harden is green. |
-| **Billing** | GenAI → `gen-lang-client` (95k credits); Cloud SQL / Cloud Run → **raystartup** — see `docs/GCP_BILLING_SPLIT.md` |
+| **Billing** | GenAI → `gen-lang-client` (95k); infra SQL `orchestra-trial-pg` + Cloud Run → **raystartup** (30k) — see `docs/GCP_BILLING_SPLIT.md` |
 | **Payments** | Stay `PAYMENTS_ENABLED=false` until harden passes — sandbox ledger only |
 
 **Chapter done when:** founder runs outcomes on prod without engineering babysitting; scope changes go through Amendments; admin verifies workers; real money stays off until harden is green.
@@ -36,7 +36,7 @@ Resolve these so agents don't invent policy. Defaults in parentheses are the lea
 | # | Decision | Options / default | Blocks |
 |---|----------|-------------------|--------|
 | D1 | **Delete `raysql`?** | Yes (recommended — unused expensive MySQL leftover) vs keep | Cost only; not product |
-| D8 | **Infra billing split** | SQL = `raystartup:us-central1:orchestra-trial-pg`; deploy Cloud Run in **raystartup**; keep Gemini on **gen-lang-client** (**do this**) | Stops paying SQL/Run on GenAI project — `docs/GCP_BILLING_SPLIT.md` |
+| D8 | **Infra billing split** | SQL = `orchestra-trial-pg` on **raystartup (30k credits)**; deploy Cloud Run there; keep Gemini on **gen-lang-client (95k)** (**do this**) | Stops paying SQL/Run on GenAI project — `docs/GCP_BILLING_SPLIT.md` |
 | D2 | **Warranty window** after delivery | e.g. 7 / 14 / 30 days (**default: 14**) | Dispute UX copy + timer policy later |
 | D3 | **Revision limit defaults per SKU** | e.g. Launch Studio = 2 rounds (**default: 2**) | Quote/amendment expectations |
 | D4 | **Workers see preference rank?** | Hide (**default**) vs show | Matcher / preferences UI |
