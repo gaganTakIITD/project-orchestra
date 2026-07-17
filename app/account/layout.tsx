@@ -1,11 +1,8 @@
 import type { ReactNode } from "react";
-import WorkspaceHeader from "@/components/workspace-header";
+
+/** Account hub depends on Clerk session — skip static prerender. */
+export const dynamic = "force-dynamic";
 
 export default function AccountLayout({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <WorkspaceHeader />
-      {children}
-    </>
-  );
+  return children;
 }
