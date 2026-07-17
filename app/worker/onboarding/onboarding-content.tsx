@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/footer";
+import { ApiError } from "@/lib/api";
 import {
   useMe,
   useSaveWorkerProfile,
+  useSetRole,
   useSkills,
   useTaskTypes,
   useTools,
@@ -68,12 +70,14 @@ export default function OnboardingContent() {
   const { data: catalogTools = [], isLoading: toolsLoading } = useTools();
   const { data: catalogTaskTypes = [], isLoading: typesLoading } = useTaskTypes();
   const saveProfile = useSaveWorkerProfile();
+  const setRole = useSetRole();
 
   const [hydrated, setHydrated] = useState(false);
   const [draft, setDraft] = useState<OnboardingDraft>(() => emptyOnboardingDraft());
   const [step, setStep] = useState<OnboardingStepId>("basics");
   const [showErrors, setShowErrors] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const errorBannerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (hydrated || profileLoading) return;
@@ -86,7 +90,12 @@ export default function OnboardingContent() {
   }, [existing, me?.full_name, profileLoading, hydrated]);
 
   const completion = useMemo(() => computeProfileCompletionPct(draft), [draft]);
-  const canGoLive = completion >= PROFILE_LIVE_THRESHOLD;
+  const allStepErrors = useMemo(
+    () => STEPS.flatMap((s) => stepErrors(s.id, draft)),
+    [draft]
+  );
+  const canGoLive =
+    completion >= PROFILE_LIVE_THRESHOLD && allStepErrors.length === 0;
   const errors = useMemo(() => stepErrors(step, draft), [step, draft]);
   const stepIndex = STEPS.findIndex((s) => s.id === step);
   const taxonomyLoading = skillsLoading || toolsLoading || typesLoading;
@@ -117,26 +126,40 @@ export default function OnboardingContent() {
   };
 
   const handleComplete = async () => {
-    const allErrors = STEPS.flatMap((s) => stepErrors(s.id, draft));
-    if (allErrors.length) {
+    if (allStepErrors.length) {
       setShowErrors(true);
       const firstBroken = STEPS.find((s) => stepErrors(s.id, draft).length > 0);
       if (firstBroken) setStep(firstBroken.id);
+      setSaveError(allStepErrors[0] ?? "Fix the highlighted fields, then try again.");
+      requestAnimationFrame(() => {
+        errorBannerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
       return;
     }
-    if (!canGoLive || saveProfile.isPending) return;
+    if (!canGoLive || saveProfile.isPending || setRole.isPending) return;
     setSaveError(null);
     try {
+      // Ensure active portal is worker before PATCH /workers/profile (403 otherwise).
+      if (me && me.role !== "worker" && me.role !== "admin") {
+        await setRole.mutateAsync("worker");
+      }
       const saved = await saveProfile.mutateAsync(draftToSaveInput(draft));
-      if (saved.profile_completion_pct < PROFILE_LIVE_THRESHOLD) {
+      if (saved.profile_completion_pct < PROFILE_LIVE_THRESHOLD || !saved.is_active) {
         setSaveError(
-          `Profile saved at ${saved.profile_completion_pct}% — need ${PROFILE_LIVE_THRESHOLD}% to go live.`
+          `Profile saved at ${saved.profile_completion_pct}% — need ${PROFILE_LIVE_THRESHOLD}% and live status to enter matching.`
         );
         return;
       }
-      router.push("/worker");
-    } catch {
-      setSaveError("Could not save profile. Check your connection and try again.");
+      router.replace("/worker?live=1");
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : "Could not save profile. Check your connection and try again.";
+      setSaveError(message);
+      requestAnimationFrame(() => {
+        errorBannerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
     }
   };
 
@@ -706,9 +729,13 @@ export default function OnboardingContent() {
           ) : null}
 
           {saveError ? (
-            <p className="mb-4 text-sm text-destructive" role="alert">
-              {saveError}
-            </p>
+            <div
+              ref={errorBannerRef}
+              className="mb-4 border border-destructive/40 bg-destructive/5 px-4 py-3"
+              role="alert"
+            >
+              <p className="text-sm text-destructive font-medium">{saveError}</p>
+            </div>
           ) : null}
 
           {/* Actions */}
@@ -733,12 +760,12 @@ export default function OnboardingContent() {
             ) : (
               <button
                 type="button"
-                onClick={handleComplete}
-                disabled={!canGoLive || saveProfile.isPending}
+                onClick={() => void handleComplete()}
+                disabled={!canGoLive || saveProfile.isPending || setRole.isPending}
                 className="h-11 px-8 bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
               >
-                {saveProfile.isPending
-                  ? "Saving…"
+                {saveProfile.isPending || setRole.isPending
+                  ? "Going live…"
                   : canGoLive
                     ? "Go live → inbox"
                     : `Reach ${PROFILE_LIVE_THRESHOLD}% to go live`}

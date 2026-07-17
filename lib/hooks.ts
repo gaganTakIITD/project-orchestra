@@ -11,6 +11,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
+  ApiError,
   authApi,
   catalogApi,
   chatApi,
@@ -295,13 +296,22 @@ export const useWorkerProfile = (options?: { enabled?: boolean }) =>
     queryKey: ["worker-profile"],
     queryFn: workerApi.getProfile,
     enabled: options?.enabled ?? true,
+    retry: (count, err) => {
+      // Missing profile is expected for brand-new workers — don't spin forever.
+      if (err instanceof ApiError && err.status === 404) return false;
+      return count < 2;
+    },
   });
 
 export const useSaveWorkerProfile = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: workerApi.saveProfile,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["worker-profile"] }),
+    onSuccess: (saved) => {
+      qc.setQueryData(["worker-profile"], saved);
+      void qc.invalidateQueries({ queryKey: ["worker-profile"] });
+      void qc.invalidateQueries({ queryKey: ["me"] });
+    },
   });
 };
 

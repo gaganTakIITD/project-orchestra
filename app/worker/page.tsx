@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import Footer from "@/components/footer";
 import { useMyTasks, useWorkerProfile } from "@/lib/hooks";
 import { PROFILE_LIVE_THRESHOLD } from "@/lib/profile-completion";
@@ -37,10 +38,35 @@ function useCountdown(iso: string | null | undefined): string | null {
   return `${m}m ${s}s left`;
 }
 
-export default function WorkerDashboard() {
+export default function WorkerDashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="text-sm font-mono text-muted-foreground">Loading inbox…</p>
+        </div>
+      }
+    >
+      <WorkerDashboard />
+    </Suspense>
+  );
+}
+
+function WorkerDashboard() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const justWentLive = searchParams.get("live") === "1";
   const { data: profile, isLoading: profileLoading } = useWorkerProfile();
   const { data: tasks, isLoading: tasksLoading } = useMyTasks();
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [showLiveBanner, setShowLiveBanner] = useState(justWentLive);
+
+  useEffect(() => {
+    if (!justWentLive) return;
+    setShowLiveBanner(true);
+    // Drop the query so refresh doesn't keep the banner forever.
+    router.replace("/worker", { scroll: false });
+  }, [justWentLive, router]);
 
   const filtered = useMemo(() => {
     if (!tasks) return [];
@@ -57,6 +83,26 @@ export default function WorkerDashboard() {
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
       <main id="main-content" className="flex-1 border-b border-border">
         <div className="max-w-6xl mx-auto px-6 lg:px-8 py-16 lg:py-20">
+          {showLiveBanner ? (
+            <div className="mb-8 border border-emerald-300/70 bg-emerald-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-emerald-900">
+                  You&apos;re live — matching can send you invites
+                </p>
+                <p className="text-xs text-emerald-800/80 mt-1">
+                  New tasks appear in this inbox. Keep your availability updated.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLiveBanner(false)}
+                className="text-xs font-mono uppercase tracking-wider text-emerald-900 underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          ) : null}
+
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-10">
             <div>
               <p className="text-xs font-mono tracking-widest uppercase text-primary mb-2">
@@ -177,7 +223,7 @@ export default function WorkerDashboard() {
               {needsProfile ? (
                 <Link
                   href="/worker/onboarding"
-                  className="text-sm text-primary font-semibold"
+                  className="text-sm text-primary font-semibold hover:underline"
                 >
                   Complete your profile →
                 </Link>

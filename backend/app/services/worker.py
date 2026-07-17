@@ -34,9 +34,16 @@ class WorkerService:
 
     async def get_profile(self, user_id: uuid.UUID) -> tuple[User, WorkerProfileRecord] | None:
         user = await self.session.get(User, user_id)
-        if user is None or user.role != "worker":
+        if user is None:
+            return None
+        # Admin may inspect the worker lane; workers always get a profile row.
+        if user.role not in ("worker", "admin"):
             return None
         profile = await self.session.get(WorkerProfileRecord, user_id)
+        if profile is None and user.role == "worker":
+            profile = WorkerProfileRecord(user_id=user.id, headline="", bio="")
+            self.session.add(profile)
+            await self.session.flush()
         if profile is None:
             return None
         return user, profile
@@ -45,8 +52,11 @@ class WorkerService:
         self, *, user: User, body: WorkerProfileUpsert
     ) -> tuple[User, WorkerProfileRecord]:
         """Create or update WorkerProfileRecord; recompute completion; gate live ≥70%."""
-        if user.role != "worker":
+        if user.role not in ("worker", "admin"):
             raise ValueError("Only workers can upsert a worker profile")
+        if user.role == "admin":
+            # Keep admin identity but ensure a profile row exists for the lane.
+            pass
 
         if body.full_name is not None and body.full_name.strip():
             user.full_name = body.full_name.strip()
