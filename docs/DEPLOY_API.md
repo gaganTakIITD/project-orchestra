@@ -219,7 +219,7 @@ gcloud scheduler jobs create http orchestra-timer-tick \
   --uri="https://YOUR_CLOUD_RUN_URL/api/v1/internal/timers/tick" \
   --http-method=POST \
   --oidc-service-account-email=YOUR_SA@PROJECT.iam.gserviceaccount.com \
-  --project=gen-lang-client-0795401430
+  --project=raystartup
 ```
 
 Local/dev: `POST http://localhost:8000/api/v1/internal/timers/tick` or set `TIMER_TICK_SECONDS=60`.
