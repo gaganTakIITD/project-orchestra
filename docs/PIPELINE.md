@@ -18,9 +18,9 @@
 |-------|---------|
 | **Product loop (code)** | Shipped end-to-end on live API: scope → quote → confirm → invite → work → deliver → accept |
 | **Market features (code)** | Amendments, admin verify/taxonomy, reputation/media, email/Sentry, Razorpay **sandbox**, disputes/PM tick, RAG — all `[x]` |
-| **Live stack** | Clerk + Cloud Run + Cloud SQL (`orchestra-pg`) + Vercel + Gemini secret — up (`/health` OK) — **still on gen-lang-client until billing cutover** |
-| **What's actually left** | **Founder-gated ops** (incl. **move SQL/Run → raystartup**); then pilot. Almost no Cursor code work until harden is green. |
-| **Billing** | raystartup trial ₹28.2k→2026-10-12 covers Run/SQL/**Vertex Gemini**; **no** AI Studio. gen-lang-client ₹95.7k = Agent Builder only — `docs/GCP_BILLING_SPLIT.md` |
+| **Live stack** | Clerk + Cloud Run + Cloud SQL (`orchestra-trial-pg`) on **raystartup** + Vercel + Vertex — up (`/health` OK) |
+| **What's actually left** | **Founder-gated ops** (prod smoke, gen-lang-client teardown when IAM allows); then pilot |
+| **Billing** | raystartup trial → Run/SQL/Vertex Gemini; gen-lang-client ₹95.7k = Agent Builder only — `docs/GCP_BILLING_SPLIT.md` |
 | **Payments** | Stay `PAYMENTS_ENABLED=false` until harden passes — sandbox ledger only |
 
 **Chapter done when:** founder runs outcomes on prod without engineering babysitting; scope changes go through Amendments; admin verifies workers; real money stays off until harden is green.
@@ -56,12 +56,12 @@ Owner: `founder` (ops) · docs already written in `docs/DEPLOY_API.md`
 - [x] Cloud Scheduler instructions for `POST /api/v1/internal/timers/tick` documented
 - [x] Notifications UI (badge + list) on `WorkspaceHeader`
 - [x] Browser smoke checklist documented
+- [x] **Billing cutover (2026-07-17):** API on raystartup — https://orchestra-api-444869825431.us-central1.run.app; Vercel bound; Vertex + Clerk live
 - [!] **Founder: run dual-account smoke on prod** (client + worker + admin `event_log` + notifications + ledger strip)
-- [!] **Founder: create Cloud Scheduler job** for timer tick (priority windows won't fire on prod without this)
-- [!] **Founder: confirm + delete `raysql`** (cost cleanup — not Orchestra Postgres)
-- [!] **Founder: billing cutover** — deploy `orchestra-api` + Vertex Gemini on **`raystartup`** / `orchestra-trial-pg` (code already uses `GEMINI_AUTH=vertex`); point Vercel at new URL; delete Orchestra SQL/Run on gen-lang-client. Agent Builder only on gen-lang-client. See `docs/GCP_BILLING_SPLIT.md`.
+- [x] **Founder: Cloud Scheduler** `orchestra-timer-tick` on raystartup (5 min)
+- [!] **Founder: delete gen-lang-client Orchestra infra** — blocked (no IAM on `gen-lang-client-0795401430` for `gagantak000@gmail.com`); owner must delete `orchestra-api`, `orchestra-pg`, confirm `raysql`
 
-**Done when:** Dual-account smoke on prod; timers tick; **Orchestra bills on raystartup (₹0 trial)**; gen-lang-client has **no** Orchestra Cloud Run/SQL/SDK Gemini.
+**Done when:** Non-engineer completes one full outcome on prod with two Clerk accounts; admin sees `event_log`; timers tick; **Orchestra bills on raystartup**; gen-lang-client has **no** Orchestra Cloud Run/SQL.
 
 **Cursor role during Gate 1:** standby for bugs found in smoke only — no new features.
 
@@ -131,7 +131,7 @@ Do **not** start these until harden is green. Order matters:
 
 ### LEFT (this chapter)
 
-- Gate 1 founder ops (prod smoke, Cloud Scheduler, `raysql` delete, **raystartup infra cutover**)
+- Gate 1 founder ops (prod smoke, **gen-lang-client teardown when IAM allows**)
 - Gate 0 product decisions D1–D8 (mostly policy; D5 already implemented; **D8 billing split is cost-critical**)
 - Payments stay sandbox until Gate 1 green
 
@@ -179,9 +179,9 @@ Mobile apps, Redis multi-instance WS fan-out, full TDS productization, Meilisear
 ### Founder-gated (not code)
 
 - [!] Run prod dual-account smoke (`docs/DEPLOY_API.md` — Campus dual-account smoke checklist)
-- [!] Create Cloud Scheduler job for `/api/v1/internal/timers/tick`
-- [!] Confirm then `gcloud sql instances delete raysql` (cost cleanup — see `docs/DEPLOY_API.md`)
-- [!] Move Cloud Run + SQL + standalone Gemini to raystartup; gen-lang-client = Agent Builder only (`docs/GCP_BILLING_SPLIT.md`)
+- [x] Billing cutover to raystartup (`docs/GCP_BILLING_SPLIT.md`, live API `444869825431`)
+- [x] Cloud Scheduler `orchestra-timer-tick` on raystartup
+- [!] Delete gen-lang-client `orchestra-api` / `orchestra-pg` / `raysql` — **IAM blocked**; needs project owner
 - [!] Optional hygiene: rotate Clerk keys if they were ever pasted in chat
 
 ---

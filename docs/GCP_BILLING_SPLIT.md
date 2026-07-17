@@ -243,10 +243,20 @@ Leave gen-lang-client for **Agent Builder** work only.
 ## Repo status
 
 - [x] Credit rules documented (both accounts)
-- [x] Code: `genai.Client(api_key=…)` → Vertex ADC via `GEMINI_AUTH=vertex` / `VERTEX_PROJECT=raystartup`
+- [x] Code: Vertex ADC via `GEMINI_AUTH=vertex` / `VERTEX_PROJECT=raystartup`
 - [x] Deploy template: no `GEMINI_API_KEY`; Vertex env on raystartup
-- [ ] Founder: deploy + Vercel flip + delete paid SQL/Run on gen-lang-client
+- [x] **Cutover live (2026-07-17):** https://orchestra-api-444869825431.us-central1.run.app + Vercel bound
+- [!] **Teardown blocked:** delete gen-lang-client `orchestra-api` / `orchestra-pg` — IAM denied for `gagantak000@gmail.com`
 - [ ] Later (optional): Agent Builder features on gen-lang-client to use ₹95.7k
+
+## Live production (post-cutover)
+
+| Resource | Value |
+|----------|--------|
+| API | https://orchestra-api-444869825431.us-central1.run.app |
+| SQL | `raystartup:us-central1:orchestra-trial-pg` (private `10.97.0.3`) |
+| VPC | `orchestra-vpc` READY, `default` / `10.8.0.0/28` |
+| Scheduler | `orchestra-timer-tick` on `raystartup` |
 
 ## This Cloud Agent cannot execute GCP cutover
 

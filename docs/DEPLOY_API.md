@@ -13,17 +13,29 @@
 
 Full rules + cutover: **`docs/GCP_BILLING_SPLIT.md`**.
 
-## Live (pre-cutover — gen-lang-client API still serving)
+## Live (raystartup — cutover complete 2026-07-17)
 
 | | |
 |--|--|
-| **API (current)** | https://orchestra-api-979112189932.us-central1.run.app |
-| **Health** | https://orchestra-api-979112189932.us-central1.run.app/api/v1/health |
-| **Catalog** | https://orchestra-api-979112189932.us-central1.run.app/api/v1/catalog/skus |
-| **Cloud SQL (current / paid)** | `gen-lang-client-0795401430:us-central1:orchestra-pg` |
-| **Cloud SQL (target / ₹0 infra)** | `raystartup:us-central1:orchestra-trial-pg` |
+| **GCP project** | `raystartup` (project number `444869825431`) |
+| **API** | https://orchestra-api-444869825431.us-central1.run.app |
+| **Health** | https://orchestra-api-444869825431.us-central1.run.app/api/v1/health |
+| **Catalog** | https://orchestra-api-444869825431.us-central1.run.app/api/v1/catalog/skus |
+| **Cloud SQL** | `raystartup:us-central1:orchestra-trial-pg` (private IP `10.97.0.3`, network `default`) |
+| **VPC connector** | `orchestra-vpc` — `default` / `10.8.0.0/28`, **READY** |
+| **Vertex AI** | `GEMINI_AUTH=vertex`, `VERTEX_PROJECT=raystartup` — **no** `GEMINI_API_KEY` |
+| **Auth** | `AUTH_MODE=clerk` + JWKS/issuer for `arriving-serval-22` |
+| **Scheduler** | `orchestra-timer-tick` every 5 min on `raystartup` |
 | **Frontend** | https://project-orchestra-khaki.vercel.app |
-| **Post-cutover** | New Cloud Run URL in `raystartup` + Vercel `NEXT_PUBLIC_API_BASE_URL`; then delete gen-lang-client `orchestra-pg` |
+| **Vercel API bind** | `NEXT_PUBLIC_API_BASE_URL=https://orchestra-api-444869825431.us-central1.run.app/api/v1` (production + preview) |
+
+### Legacy (gen-lang-client — tear down when IAM allows)
+
+| | |
+|--|--|
+| **Old API** | https://orchestra-api-979112189932.us-central1.run.app — **stop using** |
+| **Old SQL** | `gen-lang-client-0795401430:us-central1:orchestra-pg` — delete to stop billing |
+| **Blocked** | `gagantak000@gmail.com` has no IAM on `gen-lang-client-0795401430`; owner must delete `orchestra-api`, `orchestra-pg`, confirm `raysql` |
 
 ## Why `raysql` kept failing
 
@@ -87,28 +99,34 @@ gcloud builds submit --tag $IMG --project=raystartup
 # copy template → local deploy file, substitute image, then replace:
 # (PowerShell) (Get-Content cloudrun-service.yaml) -replace 'IMAGE_PLACEHOLDER',$IMG | Set-Content .cloudrun-deploy.yaml
 gcloud run services replace .cloudrun-deploy.yaml --region=us-central1 --project=raystartup
+
+# Clerk (live uses env update — template may still show AUTH_MODE=demo):
+gcloud run services update orchestra-api --region=us-central1 --project=raystartup --update-env-vars=AUTH_MODE=clerk,CLERK_JWKS_URL=https://arriving-serval-22.clerk.accounts.dev/.well-known/jwks.json,CLERK_ISSUER=https://arriving-serval-22.clerk.accounts.dev
+
+# Public invoke (if 403):
+gcloud run services add-iam-policy-binding orchestra-api --region=us-central1 --project=raystartup --member=allUsers --role=roles/run.invoker
 ```
 
-Pre-cutover (legacy, still serving today): use `--project=gen-lang-client-0795401430` and the old Artifact Registry path — only until raystartup Cloud Run is live.
+Pre-cutover legacy API was on `gen-lang-client-0795401430` — delete after IAM access.
 
 `DATABASE_URL` / `SECRET_KEY` come from Secret Manager via `secretKeyRef` in the YAML. Do not paste them into committed files.
 
 ## Vercel frontend bind (Phase 1)
 
-**Status (2026-07-13):** set on Vercel project `project-orchestra` for **Production** and **Preview**:
+**Status (2026-07-17):** set on Vercel project `project-orchestra` for **Production** and **Preview**:
 
 ```
 NEXT_PUBLIC_USE_MOCKS=false
-NEXT_PUBLIC_API_BASE_URL=https://orchestra-api-979112189932.us-central1.run.app/api/v1
+NEXT_PUBLIC_API_BASE_URL=https://orchestra-api-444869825431.us-central1.run.app/api/v1
 ```
 
 `NEXT_PUBLIC_*` are baked in at **build** time — trigger a redeploy after env changes for Production to pick them up.
 
 **Config fix (2026-07-13):** Removed legacy `experimentalServices` from `vercel.json` (backend is on Cloud Run, not a Vercel service). File is now `{ "framework": "nextjs" }`.
 
-**Production redeploy (2026-07-13):** `npx vercel --prod` succeeded after syncing `pnpm-lock.yaml` for `@clerk/nextjs`. Live alias: https://project-orchestra-khaki.vercel.app
+**Production redeploy (2026-07-17):** Cutover to raystartup API; live alias: https://project-orchestra-khaki.vercel.app
 
-**Bind verification:** production JS bundles bake `NEXT_PUBLIC_API_BASE_URL` → Cloud Run (`979112189932`); CORS allows the Vercel origin; API `/catalog/skus` returns 3 SKUs. Homepage catalog is client-rendered — confirm 3 SKU cards in browser DevTools → Network → `catalog/skus`.
+**Bind verification:** production JS bundles bake `NEXT_PUBLIC_API_BASE_URL` → Cloud Run (`444869825431` / `raystartup`); CORS allows the Vercel origin; API `/catalog/skus` returns 3 SKUs.
 
 **Important:** always pass `--no-sensitive` for `NEXT_PUBLIC_*`. Sensitive-typed vars are unavailable at Next build time, so the client falls back to mocks / localhost. Re-set + redeploy if `vercel env pull` shows empty `""` for those keys.
 
@@ -119,8 +137,8 @@ npx vercel login
 npx vercel link --yes --project project-orchestra --scope mclmarkscalculator-3730s-projects
 npx vercel env add NEXT_PUBLIC_USE_MOCKS production --value "false" --yes --force --no-sensitive
 npx vercel env add NEXT_PUBLIC_USE_MOCKS preview --value "false" --yes --force --no-sensitive
-npx vercel env add NEXT_PUBLIC_API_BASE_URL production --value "https://orchestra-api-979112189932.us-central1.run.app/api/v1" --yes --force --no-sensitive
-npx vercel env add NEXT_PUBLIC_API_BASE_URL preview --value "https://orchestra-api-979112189932.us-central1.run.app/api/v1" --yes --force --no-sensitive
+npx vercel env add NEXT_PUBLIC_API_BASE_URL production --value "https://orchestra-api-444869825431.us-central1.run.app/api/v1" --yes --force --no-sensitive
+npx vercel env add NEXT_PUBLIC_API_BASE_URL preview --value "https://orchestra-api-444869825431.us-central1.run.app/api/v1" --yes --force --no-sensitive
 # then redeploy Production so Next bakes the vars in
 npx vercel --prod
 ```
@@ -227,9 +245,20 @@ gcloud scheduler jobs create http orchestra-timer-tick \
 
 Local/dev: `POST http://localhost:8000/api/v1/internal/timers/tick` or set `TIMER_TICK_SECONDS=60`.
 
+### Cutover notes (2026-07-17 — completed on `deploy-raystartup`)
+
+| Issue | Fix applied |
+|-------|-------------|
+| VPC connector ERROR (subnet missing) | Deleted + recreated → READY on `default` / `10.8.0.0/28` |
+| Cloud SQL no private IP | Enabled PSA + private IP `10.97.0.3` on `default` |
+| Secrets missing | Created `orchestra-database-url` + `orchestra-secret-key` on `raystartup` |
+| Cloud Run 403 | `allUsers` → `roles/run.invoker` |
+| First private-IP deploy failed mid-SQL update | Brief public-IP deploy, then back to private — health OK |
+
 ### Founder cost cleanup
 
-1. **Billing split (primary):** move Cloud Run + SQL + **standalone Gemini** to **`raystartup`**. Use gen-lang-client **only** for Agent Builder Search/Conversation (₹95.7k). Runbook: `docs/GCP_BILLING_SPLIT.md`.
-2. After cutover: delete `orchestra-pg` on gen-lang-client (stops paid Postgres there).
-3. Confirm then: `gcloud sql instances delete raysql --project=gen-lang-client-0795401430 --quiet` (leftover MySQL — not Orchestra).
+1. **Done:** Orchestra on **raystartup** (trial-eligible).
+2. **Blocked:** delete `orchestra-api` / `orchestra-pg` on **gen-lang-client** — needs IAM on that project (`gagantak000@gmail.com` denied).
+3. When access granted: `gcloud sql instances delete orchestra-pg --project=gen-lang-client-0795401430 --quiet` and `gcloud run services delete orchestra-api --region=us-central1 --project=gen-lang-client-0795401430 --quiet`.
+4. Confirm then delete `raysql` if still unused.
 
