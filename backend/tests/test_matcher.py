@@ -83,6 +83,82 @@ async def test_seed_keeps_ten_profiles_five_original_five_fake(db_session):
 
 
 @pytest.mark.asyncio
+async def test_match_includes_live_profile_even_if_portal_role_is_client(db_session):
+    """Going live as worker then switching to client must not drop you from matching."""
+    live_id = uuid.UUID("00000000-0000-4000-8000-0000000000aa")
+    db_session.add(
+        User(
+            id=live_id,
+            email="founder.live@example.com",
+            full_name="Founder Live",
+            role="client",  # currently in client portal assembling a team
+            is_active=True,
+            email_verified=True,
+        )
+    )
+    db_session.add(
+        WorkerProfileRecord(
+            user_id=live_id,
+            community_type="design",
+            headline="My live talent profile",
+            bio="Completed onboarding and went live; now buying an outcome as client.",
+            availability_status="available",
+            is_active=True,
+            campus_verified=False,
+            profile_completion_pct=85,
+            skills=[
+                {"skill_id": "skill_logo", "name": "Logo Design", "proficiency": "advanced"}
+            ],
+            tools=[{"tool_id": "tool_figma", "name": "Figma", "proficiency": "advanced"}],
+            task_types=[
+                {
+                    "task_type_id": "tt_logo",
+                    "name": "Logo Design",
+                    "slug": "logo_design",
+                    "proficiency": "advanced",
+                }
+            ],
+            portfolio=[
+                {
+                    "id": "pf_live",
+                    "worker_id": str(live_id),
+                    "title": "Sample",
+                    "tags": [],
+                    "tools_used": [],
+                    "is_featured": True,
+                }
+            ],
+            stats={
+                "worker_id": str(live_id),
+                "tasks_completed": 0,
+                "on_time_pct": 0,
+                "seller_level": "new",
+            },
+        )
+    )
+    await db_session.flush()
+
+    candidates = await match_candidates(db_session, task_type_slug="logo_design")
+    ids = {c["worker_id"] for c in candidates}
+    assert str(live_id) in ids
+
+
+@pytest.mark.asyncio
+async def test_match_includes_unverified_alongside_verified(db_session):
+    """Fake / new go-live profiles must appear even when campus-verified talent exists."""
+    candidates = await match_candidates(db_session, task_type_slug="logo_design", limit=20)
+    ids = {c["worker_id"] for c in candidates}
+    # At least one fake (unverified) design filler is in the logo shortlist
+    fake_design = [
+        wid
+        for wid in SEED_FAKE_WORKER_IDS
+        if str(wid) in ids
+    ]
+    assert fake_design, "expected unverified fake profiles in shortlist with verified talent present"
+    assert str(DEMO_WORKER_ID) in ids
+
+
+@pytest.mark.asyncio
 async def test_match_candidates_ranks_seeded_workers(db_session):
     candidates = await match_candidates(db_session, task_type_slug="logo_design")
     assert len(candidates) >= 3

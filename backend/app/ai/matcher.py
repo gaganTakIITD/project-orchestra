@@ -23,6 +23,9 @@ PROFICIENCY_WEIGHT = {
     "expert": 1.0,
 }
 
+# Small ranking boost so campus-verified talent sorts above otherwise equal profiles.
+CAMPUS_VERIFIED_BONUS = 0.08
+
 
 def _task_type_slugs(profile: WorkerProfileRecord) -> set[str]:
     return {
@@ -81,13 +84,27 @@ def score_candidate(
 
     avail_bonus = 0.1 if profile.availability_status == "available" else 0.0
     completion_bonus = 0.05 if profile.profile_completion_pct >= 90 else 0.0
+    verified_bonus = CAMPUS_VERIFIED_BONUS if profile.campus_verified else 0.0
 
-    score = min(1.0, round(0.4 * type_fit + experience + reliability + avail_bonus + completion_bonus, 4))
+    score = min(
+        1.0,
+        round(
+            0.4 * type_fit
+            + experience
+            + reliability
+            + avail_bonus
+            + completion_bonus
+            + verified_bonus,
+            4,
+        ),
+    )
     if score < 0.35:
         score = max(score, 0.35)
 
     seller = str(stats.get("seller_level") or "new")
     rationale_bits = []
+    if profile.campus_verified:
+        rationale_bits.append("Campus verified")
     if type_fit >= 0.75:
         rationale_bits.append(f"Strong {slug or 'task'} fit")
     elif type_fit > 0:
@@ -135,8 +152,13 @@ async def match_candidates(
 ) -> list[dict[str, Any]]:
     """Filter live worker_profiles and return ranked Candidate shapes.
 
-    Prefer campus_verified=True. If zero verified profiles match the live
-    threshold, fall back to all live profiles so demos don't break empty.
+    Pool rules (portal role is independent of talent eligibility):
+    - User account active
+    - Worker profile live: is_active, completion ≥70%, available/busy
+    - Task-type / skill fit for the milestone
+    - Campus verified and unverified live profiles are BOTH included;
+      verified get a ranking boost (not an exclusive gate)
+
     Empty pool → empty list (caller decides how to surface that).
     """
     slug = task_type_slug
@@ -147,29 +169,20 @@ async def match_candidates(
         if row is not None:
             slug = row.task_type_slug
 
-    base_filters = (
-        User.role == "worker",
-        User.is_active.is_(True),
-        WorkerProfileRecord.is_active.is_(True),
-        WorkerProfileRecord.profile_completion_pct >= PROFILE_LIVE_THRESHOLD,
-        WorkerProfileRecord.availability_status.in_(("available", "busy")),
-    )
-
-    verified = await session.execute(
+    # Do NOT filter User.role == "worker". Active portal role flips client↔worker
+    # on the same account; a live WorkerProfileRecord is what makes someone matchable.
+    result = await session.execute(
         select(User, WorkerProfileRecord)
         .join(WorkerProfileRecord, WorkerProfileRecord.user_id == User.id)
-        .where(*base_filters, WorkerProfileRecord.campus_verified.is_(True))
-    )
-    rows = list(verified.all())
-
-    # Fallback: no verified talent in pool → include unverified live profiles.
-    if not rows:
-        fallback = await session.execute(
-            select(User, WorkerProfileRecord)
-            .join(WorkerProfileRecord, WorkerProfileRecord.user_id == User.id)
-            .where(*base_filters)
+        .where(
+            User.is_active.is_(True),
+            User.role != "admin",
+            WorkerProfileRecord.is_active.is_(True),
+            WorkerProfileRecord.profile_completion_pct >= PROFILE_LIVE_THRESHOLD,
+            WorkerProfileRecord.availability_status.in_(("available", "busy")),
         )
-        rows = list(fallback.all())
+    )
+    rows = list(result.all())
 
     scored: list[tuple[float, dict[str, Any]]] = []
     for user, profile in rows:
