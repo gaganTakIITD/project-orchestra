@@ -66,6 +66,23 @@ The full `intent → delivered` loop works on the live API with honest invites, 
 
 - Harden remaining P0 items (prod dual-account smoke, Cloud Scheduler)
 - Payments stay sandbox (`PAYMENTS_ENABLED=false`) until harden is green
+- **Reliability chapter (R0):** industry-standard test gates — see `docs/TESTING.md`
+
+---
+
+## R0 — Industry-standard testing (in progress)
+
+- Owner: `cursor`
+- [x] `docs/TESTING.md` — pyramid, gates, phased roadmap
+- [x] Order Spine transition matrix (`test_reliability.py`)
+- [x] Priority timeout via HTTP tick (`test_reliability.py`)
+- [x] TS ↔ Python status enum parity (`scripts/check_status_enum_parity.py`)
+- [x] Vitest + `lib/` contract tests (state-labels, journey)
+- [x] CI: vitest, `next build`, pytest coverage floor (55%)
+- [ ] Playwright E2E happy path (R2)
+- [ ] Alembic migration test in CI (R3)
+- [ ] MSW tests for `lib/api.ts` real branches (R2)
+- **Done when:** CI blocks merges on full gate; founder prod smoke green; no P0 path without automated test
 
 ### DEFERRED further
 

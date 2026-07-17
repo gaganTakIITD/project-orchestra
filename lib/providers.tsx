@@ -5,6 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
 import { ClerkAuthBridge } from "./clerk-auth-bridge";
+import {
+  ClerkAuthStateProvider,
+  DemoAuthProvider,
+} from "./orchestra-auth-context";
 
 const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
@@ -31,12 +35,14 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   if (!clerkEnabled) {
-    return inner;
+    return <DemoAuthProvider>{inner}</DemoAuthProvider>;
   }
 
   return (
     <ClerkProvider>
-      <ClerkAuthBridge>{inner}</ClerkAuthBridge>
+      <ClerkAuthBridge>
+        <ClerkAuthStateProvider>{inner}</ClerkAuthStateProvider>
+      </ClerkAuthBridge>
     </ClerkProvider>
   );
 }

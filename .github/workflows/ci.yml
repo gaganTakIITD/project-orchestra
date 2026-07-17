@@ -1,5 +1,6 @@
 # Track C / B6 — CI + contract hygiene
-# Backend: Postgres service + pytest. Frontend: pnpm + tsc --noEmit.
+# Backend: Postgres + pytest + coverage + contract checks.
+# Frontend: pnpm + tsc + eslint + vitest + production build.
 name: CI
 
 on:
@@ -20,7 +21,6 @@ jobs:
         working-directory: backend
     services:
       postgres:
-        # Match docker-compose image family; tests do not require vector ops.
         image: pgvector/pgvector:pg15
         env:
           POSTGRES_USER: orchestra
@@ -54,16 +54,18 @@ jobs:
       - name: OpenAPI contract check
         run: python ../scripts/check_openapi_contract.py
 
-      - name: Pytest
+      - name: Status enum parity (types.ts ↔ Python)
+        run: python ../scripts/check_status_enum_parity.py
+
+      - name: Pytest with coverage
         run: python -m pytest -v --tb=short
 
   frontend:
-    name: frontend (tsc)
+    name: frontend (lint + test + build)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # Repo ships both lockfiles; pnpm-lock.yaml is the deploy source of truth (Vercel).
       - uses: pnpm/action-setup@v4
         with:
           version: 10
@@ -78,3 +80,12 @@ jobs:
 
       - name: Typecheck
         run: pnpm exec tsc --noEmit
+
+      - name: Vitest (lib contract tests)
+        run: pnpm run test
+
+      - name: Production build
+        run: pnpm run build
+        env:
+          NEXT_PUBLIC_USE_MOCKS: "false"
+          NEXT_PUBLIC_API_BASE_URL: https://orchestra-api-979112189932.us-central1.run.app/api/v1
