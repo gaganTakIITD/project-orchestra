@@ -55,3 +55,24 @@ curl localhost:8000/api/v1/health  # backend alive?
 cd backend && python -m pytest     # backend tests
 npx tsc --noEmit                   # frontend type check
 ```
+
+## Cursor Cloud specific instructions
+
+The startup update script keeps deps fresh (`pnpm install` + editable backend install). Everything below is what that script does **not** do.
+
+**Toolchain gotchas**
+- Use `python3` (there is no `python` shim). Console scripts (`uvicorn`, `pytest`, `alembic`) install to `~/.local/bin` — run `export PATH="$HOME/.local/bin:$PATH"` or invoke via `python3 -m ...`.
+- Frontend package manager is **pnpm** (matches CI + `pnpm-lock.yaml`), not npm, even though the README says `npm`. Node 22.
+
+**Postgres (no Docker here)**
+- Docker is not available; the compose stack (`redis`/`minio`) is not used. Redis is unused by the code and MinIO is stubbed (no `boto3`), so only Postgres matters.
+- Postgres runs natively. Start it each session with `sudo pg_ctlcluster 16 main start`. Role/db `orchestra`/`orchestra` on `localhost:5432` (db `orchestra`) already exist in the data dir. If ever missing: `sudo -u postgres psql -c "CREATE ROLE orchestra LOGIN PASSWORD 'orchestra' SUPERUSER;" && sudo -u postgres createdb -O orchestra orchestra`.
+- No pgvector extension needed (template embeddings are stored as JSON float lists).
+
+**Running the app (dev mode)**
+- Backend: from `backend/`, `uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload`. It reads `/workspace/.env` (points `DATABASE_URL` at localhost) and on boot creates tables (`AUTO_CREATE_ALL=true`) + seeds catalog/demo users (`AUTO_SEED=true`). Health: `curl localhost:8000/api/v1/health`.
+- Frontend: from repo root, `pnpm dev`. `.env.local` sets `NEXT_PUBLIC_USE_MOCKS=false` + `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1` to hit the real API.
+- Gemini/Clerk are optional: without `GEMINI_API_KEY` the AI gateway uses deterministic fixtures; with `AUTH_MODE=demo` (default) the backend uses seeded demo client/worker stubs — no login needed for API/E2E.
+
+**Known pre-existing issue (not an env problem)**
+- In demo mode (no `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`), any page rendering the shared header **500s** during SSR: `AuthNav` → `useOrchestraAuth()` calls Clerk's `useAuth()` *before* the `clerkEnabled` early-return, so it throws outside a `ClerkProvider`. Clerk-gated pages without the header (e.g. `/sign-in`) still render. Setting valid Clerk keys (mounts `ClerkProvider`) or fixing the hook order unblocks the header pages; the backend + API flow are unaffected.
