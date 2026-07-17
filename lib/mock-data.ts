@@ -457,6 +457,32 @@ export const mockCandidates: Candidate[] = [
     tasks_completed: 9,
     on_time_pct: 90,
   },
+  {
+    worker_id: "usr_worker_aisha",
+    full_name: "Aisha Khan",
+    profile_photo_url: null,
+    headline: "Product UI designer — Figma systems",
+    community_type: "design",
+    score: 0.84,
+    rationale: "Expert Figma systems; strong logo_design overlap; 97% on-time.",
+    availability: "available",
+    seller_level: "trusted",
+    tasks_completed: 22,
+    on_time_pct: 97,
+  },
+  {
+    worker_id: "usr_worker_ria_fake",
+    full_name: "Ria Kapoor",
+    profile_photo_url: null,
+    headline: "[Demo] Brand systems & wordmarks",
+    community_type: "design",
+    score: 0.72,
+    rationale: "Fake demo filler — advanced brand/logo coverage for shortlists.",
+    availability: "available",
+    seller_level: "rising",
+    tasks_completed: 11,
+    on_time_pct: 92,
+  },
 ];
 
 export const mockPreferenceSet: PreferenceSet = {

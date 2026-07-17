@@ -120,7 +120,7 @@ API chat is live (`POST /chat/sessions` → 201; messages + SSE work; CORS allow
 
 **UI fix (2026-07-13):** `/proposal/[quoteId]` and `/orders/[orderId]` read Next 16 async `params` via `useParams` (same race class as `/scope`). Without this, finalize succeeded but the proposal page showed “Proposal not found”.
 
-**Talent + chat (2026-07-13):** Seeded 7 workers (design + tech) on Cloud Run; preferences page uses `useParams`; tracker wires `useDiscussion` / `usePostDiscussion` for per-task team chat.
+**Talent + chat (2026-07-13 / updated 2026-07-17):** Seeded **10 workers** on Cloud Run — **5 original** campus (`@iitd.ac.in`, verified) + **5 fake** demo fillers (`@orchestra.demo`, unverified). Preferences page uses `useParams`; tracker wires `useDiscussion` / `usePostDiscussion` for per-task team chat.
 
 ## Founder-gated next (Phase 3–4 — do not invent credentials)
 

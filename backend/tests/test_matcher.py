@@ -10,6 +10,9 @@ from app.models.identity import (
     DEMO_WORKER_ID,
     DEMO_WORKER_KABIR_ID,
     DEMO_WORKER_MEERA_ID,
+    SEED_FAKE_WORKER_IDS,
+    SEED_ORIGINAL_WORKER_IDS,
+    SEED_WORKER_POOL_IDS,
     User,
     WorkerProfileRecord,
 )
@@ -55,6 +58,28 @@ async def api_client():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
+
+
+@pytest.mark.asyncio
+async def test_seed_keeps_ten_profiles_five_original_five_fake(db_session):
+    assert len(SEED_WORKER_POOL_IDS) == 10
+    assert len(SEED_ORIGINAL_WORKER_IDS) == 5
+    assert len(SEED_FAKE_WORKER_IDS) == 5
+
+    result = await db_session.execute(
+        select(WorkerProfileRecord).where(
+            WorkerProfileRecord.user_id.in_(SEED_WORKER_POOL_IDS)
+        )
+    )
+    profiles = list(result.scalars().all())
+    assert len(profiles) == 10
+    by_id = {p.user_id: p for p in profiles}
+    for wid in SEED_ORIGINAL_WORKER_IDS:
+        assert by_id[wid].campus_verified is True
+        assert by_id[wid].is_active is True
+    for wid in SEED_FAKE_WORKER_IDS:
+        assert by_id[wid].campus_verified is False
+        assert by_id[wid].is_active is True
 
 
 @pytest.mark.asyncio

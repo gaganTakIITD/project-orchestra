@@ -1,7 +1,7 @@
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.catalog import OutcomeSku, Skill, TaskType, Tool
@@ -9,11 +9,15 @@ from app.models.identity import (
     DEMO_CLIENT_ID,
     DEMO_WORKER_AISHA_ID,
     DEMO_WORKER_DEV_ID,
+    DEMO_WORKER_FAKE_LEX_ID,
+    DEMO_WORKER_FAKE_RIA_ID,
+    DEMO_WORKER_FAKE_SAM_ID,
     DEMO_WORKER_ID,
     DEMO_WORKER_JAYA_ID,
     DEMO_WORKER_KABIR_ID,
     DEMO_WORKER_MEERA_ID,
     DEMO_WORKER_NEEL_ID,
+    SEED_WORKER_POOL_IDS,
     User,
     WorkerProfileRecord,
 )
@@ -138,7 +142,13 @@ async def seed_demo_client(session: AsyncSession) -> None:
 
 
 async def seed_demo_worker(session: AsyncSession) -> None:
-    """Rohan Verma — demo worker for Stage 3 inbox (matches lib/mock-data mockWorkerMe)."""
+    """Seed exactly 10 matcher profiles: 5 original campus + 5 fake demo fillers.
+
+    Originals (campus_verified=True, @iitd.ac.in):
+      Rohan, Meera, Kabir, Aisha, Arjun
+    Fakes (campus_verified=False, @orchestra.demo):
+      Jaya, Neel, Ria, Sam, Lex
+    """
     user = await session.get(User, DEMO_WORKER_ID)
     if user is None:
         session.add(
@@ -252,8 +262,9 @@ async def seed_demo_worker(session: AsyncSession) -> None:
                 }
             ]
         profile.is_active = True
+        profile.campus_verified = True
 
-    # Matcher pool — design + tech so every Launch Studio task can shortlist ≥3.
+    # --- 5 original campus talent ---
     await _ensure_pool_worker(
         session,
         user_id=DEMO_WORKER_MEERA_ID,
@@ -268,6 +279,7 @@ async def seed_demo_worker(session: AsyncSession) -> None:
         tasks_completed=14,
         on_time_pct=94,
         seller_level="rising",
+        campus_verified=True,
     )
     await _ensure_pool_worker(
         session,
@@ -283,6 +295,7 @@ async def seed_demo_worker(session: AsyncSession) -> None:
         tasks_completed=9,
         on_time_pct=90,
         seller_level="rising",
+        campus_verified=True,
     )
     await _ensure_pool_worker(
         session,
@@ -298,6 +311,7 @@ async def seed_demo_worker(session: AsyncSession) -> None:
         tasks_completed=22,
         on_time_pct=97,
         seller_level="trusted",
+        campus_verified=True,
     )
     await _ensure_pool_worker(
         session,
@@ -313,14 +327,17 @@ async def seed_demo_worker(session: AsyncSession) -> None:
         tasks_completed=31,
         on_time_pct=95,
         seller_level="trusted",
+        campus_verified=True,
     )
+
+    # --- 5 fake demo fillers (matching padding; not campus-verified) ---
     await _ensure_pool_worker(
         session,
         user_id=DEMO_WORKER_JAYA_ID,
-        email="jaya@iitd.ac.in",
+        email="jaya.fake@orchestra.demo",
         full_name="Jaya Reddy",
-        headline="Full-stack builder & deploy wrangler",
-        bio="Production deploys, CI, and polished marketing sites for campus startups.",
+        headline="[Demo] Full-stack builder & deploy wrangler",
+        bio="Fake demo profile for matcher shortlists — production deploys and marketing sites.",
         community_type="tech",
         availability_status="available",
         proficiency="advanced",
@@ -328,14 +345,15 @@ async def seed_demo_worker(session: AsyncSession) -> None:
         tasks_completed=18,
         on_time_pct=93,
         seller_level="rising",
+        campus_verified=False,
     )
     await _ensure_pool_worker(
         session,
         user_id=DEMO_WORKER_NEEL_ID,
-        email="neel@iitd.ac.in",
+        email="neel.fake@orchestra.demo",
         full_name="Neel Sharma",
-        headline="React engineer — performance & a11y",
-        bio="Landing pages that score well on Lighthouse and ship on Vercel.",
+        headline="[Demo] React engineer — performance & a11y",
+        bio="Fake demo profile for matcher shortlists — Vercel landings with strong Lighthouse scores.",
         community_type="tech",
         availability_status="busy",
         proficiency="intermediate",
@@ -343,7 +361,76 @@ async def seed_demo_worker(session: AsyncSession) -> None:
         tasks_completed=12,
         on_time_pct=91,
         seller_level="rising",
+        campus_verified=False,
     )
+    await _ensure_pool_worker(
+        session,
+        user_id=DEMO_WORKER_FAKE_RIA_ID,
+        email="ria.fake@orchestra.demo",
+        full_name="Ria Kapoor",
+        headline="[Demo] Brand systems & wordmarks",
+        bio="Fake demo designer — crisp logo systems for campus pilots.",
+        community_type="design",
+        availability_status="available",
+        proficiency="advanced",
+        task_slugs=("brand_identity", "logo_design", "figma_ui_design"),
+        tasks_completed=11,
+        on_time_pct=92,
+        seller_level="rising",
+        campus_verified=False,
+    )
+    await _ensure_pool_worker(
+        session,
+        user_id=DEMO_WORKER_FAKE_SAM_ID,
+        email="sam.fake@orchestra.demo",
+        full_name="Sam Okonkwo",
+        headline="[Demo] Landing page engineer",
+        bio="Fake demo tech profile — Next.js landings and light DevOps.",
+        community_type="tech",
+        availability_status="available",
+        proficiency="advanced",
+        task_slugs=("landing_page_frontend", "deployment_devops"),
+        tasks_completed=16,
+        on_time_pct=94,
+        seller_level="rising",
+        campus_verified=False,
+    )
+    await _ensure_pool_worker(
+        session,
+        user_id=DEMO_WORKER_FAKE_LEX_ID,
+        email="lex.fake@orchestra.demo",
+        full_name="Lex Chen",
+        headline="[Demo] UI craft & design systems",
+        bio="Fake demo designer — Figma UI kits and brand-adjacent product screens.",
+        community_type="design",
+        availability_status="available",
+        proficiency="intermediate",
+        task_slugs=("figma_ui_design", "brand_identity", "logo_design"),
+        tasks_completed=8,
+        on_time_pct=89,
+        seller_level="new",
+        campus_verified=False,
+    )
+
+    # Keep seed pool at exactly these 10 — deactivate any other seeded demo UUIDs
+    # in the 020–02f range that are not in the canonical list (idempotent).
+    pool_ids = set(SEED_WORKER_POOL_IDS)
+    seeded_range = await session.execute(
+        select(User).where(
+            User.role == "worker",
+            or_(
+                User.email.like("%@iitd.ac.in"),
+                User.email.like("%@orchestra.demo"),
+            ),
+        )
+    )
+    for row in seeded_range.scalars().all():
+        if row.id not in pool_ids and str(row.id).startswith("00000000-0000-4000-8000-00000000002"):
+            row.is_active = False
+            profile = await session.get(WorkerProfileRecord, row.id)
+            if profile is not None:
+                profile.is_active = False
+
     await session.commit()
 
 
@@ -371,6 +458,7 @@ async def _ensure_pool_worker(
     tasks_completed: int,
     on_time_pct: float,
     seller_level: str,
+    campus_verified: bool = True,
 ) -> None:
     user = await session.get(User, user_id)
     if user is None:
@@ -385,6 +473,10 @@ async def _ensure_pool_worker(
             )
         )
         await session.flush()
+    else:
+        user.email = email
+        user.full_name = full_name
+        user.is_active = True
 
     profile = await session.get(WorkerProfileRecord, user_id)
     if profile is not None:
@@ -400,9 +492,23 @@ async def _ensure_pool_worker(
             if slug in _TASK_TYPE_LABELS
         ]
         profile.community_type = community_type
+        profile.headline = headline
+        profile.bio = bio
+        profile.availability_status = availability_status
+        profile.campus_verified = campus_verified
         profile.is_active = True
         if (profile.profile_completion_pct or 0) < 70:
             profile.profile_completion_pct = 80
+        profile.stats = {
+            "worker_id": str(user_id),
+            "tasks_completed": tasks_completed,
+            "on_time_pct": on_time_pct,
+            "avg_qa_score": 88,
+            "avg_rating": 4.5,
+            "response_time_hours": 4.0,
+            "seller_level": seller_level,
+            "last_active_at": None,
+        }
         return
 
     session.add(
@@ -416,7 +522,7 @@ async def _ensure_pool_worker(
             max_concurrent_tasks=2,
             payout_min=1200,
             payout_max=4500,
-            campus_verified=True,
+            campus_verified=campus_verified,
             is_active=True,
             profile_completion_pct=80,
             skills=[
