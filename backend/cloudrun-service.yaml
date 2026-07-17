@@ -1,7 +1,7 @@
-# Deploy template for INFRA project raystartup (GCP free trial).
-# Cloud SQL: raystartup:us-central1:orchestra-trial-pg
-# Standalone Vertex Gemini: project raystartup (ADC) — NOT gen-lang-client.
-# gen-lang-client ₹95.7k credit = Agent Builder Search/Conversation ONLY.
+# Deploy template: raystartup free trial (₹28,219 until 2026-10-12).
+# Eligible: Cloud Run, Cloud SQL, Artifact Registry, Vertex AI (first-party Gemini).
+# NOT eligible: Gemini Developer API / AI Studio keys — do not bind GEMINI_API_KEY.
+# gen-lang-client ₹95.7k = Agent Builder Search/Conversation ONLY.
 # See docs/GCP_BILLING_SPLIT.md
 apiVersion: serving.knative.dev/v1
 kind: Service

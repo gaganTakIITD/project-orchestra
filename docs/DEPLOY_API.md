@@ -4,8 +4,9 @@
 
 | Workload | Project | Reason |
 |----------|---------|--------|
-| **Cloud SQL, Cloud Run, AR, standalone Gemini (SDK / Model Garden)** | `raystartup` | Free trial → ₹0; ₹95.7k does **not** cover these |
-| **Vertex AI Agent Builder Search / Conversation only** | `gen-lang-client-0795401430` | **Only** SKUs covered by ₹95.7k GenAI App Builder credit |
+| **Cloud SQL, Cloud Run, AR, Vertex AI Gemini (first-party)** | `raystartup` | Free trial ₹28,219 until 2026-10-12 — **eligible** |
+| **Gemini Developer API / AI Studio** | **Do not use** | Not trial-eligible on raystartup |
+| **Vertex AI Agent Builder Search / Conversation only** | `gen-lang-client-0795401430` | **Only** SKUs for ₹95.7k GenAI App Builder credit |
 | **Target SQL** | `raystartup:us-central1:orchestra-trial-pg` | Infra home |
 
 **Do not** put Orchestra Cloud Run/SQL or `generate_content` Gemini on gen-lang-client — you pay cash; the promotional credit will not apply.
@@ -143,9 +144,10 @@ API chat is live (`POST /chat/sessions` → 201; messages + SSE work; CORS allow
 
 ### Gemini / Vertex (Cloud Run) — **no direct API key**
 
-**Policy:** Orchestra standalone Gemini runs on **`raystartup`** via Vertex + Cloud Run SA (ADC). Do **not** paste an AI Studio API key.
+**Policy:** Orchestra AI on **`raystartup`** via **Vertex AI** (first-party Gemini) + Cloud Run SA (ADC). **Never** Gemini Developer API / AI Studio keys — those are **not** covered by the raystartup free trial.
 
-**₹95.7k GenAI App Builder (gen-lang-client)** covers **only** Vertex AI Agent Builder **Search** and **Conversation**. It does **not** cover SDK / Model Garden Gemini, Cloud Run, or Cloud SQL. Do not route Orchestra `generate_content` to gen-lang-client expecting that credit.
+**raystartup trial:** ₹28,219.33 until **2026-10-12** — covers Cloud Run/SQL **and** Vertex AI Gemini.  
+**₹95.7k on gen-lang-client:** Agent Builder Search/Conversation **only**.
 
 **Target env:** `GEMINI_AUTH=vertex`, `VERTEX_PROJECT=raystartup`, `VERTEX_LOCATION=us-central1`.
 

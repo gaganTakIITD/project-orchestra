@@ -1,10 +1,8 @@
 # Dual-project billing split (strict credit rules)
 
-> **Founder rule (strict):** The ₹95,700 **GenAI App Builder** credit on **gen-lang-client** is **only** for work built in the **Vertex AI Agent Builder Console** (Search + Conversation). It does **not** cover Cloud Run, Cloud SQL, Artifact Registry, standalone Gemini SDK / Model Garden, or networking.
+> **raystartup free trial (strict):** ₹28,219.33 until **2026-10-12**. Covers first-party GCP (Cloud Run, Cloud SQL, Storage, Artifact Registry) **and** Vertex AI API (first-party Gemini, AutoML, training, pipelines). Does **not** cover Gemini Developer API (AI Studio), partner MaaS, Marketplace, premium OS licenses, or Workspace/domains.
 >
-> **Orchestra today** uses standalone Gemini via the `google-genai` SDK (scope / quote / matcher / QA). That is **out-of-pocket** on gen-lang-client. Put **all Orchestra hosting + standalone model calls** on **raystartup** (free trial ~₹28k, SQL/Run already ₹0). Use gen-lang-client **only** for Agent Builder Search/Conversation if/when we build those products.
->
-> **AI auth:** No raw Gemini / AI Studio API key. Vertex AI via Cloud Run **service account** (ADC).
+> **gen-lang-client ₹95.7k (strict):** GenAI App Builder credit — **only** Vertex AI Agent Builder **Search** + **Conversation**. Does **not** cover Cloud Run/SQL or standalone Gemini SDK / Model Garden.
 
 ## Credit matrix (do not guess)
 
@@ -16,21 +14,30 @@
 | **Vertex AI Conversation** — multi-turn Agent Builder / Dialogflow CX sessions | **Standalone Gemini** via SDKs or **Vertex AI Model Garden** (e.g. Flash/Pro `generate_content`) |
 | | **Networking** — static IPs, egress, load balancing |
 
-### raystartup — GCP free trial ~₹28,219 · 87 days · ends 2026-10-12
+### raystartup — GCP free trial ₹28,219.33 · until **2026-10-12**
 
-| Already ₹0 after savings (Jul snapshot) | Use for Orchestra |
-|-----------------------------------------|-------------------|
-| Cloud Run, Cloud SQL, Artifact Registry, Storage, Build | **All** Orchestra API + DB + standalone Vertex Gemini |
+Track usage anytime in the Google Cloud Billing Report Dashboard.
+
+| **Covered by trial credits** (eligible) | **Not covered** (direct charge) |
+|-----------------------------------------|----------------------------------|
+| **First-party GCP:** Cloud Run, Cloud SQL, Cloud Storage, Artifact Registry | **Gemini Developer API (AI Studio)** and partner Model-as-a-Service APIs |
+| **Vertex AI API:** first-party Gemini models, AutoML, custom training, pipeline executions | **Marketplace** third-party software / SaaS |
+| | **Premium OS** VM licenses (Windows, RHEL, SUSE, SQL Server, etc.) |
+| | **Google Workspace** + domain registration |
+
+**GPU/TPU note:** Adding GPUs/TPUs to VMs requires upgrading the billing account; after upgrade, remaining trial credits still offset **eligible** usage.
+
+**Orchestra implication on raystartup:** use **Vertex AI** (first-party Gemini via ADC / Model Garden) — **never** Gemini Developer API / AI Studio API keys. Cloud Run + `orchestra-trial-pg` + Vertex Gemini are all trial-eligible.
 
 ## Confirmed targets
 
 | Concern | Value |
 |---------|--------|
-| **Orchestra host project** | `raystartup` (free trial / 30k-class infra credits) |
+| **Orchestra host project** | `raystartup` — free trial ₹28,219.33 until **2026-10-12** |
 | **Cloud SQL** | `raystartup:us-central1:orchestra-trial-pg` |
-| **Standalone Gemini (SDK / Model Garden)** | **Same project: `raystartup`** via Vertex + SA |
-| **gen-lang-client** | **Agent Builder Search / Conversation only** (to burn ₹95.7k) — not Orchestra Cloud Run/SQL, not SDK Gemini |
-| **AI auth** | `GEMINI_AUTH=vertex`, no `GEMINI_API_KEY` |
+| **Standalone Gemini** | **Vertex AI on `raystartup`** (first-party models — trial-eligible). **Not** Gemini Developer API / AI Studio |
+| **gen-lang-client** | **Agent Builder Search / Conversation only** (₹95.7k) — not Orchestra host/SDK |
+| **AI auth** | `GEMINI_AUTH=vertex`, **no** `GEMINI_API_KEY` / AI Studio |
 
 ```bash
 export INFRA_PROJECT=raystartup
@@ -48,13 +55,17 @@ export VERTEX_PROJECT=raystartup
 Browser (Vercel)
     │  Clerk JWT
     ▼
-Cloud Run orchestra-api                 ← project: raystartup (trial → ₹0)
+Cloud Run orchestra-api                 ← project: raystartup (free trial ✅)
     │
-    ├─► Cloud SQL orchestra-trial-pg    ← raystartup (trial → ₹0)
+    ├─► Cloud SQL orchestra-trial-pg    ← raystartup (free trial ✅)
     │
-    └─► Vertex Gemini (Model Garden)    ← vertexai=True, project=raystartup
-                                          SA ADC — no API key
-                                          (standalone model = NOT the ₹95.7k credit)
+    └─► Vertex AI Gemini (first-party)  ← vertexai=True, project=raystartup
+                                          SA ADC — NO AI Studio / Developer API key
+                                          (trial covers Vertex AI Gemini ✅)
+
+FORBIDDEN on raystartup (direct charge / wrong API):
+    Gemini Developer API (AI Studio) API keys
+    Marketplace / partner MaaS / Workspace
 
 OPTIONAL later (burns ₹95.7k on gen-lang-client):
     Agent Builder Search / Conversation ← only if product uses those consoles
@@ -63,11 +74,11 @@ OPTIONAL later (burns ₹95.7k on gen-lang-client):
 | Step | What happens |
 |------|----------------|
 | 1 | User hits Vercel |
-| 2 | API on **raystartup** Cloud Run |
-| 3 | DB = **`orchestra-trial-pg`** on raystartup |
-| 4 | Scope / quote / matcher / QA = **Vertex Gemini on `raystartup`** (SDK) |
-| 5 | **Do not** point SDK Gemini at gen-lang-client — that is cash, and ₹95.7k will not pay it |
-| 6 | gen-lang-client stays for **Agent Builder** features only (when we add them) |
+| 2 | API on **raystartup** Cloud Run (trial-eligible) |
+| 3 | DB = **`orchestra-trial-pg`** on raystartup (trial-eligible) |
+| 4 | Scope / quote / matcher / QA = **Vertex AI Gemini on `raystartup`** (trial-eligible) |
+| 5 | **Never** use Gemini Developer API / AI Studio keys (not trial-eligible; also wrong for ₹95.7k) |
+| 6 | gen-lang-client stays for **Agent Builder Search/Conversation** only |
 
 ### App config (standalone Gemini on raystartup)
 
@@ -134,15 +145,16 @@ Grant the Cloud Run runtime SA `roles/aiplatform.user` **on raystartup** (same p
 
 | | |
 |--|--|
-| **Free trial** | ₹28,219 / ₹28,321 · **87 days** · ends **2026-10-12** |
+| **Free trial** | **₹28,219.33** remaining · expires **2026-10-12** |
 | **Net** | ₹232 − ₹232 = **₹0.00** |
 
-| Service | After savings |
-|---------|---------------|
-| Cloud Run | **₹0** |
-| Cloud SQL | **₹0** |
-| AR / Storage / Build | **₹0** |
-| Gemini / Vertex | none yet — add Orchestra Vertex here |
+| Service | After savings | Trial-eligible? |
+|---------|---------------|-----------------|
+| Cloud Run | **₹0** | Yes |
+| Cloud SQL | **₹0** | Yes |
+| AR / Storage / Build | **₹0** | Yes |
+| Vertex AI Gemini (add for Orchestra) | — | Yes (first-party Vertex) |
+| Gemini Developer API / AI Studio | — | **No — do not use** |
 
 ## Ownership table
 
@@ -151,8 +163,9 @@ Grant the Cloud Run runtime SA `roles/aiplatform.user` **on raystartup** (same p
 | Cloud SQL `orchestra-trial-pg` | `raystartup` | Trial → ₹0 |
 | Cloud Run `orchestra-api` | `raystartup` | Trial → ₹0 |
 | Artifact Registry, VPC, Scheduler, DB secrets | `raystartup` | Same |
-| Standalone Vertex Gemini (Orchestra SDK) | `raystartup` | Trial; ₹95.7k does **not** cover this |
+| Standalone Vertex AI Gemini (Orchestra) | `raystartup` | Free trial covers first-party Vertex Gemini |
 | Agent Builder Search / Conversation | `gen-lang-client-0795401430` | **Only** place ₹95.7k applies |
+| Gemini Developer API / AI Studio | **nowhere for Orchestra** | Not covered by raystartup trial; not ₹95.7k |
 
 ## Cutover plan (founder — no gcloud in this agent)
 
